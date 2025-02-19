@@ -1,0 +1,14 @@
+name: AMinecraftPlugin1
+version: '1.0-SNAPSHOT'
+main: me.stavgordeev.plugin.AMinecraftPlugin1
+api-version: '1.21'
+commands:
+  minigame:
+    description: Starts a minigame
+    usage: /<command> <state>
+  push_block:
+    description: Pushes the block in a specified coordinate by a specified amount of blocks in a specified direction. The block will be pushed every specified interval by 1 block in ticks.
+    usage: /<command> <x> <y> <z> <amount> <direction> <interval>
+  give_diamonds:
+    description: Gives the player 3 diamonds
+    usage: /<command>
