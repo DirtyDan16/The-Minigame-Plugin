@@ -1,7 +1,6 @@
 // src/main/java/me/stavgordeev/plugin/commands/MinigameCommand.java
 package me.stavgordeev.plugin.commands;
 
-import me.stavgordeev.plugin.Constants.MinigameConstants;
 import me.stavgordeev.plugin.Minigame;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -49,7 +48,7 @@ public class MinigameCommand implements CommandExecutor, TabExecutor {
                 minigame.endGame(player);
                 break;
             case "nuke_area":
-                minigame.nukeArea(MinigameConstants.GAME_START_LOCATION,50);
+                minigame.nukeArea(player.getLocation(),50);
                 break;
             default:
                 player.sendMessage("Unknown command.");

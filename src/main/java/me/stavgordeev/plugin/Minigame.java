@@ -29,23 +29,34 @@ public class Minigame {
             player.sendMessage("Minigame is already running!");
             return;
         }
+        nukeArea(MinigameConstants.GAME_START_LOCATION, 50); // Clear the area before starting the game
+
         isGameRunning = true;
         thePlayer = player;
 
+        // Teleport the player to the starting location 8 blocks above the ground
         player.teleport(MinigameConstants.GAME_START_LOCATION.clone().add(0, 8, 0));
         player.sendMessage("Minigame started!");
 
-        initFloor(5, 5, Material.STONE);
+        initFloor(5, 5, Material.GLASS);
 
-
+        // Wait a lil before starting the floor mechanics.
         new BukkitRunnable() {
             @Override
             public void run() {
-                preppingForChangeFloor();
-                initFloor(5, 5,Material.AIR);
+                preppingForAFloorCycle(MinigameConstants.GAME_START_LOCATION);
+
+                // Wait a lil before removing the initial floor.
+                new BukkitRunnable(){
+                    @Override
+                    public void run() {
+                        initFloor(5, 5, Material.AIR);
+                    }
+                }.runTaskLater(plugin, 30);
+
                 cancel();
             }
-        }.runTaskLater(plugin, 30);
+        }.runTaskLater(plugin, 40);
     }
 
     public void pauseGame(Player player) {
@@ -103,7 +114,7 @@ public class Minigame {
         }
     }
 
-    private void preppingForChangeFloor() {
+    private void preppingForAFloorCycle(Location referenceLocation) {
         if (!isGameRunning || isGamePaused) {
             return;
         }
@@ -111,15 +122,38 @@ public class Minigame {
         Bukkit.broadcastMessage("prepping for change floor");
 
         Random radiusRandomizer = new Random(),intervalRandomizer = new Random();
+
+        // Randomize the radius of the floor and the interval between floor changes.
         int xRad = radiusRandomizer.nextInt(MinigameConstants.LOWER_BOUND_CHANGING_FLOOR_X_RADIUS,MinigameConstants.UPPER_BOUND_CHANGING_FLOOR_X_RADIUS);
         int zRad = radiusRandomizer.nextInt(MinigameConstants.LOWER_BOUND_CHANGING_FLOOR_Z_RADIUS,MinigameConstants.UPPER_BOUND_CHANGING_FLOOR_Z_RADIUS);
         int interval = intervalRandomizer.nextInt(MinigameConstants.LOWER_BOUND_CHANGING_FLOOR_INTERVAL,MinigameConstants.UPPER_BOUND_CHANGING_FLOOR_INTERVAL);
         int stopInterval = intervalRandomizer.nextInt(MinigameConstants.LOWER_BOUND_STOP_CHANGING_FLOOR_INTERVAL,MinigameConstants.UPPER_BOUND_STOP_CHANGING_FLOOR_INTERVAL);
 
+        // Randomize the center of the new floor. For the z and x coordinates, the min value represents the min distance compared to the last floor refrence. For the y coordinate, there is a min and max value.
+        Random newCenterCoordinatesRandomizer = new Random();
+        int randomisedXDiff = newCenterCoordinatesRandomizer.nextInt(MinigameConstants.LOWER_BOUND_NEW_FLOOR_X_CENTER,MinigameConstants.UPPER_BOUND_NEW_FLOOR_X_CENTER+1);
+        randomisedXDiff = randomlyChangeSign(randomisedXDiff);
+        int randomisedZDiff = newCenterCoordinatesRandomizer.nextInt(MinigameConstants.LOWER_BOUND_NEW_FLOOR_Z_CENTER,MinigameConstants.UPPER_BOUND_NEW_FLOOR_Z_CENTER+1);
+        randomisedZDiff = randomlyChangeSign(randomisedZDiff);
+        int randomisedYDiff = newCenterCoordinatesRandomizer.nextInt(MinigameConstants.LOWER_BOUND_NEW_FLOOR_Y_CENTER,MinigameConstants.UPPER_BOUND_NEW_FLOOR_Y_CENTER+1);
 
-        changeFloor(xRad, zRad);
-        activateChangeFloorTimerWithGrowingFrequency(interval,stopInterval, xRad, zRad);
+        // center of the new floor. the new center is tied to the reference location.
+        Location center = referenceLocation.clone().add(new Location(MinigameConstants.WORLD,randomisedXDiff,randomisedYDiff,randomisedZDiff));
+        Bukkit.broadcastMessage(ChatColor.BLUE + "Diff in centers: " + randomisedXDiff + " " + randomisedYDiff + " " + randomisedZDiff);
+        Bukkit.broadcastMessage(ChatColor.BLUE + "new floor center: " + formatLocation(center));
 
+        // Start the floor change logic cycle.
+        changeFloor(center,xRad, zRad);
+        activateChangeFloorTimerWithGrowingFrequency(center,interval,stopInterval, xRad, zRad);
+
+    }
+
+    private int randomlyChangeSign(int value) {
+        Random random = new Random();
+        boolean isFlipped = random.nextBoolean();
+        if (isFlipped) value = -value;
+
+        return value;
     }
 
     /**
@@ -129,7 +163,7 @@ public class Minigame {
      * @param xRad
      * @param zRad
      */
-    private void activateChangeFloorTimerWithGrowingFrequency(int interval,int stopInterval,int xRad, int zRad) {
+    private void activateChangeFloorTimerWithGrowingFrequency(Location center,int interval,int stopInterval,int xRad, int zRad) {
         if (!isGameRunning || isGamePaused) {
             return;
         }
@@ -141,16 +175,16 @@ public class Minigame {
                 if (interval == stopInterval || interval == MinigameConstants.MIN_INTERVAL) {
                     Bukkit.broadcastMessage("recursion stopped. interval is " + interval);
 
-                    chooseFloorBlockType(xRad,zRad);
+                    chooseFloorBlockType(center,xRad,zRad);
 
                     cancel();
                     return;
                 }
 
-                changeFloor(xRad, zRad);
+                changeFloor(center,xRad, zRad);
 
                 // Recursively call the method with the new interval
-                activateChangeFloorTimerWithGrowingFrequency( interval-1,stopInterval,xRad,zRad);
+                activateChangeFloorTimerWithGrowingFrequency( center,interval-1,stopInterval,xRad,zRad);
             }
         }.runTaskLater(plugin, interval);
     }
@@ -171,11 +205,10 @@ public class Minigame {
         Bukkit.broadcastMessage("floor initialized");
     }
 
-    public void changeFloor(int xLengthRad, int zLengthRad) {
+    public void changeFloor(Location center, int xLengthRad, int zLengthRad) {
         Random blockTypeRandomizer = new Random();
-        Bukkit.broadcastMessage("floor changed");
+        //Bukkit.broadcastMessage("floor changed");
 
-        Location center = MinigameConstants.GAME_START_LOCATION;
         Material[] blockTypes = MinigameConstants.DEFAULT_FLOOR_BLOCK_TYPES;
 
         // Change the floor under the player to random materials. The floor is a rectangle with side lengths 2*xLengthRad+1 and 2*zLengthRad+1. goes over 1 block at a time.
@@ -188,10 +221,8 @@ public class Minigame {
         }
     }
 
-    public void removeFloorExceptForChosenMaterial(int xLengthRad, int zLengthRad, Material materialToKeep) {
+    public void removeFloorExceptForChosenMaterial(Location center, int xLengthRad, int zLengthRad, Material materialToKeep) {
         Bukkit.broadcastMessage("floor removal");
-
-        Location center = MinigameConstants.GAME_START_LOCATION;
 
         // Take the current floor and remove all the materials except for the materialToKeep. go through 1 block at a time. the size of the floor is 2*xLengthRad+1 and 2*zLengthRad+1.
         for (int x = -xLengthRad; x <= xLengthRad; x++) {
@@ -203,6 +234,13 @@ public class Minigame {
             }
         }
 
+        // At this stage, a new floor is set elsewhere. The player will have a limited time to go from the old floor to the new floor. the timer and the logic
+        // can be seen in the bukkit runnable below.
+        preppingForAFloorCycle(center);
+
+        // Remove the remaining parts of the floor after a certain amount of time. This is the time the player has to go from the old floor to the new floor.
+        //fixme: if the new floor is too close to the old one, this runnable will remove blocks from the new floor that their material is the same
+        // as the old chosen material from , if they are in the bounds of the old floor.
         new BukkitRunnable() {
             @Override
             public void run() {
@@ -212,17 +250,15 @@ public class Minigame {
                         Location selectedLocation = new Location(MinigameConstants.WORLD, center.getX() + x, center.getY(), center.getZ() + z);
 
                         // Remove the selected Material
-                        selectedLocation.getBlock().setType(Material.AIR);
+                        if (selectedLocation.getBlock().getType() == materialToKeep) selectedLocation.getBlock().setType(Material.AIR);
                     }
                 }
-
-                preppingForChangeFloor();
                 cancel();
             }
         }.runTaskLater(plugin, MinigameConstants.DURATION_OF_STAYING_IN_A_FLOOR_WITH_ONLY_CHOSEN_MATERIAL);
     }
 
-    private void chooseFloorBlockType(int xRad, int zRad) {
+    private void chooseFloorBlockType(Location center,int xRad, int zRad) {
         Random blockTypeRandomizer = new Random();
         Material[] floorBlockTypes = MinigameConstants.DEFAULT_FLOOR_BLOCK_TYPES;
 
@@ -234,11 +270,13 @@ public class Minigame {
             player.getInventory().setItem(4, new ItemStack(material));
         }
 
+        //TODO: as the game progresses, the time to remove the floor should be shortened.
+
         // Remove all the floor except for the chosen material. the time given is the time to remove the floor. overtime this will be shortened as the game progresses and gets more difficult.
         new BukkitRunnable() {
             @Override
             public void run() {
-                removeFloorExceptForChosenMaterial(xRad, zRad, material);
+                removeFloorExceptForChosenMaterial(center,xRad, zRad, material);
                 cancel();
             }
         }.runTaskLater(plugin, MinigameConstants.INITIAL_DELAY_TO_SELECT_A_FLOOR_MATERIAL);

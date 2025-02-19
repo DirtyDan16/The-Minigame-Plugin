@@ -6,9 +6,9 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
 
-import java.util.Locale;
 
 public class MinigameConstants {
+    // Constants that define boundaries for random values for changing floor logic.
     public static final int UPPER_BOUND_CHANGING_FLOOR_INTERVAL = 25;
     public static final int LOWER_BOUND_CHANGING_FLOOR_INTERVAL = 15;
     public static final int UPPER_BOUND_STOP_CHANGING_FLOOR_INTERVAL = 10;
@@ -18,9 +18,17 @@ public class MinigameConstants {
     public static final int UPPER_BOUND_CHANGING_FLOOR_Z_RADIUS = 7;
     public static final int LOWER_BOUND_CHANGING_FLOOR_Z_RADIUS = 2;
 
+    // Constants that define boundaries for where a new floor can spawn.
+    public static final int UPPER_BOUND_NEW_FLOOR_X_CENTER = 10;
+    public static final int LOWER_BOUND_NEW_FLOOR_X_CENTER = 5;
+    public static final int UPPER_BOUND_NEW_FLOOR_Z_CENTER = 10;
+    public static final int LOWER_BOUND_NEW_FLOOR_Z_CENTER = 5;
+    public static final int UPPER_BOUND_NEW_FLOOR_Y_CENTER = 1;
+    public static final int LOWER_BOUND_NEW_FLOOR_Y_CENTER = -3;
+
 
     public static final int INITIAL_DELAY_TO_SELECT_A_FLOOR_MATERIAL = 25;
-    public static final int DURATION_OF_STAYING_IN_A_FLOOR_WITH_ONLY_CHOSEN_MATERIAL = 30;
+    public static final int DURATION_OF_STAYING_IN_A_FLOOR_WITH_ONLY_CHOSEN_MATERIAL = 60;
 
     public static final Material[] DEFAULT_FLOOR_BLOCK_TYPES = new Material[]{Material.RED_WOOL, Material.BLUE_WOOL, Material.GREEN_WOOL,Material.YELLOW_WOOL};
 
