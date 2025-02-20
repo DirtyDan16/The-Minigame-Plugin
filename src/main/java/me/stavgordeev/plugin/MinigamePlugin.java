@@ -17,12 +17,12 @@ public class MinigamePlugin extends JavaPlugin {
         plugin = this; // Initialize the plugin reference
         DiscoMayhem discoMayhem = new DiscoMayhem(this);
 
-
-        //getServer().getPluginManager().registerEvents(new EntityListener(), this);
+        // Register the event listeners
         getServer().getPluginManager().registerEvents(new PlayerDeathListener(discoMayhem), this);
 
-        Objects.requireNonNull(getCommand("push_block")).setExecutor(new PushBlockCommand(this));
-        Objects.requireNonNull(getCommand("minigame")).setExecutor(new MinigameCommand(discoMayhem));
+        // Register the commands
+        //Objects.requireNonNull(getCommand("push_block")).setExecutor(new PushBlockCommand(this));
+        Objects.requireNonNull(getCommand("minigame")).setExecutor(new MinigameCommand(discoMayhem)); // Register the command relating to the minigame DiscoMayhem.
 
     }
 

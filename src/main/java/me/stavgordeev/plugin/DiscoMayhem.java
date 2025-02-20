@@ -25,14 +25,28 @@ public class DiscoMayhem {
     private int lowerBound__stopChangingFloorInterval = MGConst.FloorLogic.ChangingFloor.LOWER_BOUND_STOP_INTERVAL;
     //----------------------------------------------------------------------//
 
+    /**
+     * Constructor for the DiscoMayhem class.
+     * @param plugin The plugin that the minigame is a part of
+     */
     public DiscoMayhem(Plugin plugin) {
         this.plugin = plugin;
     }
 
+    /**
+     * Checks if a player is in the minigame. This will be used for event handling, such as player death.
+     * @param player The player to check
+     * @return True if the player is in the minigame, false otherwise
+     */
     public boolean isPlayerInGame(Player player) {
         return isGameRunning && thePlayer != null && thePlayer.equals(player);
     }
 
+    /**
+     * Starts the minigame. The player is teleported to the starting location and the game is initialized.
+     * @param player The player that starts the minigame
+     * @throws InterruptedException
+     */
     public void start(Player player) throws InterruptedException {
         if (isGameRunning) {
             player.sendMessage("Minigame is already running!");
@@ -80,6 +94,11 @@ public class DiscoMayhem {
         }.runTaskLater(plugin, 40);
     }
 
+    /**
+     * Pauses the minigame. The game is paused and the player is notified.
+     * The game being paused saves the current state of the game, so it can be resumed later. however, the game is not running.
+     * @param player The player that pauses the minigame
+     */
     public void pauseGame(Player player) {
         if (!isGameRunning) {
             player.sendMessage("Minigame is not running!");
@@ -94,6 +113,10 @@ public class DiscoMayhem {
         // Add more actions here
     }
 
+    /**
+     * Resumes the minigame. The game is resumed and the player is notified.
+     * @param player The player that resumes the minigame
+     */
     public void resumeGame(Player player) {
         if (!isGameRunning) {
             player.sendMessage("Minigame is not running!");
@@ -108,6 +131,10 @@ public class DiscoMayhem {
         // Add more actions here
     }
 
+    /**
+     * Ends the minigame. The game is ended and the player is notified. The area is cleared.
+     * @param player The player that ends the minigame
+     */
     public void endGame(Player player) {
         if (!isGameRunning) {
             player.sendMessage("Minigame is not running!");
@@ -125,6 +152,11 @@ public class DiscoMayhem {
         //player.teleport(MinigameConstants.GAME_START_LOCATION.clone().add(0, -70, 0));
     }
 
+    /**
+     * Removes all blocks in a radius around a location.
+     * @param center The center of the area to nuke
+     * @param radius The radius of the area
+     **/
     public void nukeArea(Location center, int radius) {
         for (int x = -radius; x <= radius; x++) {
             for (int y = -radius; y <= radius; y++) {
@@ -136,6 +168,11 @@ public class DiscoMayhem {
         }
     }
 
+    /**
+     * Prepares for a floor cycle. Initializes the new floor and gives it randomised values.
+     * after that starts the floor change logic cycle.
+     * @param referenceLocation The location to reference for the new floor. this is the location of the last floor. this location will be used to calculate the new floor's center.
+     */
     private void preppingForAFloorCycle(Location referenceLocation) {
         if (!isGameRunning || isGamePaused) {
             return;
@@ -170,6 +207,11 @@ public class DiscoMayhem {
 
     }
 
+    /**
+     * Randomly changes the sign of a value. The value can be positive or negative.
+     * @param value The value to change the sign of
+     * @return The value with a randomly changed sign
+     */
     private int randomlyChangeSign(int value) {
         Random random = new Random();
         boolean isFlipped = random.nextBoolean();
@@ -180,10 +222,10 @@ public class DiscoMayhem {
 
     /**
      * Recursively calls the changeFloor method with a decreasing interval. The interval is decremented by 1 each time the method is called.
-     * @param interval
-     * @param stopInterval
-     * @param xRad
-     * @param zRad
+     * @param interval The interval between floor changes
+     * @param stopInterval The interval at which the recursion stops
+     * @param xRad The x radius of the floor
+     * @param zRad The z radius of the floor
      */
     private void activateChangeFloorTimerWithGrowingFrequency(Location center,int interval,int stopInterval,int xRad, int zRad) {
         if (!isGameRunning || isGamePaused) {
@@ -211,6 +253,12 @@ public class DiscoMayhem {
         }.runTaskLater(plugin, interval);
     }
 
+    /**
+     * Initializes the floor under the player to a specific material.
+     * @param xLengthRad The x radius of the floor
+     * @param zLengthRad The z radius of the floor
+     * @param material The material to set the floor to
+     */
     public void initFloor(int xLengthRad, int zLengthRad,Material material) {
         if (!isGameRunning || isGamePaused) {
             return;
@@ -227,6 +275,12 @@ public class DiscoMayhem {
         Bukkit.broadcastMessage("floor initialized");
     }
 
+    /**
+     * Changes the floor to random materials. Needs a center location and the x and z radius of the floor since it doesn't know physically what floor we are talking about.
+     * @param center The center of the floor
+     * @param xLengthRad The x radius of the floor
+     * @param zLengthRad The z radius of the floor
+     */
     public void changeFloor(Location center, int xLengthRad, int zLengthRad) {
         Random blockTypeRandomizer = new Random();
         //Bukkit.broadcastMessage("floor changed");
@@ -243,6 +297,16 @@ public class DiscoMayhem {
         }
     }
 
+
+    /**
+     * Removes the floor except for a chosen material.
+     * After that the method automaticaly takes care of the remaining parts of the floor, and it deletes them later, after a specified amount of time.
+     * The player has a limited time to go from the old floor to the new floor.
+     * @param center The center of the floor
+     * @param xLengthRad The x radius of the floor
+     * @param zLengthRad The z radius of the floor
+     * @param materialToKeep The material to keep
+     */
     public void removeFloorExceptForChosenMaterial(Location center, int xLengthRad, int zLengthRad, Material materialToKeep) {
         Bukkit.broadcastMessage("floor removal");
 
@@ -280,6 +344,14 @@ public class DiscoMayhem {
         }.runTaskLater(plugin, MGConst.FloorLogic.DURATION_OF_STAYING_IN_A_FLOOR_WITH_ONLY_CHOSEN_MATERIAL);
     }
 
+    /**
+     * Chooses a material for the floor. The material is chosen randomly from a list of materials.
+     * The material is given to all players in their 5th hotbar slot.
+     * After a certain amount of time, the floor is removed except for the chosen material.
+     * @param center The center of the floor
+     * @param xRad The x radius of the floor
+     * @param zRad The z radius of the floor
+     */
     private void chooseFloorBlockType(Location center,int xRad, int zRad) {
         Random blockTypeRandomizer = new Random();
         Material[] floorBlockTypes = MGConst.FloorLogic.DEFAULT_FLOOR_BLOCK_TYPES;
@@ -310,6 +382,11 @@ public class DiscoMayhem {
         }.runTaskLater(plugin, MGConst.FloorLogic.DELAY_TO_SELECT_A_FLOOR_MATERIAL);
     }
 
+    /**
+     * Formats a location to a string.
+     * @param location The location to format
+     * @return The formatted location
+     */
     private static String formatLocation(@NotNull Location location) {
         return location.getWorld().getName() + ". (" + location.getX() + "," + location.getY() + "," + location.getZ()+")";
     }
