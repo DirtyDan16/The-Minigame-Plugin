@@ -19,10 +19,10 @@ public class DiscoMayhem {
 
 
     //-Game Modifiers that change as the game progresses to scale difficulty-//
-    private int upperBound__startingIntervalForChangingFloor = MGConst.FloorLogic.ChangingFloor.UPPER_BOUND_START_INTERVAL;
-    private int lowerBound__startingIntervalForChangingFloor = MGConst.FloorLogic.ChangingFloor.LOWER_BOUND_START_INTERVAL;
-    private int upperBound__stopChangingFloorInterval = MGConst.FloorLogic.ChangingFloor.UPPER_BOUND_STOP_INTERVAL;
-    private int lowerBound__stopChangingFloorInterval = MGConst.FloorLogic.ChangingFloor.LOWER_BOUND_STOP_INTERVAL;
+    private int upperBound__startingIntervalForChangingFloor;
+    private int lowerBound__startingIntervalForChangingFloor;
+    private int upperBound__stopChangingFloorInterval;
+    private int lowerBound__stopChangingFloorInterval;
     //----------------------------------------------------------------------//
 
     /**
@@ -54,6 +54,7 @@ public class DiscoMayhem {
         }
 
         isGameRunning = true;
+        isGamePaused = false;
         thePlayer = player;
 
         //----- List Of Actions To Be Done When The Game Starts -----//
@@ -72,15 +73,16 @@ public class DiscoMayhem {
         player.setGameMode(GameMode.ADVENTURE); // Set the player's game mode to adventure
         player.getInventory().clear(); // Clear the player's inventory
         player.setSaturation(20); // Set the player's saturation to full
-
+        player.setHealth(20); // Set the player's health to full
         //----------------------------------------------------------------//
 
-        // Wait a lil before starting the floor mechanics.
+        initModifiers(); // Initialize the modifiers for the game
+
+        // Wait a lil before starting game events.
         new BukkitRunnable() {
             @Override
             public void run() {
-                preppingForAFloorCycle(MGConst.GAME_START_LOCATION);
-
+                activateGameEvents();
                 // Wait a lil before removing the initial floor.
                 new BukkitRunnable(){
                     @Override
@@ -92,6 +94,15 @@ public class DiscoMayhem {
                 cancel();
             }
         }.runTaskLater(plugin, 40);
+    }
+
+    /**
+     * Activates the game events.
+     * Game events range from taking care of changing floor logic to decreasing the interval for changing the floor.
+     */
+    public void activateGameEvents() {
+        preppingForAFloorCycle(MGConst.GAME_START_LOCATION);
+        decreaseStartingIntervalForChangingFloorTimer();
     }
 
     /**
@@ -117,6 +128,7 @@ public class DiscoMayhem {
      * Resumes the minigame. The game is resumed and the player is notified.
      * @param player The player that resumes the minigame
      */
+    //fixme: some parts of the game are not resumed- the game is not resumed, but the floor is not changed nor old floors aren't removed.
     public void resumeGame(Player player) {
         if (!isGameRunning) {
             player.sendMessage("Minigame is not running!");
@@ -125,6 +137,9 @@ public class DiscoMayhem {
             player.sendMessage("Minigame is not paused!");
             return;
         }
+
+        activateGameEvents(); // Resume the game events
+
 
         isGamePaused = false;
         player.sendMessage("Minigame resumed!");
@@ -149,7 +164,21 @@ public class DiscoMayhem {
 
         nukeArea(MGConst.GAME_START_LOCATION, 50);
 
+        initModifiers(); // Reset the modifiers for the game
+
         //player.teleport(MinigameConstants.GAME_START_LOCATION.clone().add(0, -70, 0));
+    }
+
+    /**
+     * Initializes the modifiers that CAN be tempered with for the game.
+     * Modifiers change throughout the game to scale difficulty.
+     * This method is called when the game starts and when the game ends.
+     */
+    public void initModifiers() {
+        upperBound__startingIntervalForChangingFloor = MGConst.FloorLogic.ChangingFloor.UPPER_BOUND_START_INTERVAL;
+        lowerBound__startingIntervalForChangingFloor = MGConst.FloorLogic.ChangingFloor.LOWER_BOUND_START_INTERVAL;
+        upperBound__stopChangingFloorInterval = MGConst.FloorLogic.ChangingFloor.UPPER_BOUND_STOP_INTERVAL;
+        lowerBound__stopChangingFloorInterval = MGConst.FloorLogic.ChangingFloor.LOWER_BOUND_STOP_INTERVAL;
     }
 
     /**
@@ -299,8 +328,46 @@ public class DiscoMayhem {
 
 
     /**
+     * Decreases the interval for changing the floor as time goes on. The interval is decreased by 2 every a certain amount of time seconds.
+     * The interval is decreased for both the starting interval and the interval at which the recursion stops. This is true for both the upper and lower bounds.
+     *
+     * This is done to make the game more difficult as time goes on.
+     */
+    private void decreaseStartingIntervalForChangingFloorTimer() {
+        if (!isGameRunning || isGamePaused) {
+            return;
+        }
+
+        // Decrease the interval for changing the floor as time goes on. The interval is decreased by 2 every a certain amount of time seconds.
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (!isGameRunning || isGamePaused) {
+                    cancel();
+                    return;
+                }
+
+                if (upperBound__startingIntervalForChangingFloor == MGConst.MIN_INTERVAL) {
+                    Bukkit.broadcastMessage(ChatColor.RED + "The interval for changing the floor has reached the minimum value.");
+                    cancel();
+                    return;
+                }
+
+                upperBound__startingIntervalForChangingFloor = Math.max(upperBound__startingIntervalForChangingFloor-2, MGConst.MIN_INTERVAL);
+                Bukkit.broadcastMessage(ChatColor.LIGHT_PURPLE + "upperBound__startingIntervalForChangingFloor: " + upperBound__startingIntervalForChangingFloor);
+                lowerBound__startingIntervalForChangingFloor = Math.max(lowerBound__startingIntervalForChangingFloor-2, MGConst.MIN_INTERVAL);
+                Bukkit.broadcastMessage(ChatColor.LIGHT_PURPLE + "lowerBound__startingIntervalForChangingFloor: " + lowerBound__startingIntervalForChangingFloor);
+                upperBound__stopChangingFloorInterval = Math.max(upperBound__stopChangingFloorInterval-2, MGConst.MIN_INTERVAL);
+                Bukkit.broadcastMessage(ChatColor.LIGHT_PURPLE + "upperBound__stopChangingFloorInterval: " + upperBound__stopChangingFloorInterval);
+                lowerBound__stopChangingFloorInterval = Math.max(lowerBound__stopChangingFloorInterval-2, MGConst.MIN_INTERVAL);
+                Bukkit.broadcastMessage(ChatColor.LIGHT_PURPLE + "lowerBound__stopChangingFloorInterval: " + lowerBound__stopChangingFloorInterval);
+            }
+        }.runTaskTimer(plugin, MGConst.FloorLogic.ChangingFloor.DELAY_TO_DECREASE_INTERVAL, MGConst.FloorLogic.ChangingFloor.DELAY_TO_DECREASE_INTERVAL);
+    }
+
+    /**
      * Removes the floor except for a chosen material.
-     * After that the method automaticaly takes care of the remaining parts of the floor, and it deletes them later, after a specified amount of time.
+     * After that the method automatically takes care of the remaining parts of the floor, and it deletes them later, after a specified amount of time.
      * The player has a limited time to go from the old floor to the new floor.
      * @param center The center of the floor
      * @param xLengthRad The x radius of the floor
@@ -308,6 +375,10 @@ public class DiscoMayhem {
      * @param materialToKeep The material to keep
      */
     public void removeFloorExceptForChosenMaterial(Location center, int xLengthRad, int zLengthRad, Material materialToKeep) {
+        if (!isGameRunning || isGamePaused) {
+            return;
+        }
+
         Bukkit.broadcastMessage("floor removal");
 
         // Take the current floor and remove all the materials except for the materialToKeep. go through 1 block at a time. the size of the floor is 2*xLengthRad+1 and 2*zLengthRad+1.
@@ -330,6 +401,11 @@ public class DiscoMayhem {
         new BukkitRunnable() {
             @Override
             public void run() {
+                if (!isGameRunning || isGamePaused) {
+                    cancel();
+                    return;
+                }
+
                 // Go over the material that isn't deleted and remove it as well.
                 for (int x = -xLengthRad; x <= xLengthRad; x++) {
                     for (int z = -zLengthRad; z <= zLengthRad; z++) {
