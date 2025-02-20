@@ -1,11 +1,8 @@
 // src/main/java/me/stavgordeev/plugin/Minigame.java
 package me.stavgordeev.plugin;
 
-import me.stavgordeev.plugin.Constants.MinigameConstants;
-import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
-import org.bukkit.Location;
-import org.bukkit.Material;
+import me.stavgordeev.plugin.Constants.MGConst;
+import org.bukkit.*;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.Plugin;
@@ -20,6 +17,14 @@ public class Minigame {
     private volatile boolean isGamePaused;
     private Player thePlayer;
 
+
+    //-Game Modifiers that change as the game progresses to scale difficulty-//
+    private int upperBound__startingIntervalForChangingFloor = MGConst.FloorLogic.ChangingFloor.UPPER_BOUND_START_INTERVAL;
+    private int lowerBound__startingIntervalForChangingFloor = MGConst.FloorLogic.ChangingFloor.LOWER_BOUND_START_INTERVAL;
+    private int upperBound__stopChangingFloorInterval = MGConst.FloorLogic.ChangingFloor.UPPER_BOUND_STOP_INTERVAL;
+    private int lowerBound__stopChangingFloorInterval = MGConst.FloorLogic.ChangingFloor.LOWER_BOUND_STOP_INTERVAL;
+    //----------------------------------------------------------------------//
+
     public Minigame(Plugin plugin) {
         this.plugin = plugin;
     }
@@ -29,30 +34,42 @@ public class Minigame {
             player.sendMessage("Minigame is already running!");
             return;
         }
-        nukeArea(MinigameConstants.GAME_START_LOCATION, 50); // Clear the area before starting the game
 
         isGameRunning = true;
         thePlayer = player;
 
+        //----- List Of Actions To Be Done When The Game Starts -----//
+
+        nukeArea(MGConst.GAME_START_LOCATION, 50); // Clear the area before starting the game
         // Teleport the player to the starting location 8 blocks above the ground
-        player.teleport(MinigameConstants.GAME_START_LOCATION.clone().add(0, 8, 0));
+        player.teleport(MGConst.GAME_START_LOCATION.clone().add(0, 8, 0));
         player.sendMessage("Minigame started!");
 
-        initFloor(5, 5, Material.GLASS);
+        initFloor(7, 7, Material.GLASS);
+
+        MGConst.WORLD.setTime(6000); // Set the time to day
+        MGConst.WORLD.setStorm(false); // Disable rain
+        MGConst.WORLD.setThundering(false); // Disable thunder
+
+        player.setGameMode(GameMode.ADVENTURE); // Set the player's game mode to adventure
+
+        //----------------------------------------------------------------//
+
+
 
         // Wait a lil before starting the floor mechanics.
         new BukkitRunnable() {
             @Override
             public void run() {
-                preppingForAFloorCycle(MinigameConstants.GAME_START_LOCATION);
+                preppingForAFloorCycle(MGConst.GAME_START_LOCATION);
 
                 // Wait a lil before removing the initial floor.
                 new BukkitRunnable(){
                     @Override
                     public void run() {
-                        initFloor(5, 5, Material.AIR);
+                        initFloor(7, 7, Material.AIR);
                     }
-                }.runTaskLater(plugin, 30);
+                }.runTaskLater(plugin, 60);
 
                 cancel();
             }
@@ -98,7 +115,7 @@ public class Minigame {
         thePlayer = null;
         player.sendMessage("Game ended!");
 
-        nukeArea(MinigameConstants.GAME_START_LOCATION, 50);
+        nukeArea(MGConst.GAME_START_LOCATION, 50);
 
         //player.teleport(MinigameConstants.GAME_START_LOCATION.clone().add(0, -70, 0));
     }
@@ -124,21 +141,21 @@ public class Minigame {
         Random radiusRandomizer = new Random(),intervalRandomizer = new Random();
 
         // Randomize the radius of the floor and the interval between floor changes.
-        int xRad = radiusRandomizer.nextInt(MinigameConstants.LOWER_BOUND_CHANGING_FLOOR_X_RADIUS,MinigameConstants.UPPER_BOUND_CHANGING_FLOOR_X_RADIUS);
-        int zRad = radiusRandomizer.nextInt(MinigameConstants.LOWER_BOUND_CHANGING_FLOOR_Z_RADIUS,MinigameConstants.UPPER_BOUND_CHANGING_FLOOR_Z_RADIUS);
-        int interval = intervalRandomizer.nextInt(MinigameConstants.LOWER_BOUND_CHANGING_FLOOR_INTERVAL,MinigameConstants.UPPER_BOUND_CHANGING_FLOOR_INTERVAL);
-        int stopInterval = intervalRandomizer.nextInt(MinigameConstants.LOWER_BOUND_STOP_CHANGING_FLOOR_INTERVAL,MinigameConstants.UPPER_BOUND_STOP_CHANGING_FLOOR_INTERVAL);
+        int xRad = radiusRandomizer.nextInt(MGConst.FloorLogic.FloorSize.LOWER_BOUND_X_RADIUS, MGConst.FloorLogic.FloorSize.UPPER_BOUND_X_RADIUS+1);
+        int zRad = radiusRandomizer.nextInt(MGConst.FloorLogic.FloorSize.LOWER_BOUND_Z_RADIUS, MGConst.FloorLogic.FloorSize.UPPER_BOUND_Z_RADIUS+1);
+        int interval = intervalRandomizer.nextInt(lowerBound__startingIntervalForChangingFloor, upperBound__startingIntervalForChangingFloor+1);
+        int stopInterval = intervalRandomizer.nextInt(lowerBound__stopChangingFloorInterval, upperBound__stopChangingFloorInterval+1);
 
-        // Randomize the center of the new floor. For the z and x coordinates, the min value represents the min distance compared to the last floor refrence. For the y coordinate, there is a min and max value.
+        // Randomize the center of the new floor. For the z and x coordinates, the min value represents the min distance compared to the last floor reference. For the y coordinate, there is a min and max value.
         Random newCenterCoordinatesRandomizer = new Random();
-        int randomisedXDiff = newCenterCoordinatesRandomizer.nextInt(MinigameConstants.LOWER_BOUND_NEW_FLOOR_X_CENTER,MinigameConstants.UPPER_BOUND_NEW_FLOOR_X_CENTER+1);
+        int randomisedXDiff = newCenterCoordinatesRandomizer.nextInt(MGConst.FloorLogic.NewFloorSpawnBoundaries.LOWER_BOUND_X_CENTER, MGConst.FloorLogic.NewFloorSpawnBoundaries.UPPER_BOUND_X_CENTER+1);
         randomisedXDiff = randomlyChangeSign(randomisedXDiff);
-        int randomisedZDiff = newCenterCoordinatesRandomizer.nextInt(MinigameConstants.LOWER_BOUND_NEW_FLOOR_Z_CENTER,MinigameConstants.UPPER_BOUND_NEW_FLOOR_Z_CENTER+1);
+        int randomisedZDiff = newCenterCoordinatesRandomizer.nextInt(MGConst.FloorLogic.NewFloorSpawnBoundaries.LOWER_BOUND_Z_CENTER, MGConst.FloorLogic.NewFloorSpawnBoundaries.UPPER_BOUND_Z_CENTER+1);
         randomisedZDiff = randomlyChangeSign(randomisedZDiff);
-        int randomisedYDiff = newCenterCoordinatesRandomizer.nextInt(MinigameConstants.LOWER_BOUND_NEW_FLOOR_Y_CENTER,MinigameConstants.UPPER_BOUND_NEW_FLOOR_Y_CENTER+1);
+        int randomisedYDiff = newCenterCoordinatesRandomizer.nextInt(MGConst.FloorLogic.NewFloorSpawnBoundaries.LOWER_BOUND_Y_CENTER, MGConst.FloorLogic.NewFloorSpawnBoundaries.UPPER_BOUND_Y_CENTER+1);
 
         // center of the new floor. the new center is tied to the reference location.
-        Location center = referenceLocation.clone().add(new Location(MinigameConstants.WORLD,randomisedXDiff,randomisedYDiff,randomisedZDiff));
+        Location center = referenceLocation.clone().add(new Location(MGConst.WORLD,randomisedXDiff,randomisedYDiff,randomisedZDiff));
         Bukkit.broadcastMessage(ChatColor.BLUE + "Diff in centers: " + randomisedXDiff + " " + randomisedYDiff + " " + randomisedZDiff);
         Bukkit.broadcastMessage(ChatColor.BLUE + "new floor center: " + formatLocation(center));
 
@@ -172,7 +189,7 @@ public class Minigame {
             @Override
             public void run() {
 
-                if (interval == stopInterval || interval == MinigameConstants.MIN_INTERVAL) {
+                if (interval == stopInterval || interval == MGConst.MIN_INTERVAL) {
                     Bukkit.broadcastMessage("recursion stopped. interval is " + interval);
 
                     chooseFloorBlockType(center,xRad,zRad);
@@ -194,10 +211,10 @@ public class Minigame {
             return;
         }
         // Initialize the floor under the player to stone 1 block at a time. The floor is a rectangle with side lengths 2*xLengthRad+1 and 2*zLengthRad+1.
-        Location center = MinigameConstants.GAME_START_LOCATION.clone().add(new Location(MinigameConstants.WORLD,0,5,0));
+        Location center = MGConst.GAME_START_LOCATION.clone().add(new Location(MGConst.WORLD,0,5,0));
         for (int x = -xLengthRad; x <= xLengthRad; x++) {
             for (int z = -zLengthRad; z <= zLengthRad; z++) {
-                Location selectedLocation = new Location(MinigameConstants.WORLD, center.getX() + x, center.getY(), center.getZ() + z);
+                Location selectedLocation = new Location(MGConst.WORLD, center.getX() + x, center.getY(), center.getZ() + z);
                 selectedLocation.getBlock().setType(material);
             }
         }
@@ -209,13 +226,13 @@ public class Minigame {
         Random blockTypeRandomizer = new Random();
         //Bukkit.broadcastMessage("floor changed");
 
-        Material[] blockTypes = MinigameConstants.DEFAULT_FLOOR_BLOCK_TYPES;
+        Material[] blockTypes = MGConst.FloorLogic.DEFAULT_FLOOR_BLOCK_TYPES;
 
         // Change the floor under the player to random materials. The floor is a rectangle with side lengths 2*xLengthRad+1 and 2*zLengthRad+1. goes over 1 block at a time.
         for (int x = -xLengthRad; x <= xLengthRad; x++) {
             for (int z = -zLengthRad; z <= zLengthRad; z++) {
                 int material = blockTypeRandomizer.nextInt(blockTypes.length);
-                Location selectedLocation = new Location(MinigameConstants.WORLD, center.getX() + x, center.getY(), center.getZ() + z);
+                Location selectedLocation = new Location(MGConst.WORLD, center.getX() + x, center.getY(), center.getZ() + z);
                 selectedLocation.getBlock().setType(blockTypes[material]);
             }
         }
@@ -227,7 +244,7 @@ public class Minigame {
         // Take the current floor and remove all the materials except for the materialToKeep. go through 1 block at a time. the size of the floor is 2*xLengthRad+1 and 2*zLengthRad+1.
         for (int x = -xLengthRad; x <= xLengthRad; x++) {
             for (int z = -zLengthRad; z <= zLengthRad; z++) {
-                Location selectedLocation = new Location(MinigameConstants.WORLD, center.getX() + x, center.getY(), center.getZ() + z);
+                Location selectedLocation = new Location(MGConst.WORLD, center.getX() + x, center.getY(), center.getZ() + z);
 
                 // Only change the block if it is not the material to keep
                 if (selectedLocation.getBlock().getType() != materialToKeep) selectedLocation.getBlock().setType(Material.AIR);
@@ -247,7 +264,7 @@ public class Minigame {
                 // Go over the material that isn't deleted and remove it as well.
                 for (int x = -xLengthRad; x <= xLengthRad; x++) {
                     for (int z = -zLengthRad; z <= zLengthRad; z++) {
-                        Location selectedLocation = new Location(MinigameConstants.WORLD, center.getX() + x, center.getY(), center.getZ() + z);
+                        Location selectedLocation = new Location(MGConst.WORLD, center.getX() + x, center.getY(), center.getZ() + z);
 
                         // Remove the selected Material
                         if (selectedLocation.getBlock().getType() == materialToKeep) selectedLocation.getBlock().setType(Material.AIR);
@@ -255,12 +272,12 @@ public class Minigame {
                 }
                 cancel();
             }
-        }.runTaskLater(plugin, MinigameConstants.DURATION_OF_STAYING_IN_A_FLOOR_WITH_ONLY_CHOSEN_MATERIAL);
+        }.runTaskLater(plugin, MGConst.FloorLogic.DURATION_OF_STAYING_IN_A_FLOOR_WITH_ONLY_CHOSEN_MATERIAL);
     }
 
     private void chooseFloorBlockType(Location center,int xRad, int zRad) {
         Random blockTypeRandomizer = new Random();
-        Material[] floorBlockTypes = MinigameConstants.DEFAULT_FLOOR_BLOCK_TYPES;
+        Material[] floorBlockTypes = MGConst.FloorLogic.DEFAULT_FLOOR_BLOCK_TYPES;
 
         Material material = floorBlockTypes[blockTypeRandomizer.nextInt(floorBlockTypes.length)]; // get a random material from the list of floor block types
         Bukkit.broadcastMessage(ChatColor.RED + "floor type chosen: " + material.toString());
@@ -277,9 +294,15 @@ public class Minigame {
             @Override
             public void run() {
                 removeFloorExceptForChosenMaterial(center,xRad, zRad, material);
+
+                //remove the material from the players' hotbar, so it won't confuse them.
+                for (Player player : Bukkit.getOnlinePlayers()) {
+                    player.getInventory().clear(4);
+                }
+
                 cancel();
             }
-        }.runTaskLater(plugin, MinigameConstants.INITIAL_DELAY_TO_SELECT_A_FLOOR_MATERIAL);
+        }.runTaskLater(plugin, MGConst.FloorLogic.DELAY_TO_SELECT_A_FLOOR_MATERIAL);
     }
 
     private static String formatLocation(@NotNull Location location) {
