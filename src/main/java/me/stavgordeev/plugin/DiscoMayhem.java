@@ -11,7 +11,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.Random;
 
-public class Minigame {
+public class DiscoMayhem {
     private final Plugin plugin;
     private volatile boolean isGameRunning;
     private volatile boolean isGamePaused;
@@ -25,8 +25,12 @@ public class Minigame {
     private int lowerBound__stopChangingFloorInterval = MGConst.FloorLogic.ChangingFloor.LOWER_BOUND_STOP_INTERVAL;
     //----------------------------------------------------------------------//
 
-    public Minigame(Plugin plugin) {
+    public DiscoMayhem(Plugin plugin) {
         this.plugin = plugin;
+    }
+
+    public boolean isPlayerInGame(Player player) {
+        return isGameRunning && thePlayer != null && thePlayer.equals(player);
     }
 
     public void start(Player player) throws InterruptedException {
@@ -52,10 +56,10 @@ public class Minigame {
         MGConst.WORLD.setThundering(false); // Disable thunder
 
         player.setGameMode(GameMode.ADVENTURE); // Set the player's game mode to adventure
+        player.getInventory().clear(); // Clear the player's inventory
+        player.setSaturation(20); // Set the player's saturation to full
 
         //----------------------------------------------------------------//
-
-
 
         // Wait a lil before starting the floor mechanics.
         new BukkitRunnable() {
@@ -113,7 +117,8 @@ public class Minigame {
         isGameRunning = false;
         isGamePaused = false;
         thePlayer = null;
-        player.sendMessage("Game ended!");
+
+        Bukkit.broadcastMessage("Minigame ended!");
 
         nukeArea(MGConst.GAME_START_LOCATION, 50);
 

@@ -1,7 +1,7 @@
 // src/main/java/me/stavgordeev/plugin/commands/MinigameCommand.java
 package me.stavgordeev.plugin.commands;
 
-import me.stavgordeev.plugin.Minigame;
+import me.stavgordeev.plugin.DiscoMayhem;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -13,10 +13,10 @@ import org.bukkit.command.TabExecutor;
 import java.util.List;
 
 public class MinigameCommand implements CommandExecutor, TabExecutor {
-    private final Minigame minigame;
+    private final DiscoMayhem discoMayhem;
 
-    public MinigameCommand(Minigame minigame) {
-        this.minigame = minigame;
+    public MinigameCommand(DiscoMayhem discoMayhem) {
+        this.discoMayhem = discoMayhem;
     }
 
     @Override
@@ -33,22 +33,22 @@ public class MinigameCommand implements CommandExecutor, TabExecutor {
         switch (args[0].toLowerCase()) {
             case "start":
                 try {
-                    minigame.start(player);
+                    discoMayhem.start(player);
                 } catch (InterruptedException e) {
                     throw new RuntimeException(e);
                 }
                 break;
             case "stop":
-                minigame.pauseGame(player);
+                discoMayhem.pauseGame(player);
                 break;
             case "resume":
-                minigame.resumeGame(player);
+                discoMayhem.resumeGame(player);
                 break;
             case "end":
-                minigame.endGame(player);
+                discoMayhem.endGame(player);
                 break;
             case "nuke_area":
-                minigame.nukeArea(player.getLocation(),50);
+                discoMayhem.nukeArea(player.getLocation(),50);
                 break;
             default:
                 player.sendMessage("Unknown command.");

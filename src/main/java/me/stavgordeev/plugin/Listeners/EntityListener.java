@@ -1,5 +1,6 @@
-package me.stavgordeev.plugin;
+package me.stavgordeev.plugin.Listeners;
 
+import me.stavgordeev.plugin.MinigamePlugin;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Cow;
 import org.bukkit.entity.Entity;
@@ -15,7 +16,7 @@ public class EntityListener implements Listener {
 
         Entity entity = event.getRightClicked();
 
-        entity.setMetadata("clicked", new org.bukkit.metadata.FixedMetadataValue(AMinecraftPlugin1.plugin, true));
+        entity.setMetadata("clicked", new org.bukkit.metadata.FixedMetadataValue(MinigamePlugin.plugin, true));
         if (entity.hasMetadata("clicked")) {
             System.out.println("Player right-clicked an entity! of type " + entity.getClass().getName());
             event.getPlayer().sendMessage("You right-clicked an entity!");
