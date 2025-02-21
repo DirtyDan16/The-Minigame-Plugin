@@ -30,12 +30,12 @@ public class MGConst {
 
         // Constants that define boundaries for how often a certain floor changes its materials.
         public static class ChangingFloor {
-            public static final int UPPER_BOUND_START_INTERVAL = 20;
+            public static final int UPPER_BOUND_START_INTERVAL = 25;
             public static final int LOWER_BOUND_START_INTERVAL = 20;
             public static final int UPPER_BOUND_STOP_INTERVAL = 15;
-            public static final int LOWER_BOUND_STOP_INTERVAL = 15;
+            public static final int LOWER_BOUND_STOP_INTERVAL = 10;
 
-            public static final int DELAY_TO_DECREASE_INTERVAL = 20*10;
+            public static final int DELAY_TO_DECREASE_INTERVAL = 20*15;
 
             public static final int AMOUNT_OF_CONST = countConstantsInClass(ChangingFloor.class)-1;
         }
@@ -51,6 +51,7 @@ public class MGConst {
     public static final World WORLD = Bukkit.getWorld("world");
     public static final Location GAME_START_LOCATION = new Location(WORLD, 0, 150, 0);
     public static final int MIN_INTERVAL = 1;
+
 
 
     public static int countConstantsInClass(Class<?> clazz) {

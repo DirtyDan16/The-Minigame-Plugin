@@ -435,10 +435,12 @@ public class DiscoMayhem {
         Material material = floorBlockTypes[blockTypeRandomizer.nextInt(floorBlockTypes.length)]; // get a random material from the list of floor block types
         Bukkit.broadcastMessage(ChatColor.RED + "floor type chosen: " + material.toString());
 
-        // Give the material to all players in their 5th hotbar slot
+        // Give the material to all players in their 5th hotbar slot and send a title to all players of the chosen block type.
         for (Player player : Bukkit.getOnlinePlayers()) {
             player.getInventory().setItem(4, new ItemStack(material));
+            player.sendTitle("",  getColorOfMaterial(material) + material.toString(), 10, 70, 20);
         }
+
 
         //TODO: as the game progresses, the time to remove the floor should be shortened.
 
@@ -456,6 +458,26 @@ public class DiscoMayhem {
                 cancel();
             }
         }.runTaskLater(plugin, MGConst.FloorLogic.DELAY_TO_SELECT_A_FLOOR_MATERIAL);
+    }
+
+    /**
+     * gives the color equivalent of a material (works for wool blocks).
+     * @return The chosen material
+     */
+    public static ChatColor getColorOfMaterial(Material material) {
+        ChatColor color;
+        return switch (material) {
+            case RED_WOOL -> color = ChatColor.RED;
+            case BLUE_WOOL -> color = ChatColor.BLUE;
+            case GREEN_WOOL -> color = ChatColor.GREEN;
+            case PURPLE_WOOL -> color = ChatColor.DARK_PURPLE;
+            case ORANGE_WOOL -> color = ChatColor.GOLD;
+            case YELLOW_WOOL -> color = ChatColor.YELLOW;
+            case LIME_WOOL -> color = ChatColor.GREEN;
+            case CYAN_WOOL -> color = ChatColor.DARK_AQUA;
+            case LIGHT_BLUE_WOOL -> color = ChatColor.AQUA;
+            default -> color = ChatColor.WHITE;
+        };
     }
 
     /**
