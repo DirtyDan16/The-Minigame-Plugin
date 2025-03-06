@@ -9,7 +9,7 @@ import org.bukkit.World;
 import java.lang.reflect.Field;
 
 
-public class MGConst {
+public class DiscoMayhemConst {
     // Constants that define boundaries for random values for changing floor logic.
     public static class FloorLogic {
         // Constants that define boundaries for where a new floor can spawn.

@@ -1,8 +1,10 @@
 package me.stavgordeev.plugin;
 
 import me.stavgordeev.plugin.Listeners.PlayerDeathListener;
-import me.stavgordeev.plugin.commands.MinigameCommand;
-import me.stavgordeev.plugin.commands.PushBlockCommand;
+import me.stavgordeev.plugin.Minigames.BlueprintBazaar;
+import me.stavgordeev.plugin.Minigames.DiscoMayhem;
+import me.stavgordeev.plugin.commands.BlueprintBazaarCommands;
+import me.stavgordeev.plugin.commands.DiscoMayhemCommands;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -16,14 +18,13 @@ public class MinigamePlugin extends JavaPlugin {
     public void onEnable() {
         plugin = this; // Initialize the plugin reference
         DiscoMayhem discoMayhem = new DiscoMayhem(this);
+        BlueprintBazaar blueprintBazaar = new BlueprintBazaar(this);
 
         // Register the event listeners
         getServer().getPluginManager().registerEvents(new PlayerDeathListener(discoMayhem), this);
 
-        // Register the commands
-        //Objects.requireNonNull(getCommand("push_block")).setExecutor(new PushBlockCommand(this));
-        Objects.requireNonNull(getCommand("minigame")).setExecutor(new MinigameCommand(discoMayhem)); // Register the command relating to the minigame DiscoMayhem.
-
+        Objects.requireNonNull(getCommand("mg_disco_mayhem")).setExecutor(new DiscoMayhemCommands(discoMayhem)); // Register the command relating to the minigame DiscoMayhem.
+        Objects.requireNonNull(getCommand("mg_blueprint_bazaar")).setExecutor(new BlueprintBazaarCommands(blueprintBazaar)); // Register the command relating to the minigame BlueprintBazaar.
     }
 
     @Override

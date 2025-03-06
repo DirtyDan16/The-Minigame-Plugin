@@ -4,8 +4,18 @@ main: me.stavgordeev.plugin.MinigamePlugin
 api-version: '1.21'
 commands:
   minigame:
-    description: Starts a minigame
+    description: Shows the minigame menu
+    usage: /<command> <name>
+  mg_disco_mayhem:
+    description: Starts the Disco Mayhem minigame
     usage: /<command> <state>
+  mg_blueprint_bazaar:
+    description: Starts the Blueprint Bazaar minigame
+    usage: /<command> <state>
+
+
+
+
   push_block:
     description: Pushes the block in a specified coordinate by a specified amount of blocks in a specified direction. The block will be pushed every specified interval by 1 block in ticks.
     usage: /<command> <x> <y> <z> <amount> <direction> <interval>
