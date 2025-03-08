@@ -2,6 +2,7 @@
 package me.stavgordeev.plugin.Minigames;
 
 import me.stavgordeev.plugin.Constants.DiscoMayhemConst;
+import me.stavgordeev.plugin.Utils;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.title.Title;
 import org.bukkit.*;
@@ -17,7 +18,7 @@ import net.kyori.adventure.text.format.TextColor;
 import java.time.Duration;
 import java.util.Random;
 
-public class DiscoMayhem {
+public class DiscoMayhem extends MinigameSkeleton {
     private final Plugin plugin;
     private volatile boolean isGameRunning;
     private volatile boolean isGamePaused;
@@ -33,6 +34,7 @@ public class DiscoMayhem {
 
     /**
      * Constructor for the DiscoMayhem class.
+     *
      * @param plugin The plugin that the minigame is a part of
      */
     public DiscoMayhem(Plugin plugin) {
@@ -53,10 +55,13 @@ public class DiscoMayhem {
      * @param player The player that starts the minigame
      * @throws InterruptedException
      */
+
     public void start(Player player) throws InterruptedException {
         if (isGameRunning) {
             Bukkit.getServer().broadcast(Component.text("Minigame is already running!"));
             return;
+        } else {
+            Bukkit.getServer().broadcast(Component.text("Minigame started! Name: Disco Mayhem"));
         }
 
         isGameRunning = true;
@@ -214,14 +219,7 @@ public class DiscoMayhem {
      * @param radius The radius of the area
      **/
     public void nukeArea(Location center, int radius) {
-        for (int x = -radius; x <= radius; x++) {
-            for (int y = -radius; y <= radius; y++) {
-                for (int z = -radius; z <= radius; z++) {
-                    Location currentLocation = center.clone().add(x, y, z);
-                    currentLocation.getBlock().setType(Material.AIR);
-                }
-            }
-        }
+        Utils.nukeGameArea(center, radius);
     }
 
     /**
