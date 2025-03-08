@@ -8,60 +8,43 @@ import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 
 public class BlueprintBazaar extends MinigameSkeleton {
-    private final Plugin plugin;
-    private volatile boolean isGameRunning;
-    private volatile boolean isGamePaused;
-    private Player thePlayer;
 
     public BlueprintBazaar (Plugin plugin) {
-        this.plugin = plugin;
+        super(plugin);
     }
 
     @Override
     public void start(Player player) throws InterruptedException {
-        if (isGameRunning) {
-            Bukkit.getServer().broadcast(Component.text("Minigame is already running!"));
-            return;
-        } else {
-            Bukkit.getServer().broadcast(Component.text("Minigame started! Name: Blueprint Bazaar"));
-        }
-
-        thePlayer = player;
-        isGameRunning = true;
-        isGamePaused = false;
+        super.start(player);
     }
 
     @Override
     public void startFastMode(Player player) throws InterruptedException {
-        start(player);
+        super.startFastMode(player);
     }
 
     @Override
     public void pauseGame(Player player) {
-
+        super.pauseGame(player);
     }
 
     @Override
     public void resumeGame(Player player) {
-
+        super.resumeGame(player);
     }
 
     @Override
     public void endGame(Player player) {
-
+        super.endGame(player);
     }
 
     @Override
     public boolean isPlayerInGame(Player player) {
-        return false;
+        return super.isPlayerInGame(player);
     }
 
     @Override
     public void nukeArea(Location center, int radius) {
         Utils.nukeGameArea(center, radius);
     }
-
-
-
-
 }

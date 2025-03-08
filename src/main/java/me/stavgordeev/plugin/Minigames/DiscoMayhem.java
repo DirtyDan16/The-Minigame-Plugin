@@ -19,12 +19,6 @@ import java.time.Duration;
 import java.util.Random;
 
 public class DiscoMayhem extends MinigameSkeleton {
-    private final Plugin plugin;
-    private volatile boolean isGameRunning;
-    private volatile boolean isGamePaused;
-    private Player thePlayer;
-
-
     //-Game Modifiers that change as the game progresses to scale difficulty-//
     private int upperBound__startingIntervalForChangingFloor;
     private int lowerBound__startingIntervalForChangingFloor;
@@ -38,16 +32,7 @@ public class DiscoMayhem extends MinigameSkeleton {
      * @param plugin The plugin that the minigame is a part of
      */
     public DiscoMayhem(Plugin plugin) {
-        this.plugin = plugin;
-    }
-
-    /**
-     * Checks if a player is in the minigame. This will be used for event handling, such as player death.
-     * @param player The player to check
-     * @return True if the player is in the minigame, false otherwise
-     */
-    public boolean isPlayerInGame(Player player) {
-        return isGameRunning && thePlayer != null && thePlayer.equals(player);
+        super(plugin);
     }
 
     /**
@@ -57,16 +42,7 @@ public class DiscoMayhem extends MinigameSkeleton {
      */
 
     public void start(Player player) throws InterruptedException {
-        if (isGameRunning) {
-            Bukkit.getServer().broadcast(Component.text("Minigame is already running!"));
-            return;
-        } else {
-            Bukkit.getServer().broadcast(Component.text("Minigame started! Name: Disco Mayhem"));
-        }
-
-        isGameRunning = true;
-        isGamePaused = false;
-        thePlayer = player;
+        super.start(player);
 
         //----- List Of Actions To Be Done When The Game Starts -----//
 
@@ -112,13 +88,9 @@ public class DiscoMayhem extends MinigameSkeleton {
      * @param player The player that starts the minigame
      * @throws InterruptedException
      */
+    @Override
     public void startFastMode(Player player) throws InterruptedException {
-        if (isGameRunning) {
-            Bukkit.getServer().broadcast(Component.text("Minigame is already running!"));
-            return;
-        }
-
-        start(player);
+        super.startFastMode(player);
 
         upperBound__startingIntervalForChangingFloor = 10;
         lowerBound__startingIntervalForChangingFloor = 10;
@@ -141,16 +113,7 @@ public class DiscoMayhem extends MinigameSkeleton {
      * @param player The player that pauses the minigame
      */
     public void pauseGame(Player player) {
-        if (!isGameRunning) {
-            player.sendMessage("Minigame is not running!");
-            return;
-        } else if (isGamePaused) {
-            player.sendMessage("Minigame is already paused!");
-            return;
-        }
-
-        isGamePaused = true;
-        player.sendMessage("Minigame stopped!");
+        super.pauseGame(player);
         // Add more actions here
     }
 
@@ -160,19 +123,9 @@ public class DiscoMayhem extends MinigameSkeleton {
      */
     //fixme: some parts of the game are not resumed- the game is not resumed, but the floor is not changed nor old floors aren't removed.
     public void resumeGame(Player player) {
-        if (!isGameRunning) {
-            player.sendMessage("Minigame is not running!");
-            return;
-        } else if (!isGamePaused) {
-            player.sendMessage("Minigame is not paused!");
-            return;
-        }
+        super.resumeGame(player);
 
         activateGameEvents(); // Resume the game events
-
-
-        isGamePaused = false;
-        player.sendMessage("Minigame resumed!");
         // Add more actions here
     }
 
@@ -181,16 +134,7 @@ public class DiscoMayhem extends MinigameSkeleton {
      * @param player The player that ends the minigame
      */
     public void endGame(Player player) {
-        if (!isGameRunning) {
-            player.sendMessage("Minigame is not running!");
-            return;
-        }
-
-        Bukkit.getServer().broadcast(Component.text("Minigame ended!").color(NamedTextColor.GREEN));
-
-        isGameRunning = false;
-        isGamePaused = false;
-        thePlayer = null;
+        super.endGame(player);
 
         nukeArea(DiscoMayhemConst.GAME_START_LOCATION, 55);
 

@@ -1,48 +1,115 @@
 package me.stavgordeev.plugin.Minigames;
 // src/main/java/me/stavgordeev/plugin/Minigames/MinigameSkeleton.java
 import me.stavgordeev.plugin.MinigamePlugin;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
+import org.bukkit.plugin.Plugin;
 
 public abstract class MinigameSkeleton {
+    protected final Plugin plugin;
+    protected volatile boolean isGameRunning;
+    protected volatile boolean isGamePaused;
+    protected Player thePlayer;
+
+    protected MinigameSkeleton(Plugin plugin) {
+        this.plugin = plugin;
+    }
+
     /**
      * Starts the minigame. should be followed with code that prepares the arena, the gamerules...
      * @param player the player that started the minigame
      * @throws InterruptedException if the game is interrupted
      */
-    public abstract void start(Player player) throws InterruptedException;
+    public void start(Player player) throws InterruptedException {
+        if (isGameRunning) {
+            Bukkit.getServer().broadcast(Component.text("Minigame is already running!"));
+            return;
+        } else {
+            Bukkit.getServer().broadcast(Component.text("Minigame started!").color(NamedTextColor.GREEN));
+        }
+
+        thePlayer = player;
+        isGameRunning = true;
+        isGamePaused = false;
+    }
 
     /**
-     * Starts the minigame in fast mode. This is essentially the same as start(), but it is the hard mode of the minigame. should call start() as well.
+     * Starts the minigame in fast mode. This is essentially the same as start(), but it is the hard mode of the minigame.
+     * The increased difficulty should be handled in the minigame itself.
+     * should call start() as well.
      * @param player the player that started the minigame
      * @throws InterruptedException if the game is interrupted
      */
-    public abstract void startFastMode(Player player) throws InterruptedException;
+    public void startFastMode(Player player) throws InterruptedException {
+        if (isGameRunning) {
+            Bukkit.getServer().broadcast(Component.text("Minigame is already running!"));
+            return;
+        }
+
+        start(player);
+    }
 
     /**
      * Pauses the game. Paused games can be resumed, and they keep certain logic and game logic. should be followed with code that pauses the game, like stopping timers, freezing entities...
      * @param player the player that paused the game
      */
-    public abstract void pauseGame(Player player);
+    public void pauseGame(Player player) {
+        if (!isGameRunning) {
+            player.sendMessage("Minigame is not running!");
+            return;
+        } else if (isGamePaused) {
+            player.sendMessage("Minigame is already paused!");
+            return;
+        }
+
+        isGamePaused = true;
+        player.sendMessage("Minigame stopped!");
+    }
 
     /**
      * Resumes the game. Resumed games should be able to continue from where they were paused. should be followed with code that resumes the game, like starting timers, unfreezing entities...
      * @param player the player that resumed the game
      */
-    public abstract void resumeGame(Player player);
+    public void resumeGame(Player player) {
+        if (!isGameRunning) {
+            player.sendMessage("Minigame is not running!");
+            return;
+        } else if (!isGamePaused) {
+            player.sendMessage("Minigame is not paused!");
+            return;
+        }
+        isGamePaused = false;
+        player.sendMessage("Minigame resumed!");
+    }
 
     /**
      * Ends the game. should be followed with code that cleans up the arena, the gamerules... Should also be called when the game is interrupted.
      * @param player the player that ended the game
      */
-    public abstract void endGame(Player player);
+    public void endGame(Player player) {
+        if (!isGameRunning) {
+            player.sendMessage("Minigame is not running!");
+            return;
+        }
+        Bukkit.getServer().broadcast(Component.text("Minigame ended!").color(NamedTextColor.GREEN));
+
+        pauseGame(player);
+        isGameRunning = false;
+        isGamePaused = false;
+        thePlayer = null;
+    }
 
     /**
-     * Checks if a player is in the game. should return true if the player is in the game, false otherwise.
-     * @param player the player to check
-     * @return true if the player is in the game, false otherwise
+     * Checks if a player is in the minigame. This will be used for event handling, such as player death.
+     * @param player The player to check
+     * @return True if the player is in the minigame, false otherwise
      */
-    public abstract boolean isPlayerInGame(Player player);
+    public boolean isPlayerInGame(Player player) {
+        return isGameRunning && thePlayer != null && thePlayer.equals(player);
+    }
 
     /**
      * Nukes an area. should be followed with code that destroys all entities and blocks in a certain radius around the player.
