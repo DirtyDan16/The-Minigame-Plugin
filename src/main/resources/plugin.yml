@@ -1,4 +1,4 @@
-name: AMinecraftPlugin1
+name: MinigamePlugin
 version: '1.0-SNAPSHOT'
 main: me.stavgordeev.plugin.MinigamePlugin
 api-version: '1.21'

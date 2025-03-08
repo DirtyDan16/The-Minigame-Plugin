@@ -8,6 +8,7 @@ import me.stavgordeev.plugin.commands.DiscoMayhemCommands;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.io.File;
 import java.util.Objects;
 
 public class MinigamePlugin extends JavaPlugin {
@@ -19,6 +20,15 @@ public class MinigamePlugin extends JavaPlugin {
         plugin = this; // Initialize the plugin reference
         DiscoMayhem discoMayhem = new DiscoMayhem(this);
         BlueprintBazaar blueprintBazaar = new BlueprintBazaar(this);
+
+        // Create the BlueprintBazaarBuilds folder if it doesn't exist
+        File schematicsFolder = new File(getDataFolder(), "BlueprintBazaarBuilds");
+        if (!schematicsFolder.exists()) {
+            schematicsFolder.mkdirs();  // Creates the folder if it doesn't exist
+            getLogger().info("Created BlueprintBazaarBuilds folder.");
+        } else {
+            getLogger().info("BlueprintBazaarBuilds folder already exists.");
+        }
 
         // Register the event listeners
         getServer().getPluginManager().registerEvents(new PlayerDeathListener(discoMayhem), this);
