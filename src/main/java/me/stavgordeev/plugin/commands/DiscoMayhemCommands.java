@@ -1,6 +1,7 @@
 // src/main/java/me/stavgordeev/plugin/commands/MinigameCommand.java
 package me.stavgordeev.plugin.commands;
 
+import me.stavgordeev.plugin.Constants.DiscoMayhemConst;
 import me.stavgordeev.plugin.Minigames.DiscoMayhem;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -46,7 +47,7 @@ public class DiscoMayhemCommands extends MinigameCommandsSkeleton {
                 discoMayhem.endGame(player);
                 break;
             case "nuke_area":
-                discoMayhem.nukeArea(player.getLocation(), 50);
+                discoMayhem.nukeArea(DiscoMayhemConst.GAME_START_LOCATION, 50);
                 break;
             default:
                 Bukkit.getServer().broadcast(Component.text("Unknown command.").color(NamedTextColor.RED));

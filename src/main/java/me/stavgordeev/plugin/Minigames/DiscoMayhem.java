@@ -51,14 +51,6 @@ public class DiscoMayhem extends MinigameSkeleton {
             @Override
             public void run() {
                 activateGameEvents();
-                // Wait a lil before removing the initial floor.
-                new BukkitRunnable(){
-                    @Override
-                    public void run() {
-                        Utils.initFloor(7, 7, Material.AIR,DiscoMayhemConst.GAME_START_LOCATION,DiscoMayhemConst.WORLD);
-                    }
-                }.runTaskLater(plugin, 60);
-
                 cancel();
             }
         }.runTaskLater(plugin, 40);
@@ -150,13 +142,22 @@ public class DiscoMayhem extends MinigameSkeleton {
     @Override
     public void prepareArea() {
         nukeArea(DiscoMayhemConst.GAME_START_LOCATION, 50); // Clear the area before starting the game
-        Utils.initFloor(7, 7, Material.GLASS,DiscoMayhemConst.GAME_START_LOCATION,DiscoMayhemConst.WORLD); // Initialize the floor under the player to glass
+
+        Location floorCenter = DiscoMayhemConst.INIT_FLOOR_LOCATION; // The center of the floor
+        Utils.initFloor(7, 7, Material.GLASS,floorCenter,DiscoMayhemConst.WORLD); // Initialize the floor under the player to glass
+
+        // Wait a lil before removing the initial floor.
+        new BukkitRunnable(){
+            @Override
+            public void run() {
+                Utils.initFloor(7, 7, Material.AIR,floorCenter,DiscoMayhemConst.WORLD);
+            }
+        }.runTaskLater(plugin, 100);
     }
 
     @Override
     public void prepareGameSetting(Player player) {
-        // Teleport the player to the starting location 8 blocks above the ground
-        player.teleport(DiscoMayhemConst.GAME_START_LOCATION.clone().add(0, 8, 0));
+        player.teleport(DiscoMayhemConst.PLAYER_TP_LOCATION);
 
         DiscoMayhemConst.WORLD.setTime(6000); // Set the time to day
         DiscoMayhemConst.WORLD.setStorm(false); // Disable rain

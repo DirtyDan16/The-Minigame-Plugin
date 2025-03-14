@@ -120,7 +120,7 @@ public abstract class MinigameSkeleton {
     }
 
     /**
-     * Nukes an area. should be followed with code that destroys all entities and blocks in a certain radius around the player.
+     * Nukes an area. should be followed with code that clears the physical area. typically should be called in endGame().
      * @param center the center of the nuke
      * @param radius the radius of the nuke
      */

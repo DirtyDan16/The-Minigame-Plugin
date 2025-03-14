@@ -1,5 +1,6 @@
 package me.stavgordeev.plugin.commands;
 
+import me.stavgordeev.plugin.Constants.BlueprintBazaarConst;
 import me.stavgordeev.plugin.Minigames.BlueprintBazaar;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -44,7 +45,16 @@ public class BlueprintBazaarCommands extends MinigameCommandsSkeleton {
                 blueprintbazaar.endGame(player);
                 break;
             case "nuke_area":
-                blueprintbazaar.nukeArea(player.getLocation(), 50);
+                blueprintbazaar.nukeArea(BlueprintBazaarConst.GAME_START_LOCATION, 50);
+                break;
+            case "spawn_build":
+                blueprintbazaar.prepareNewBuild();
+                break;
+            case "showcase_all_builds":
+                blueprintbazaar.loadAllSchematics();
+                break;
+            case "init_schematics":
+                blueprintbazaar.initSchematics();
                 break;
             default:
                 Bukkit.getServer().broadcast(Component.text("Unknown command.").color(NamedTextColor.RED));
@@ -56,7 +66,7 @@ public class BlueprintBazaarCommands extends MinigameCommandsSkeleton {
     @Override
     protected @Nullable List<String> handleTabComplete(CommandSender sender, Command command, String label, String[] args) {
         if (args.length == 1) {
-            return List.of("start", "stop", "start_hard_mode", "resume", "end", "nuke_area");
+            return List.of("start", "stop", "start_hard_mode", "resume", "end", "nuke_area", "spawn_build", "showcase_all_builds", "init_schematics");
         }
         return List.of();
     }

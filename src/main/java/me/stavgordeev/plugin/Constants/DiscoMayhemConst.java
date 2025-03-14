@@ -50,6 +50,8 @@ public class DiscoMayhemConst {
 
     public static final World WORLD = Bukkit.getWorld("world");
     public static final Location GAME_START_LOCATION = new Location(WORLD, 0, 150, 0);
+    public static final Location INIT_FLOOR_LOCATION = DiscoMayhemConst.GAME_START_LOCATION.clone().add(0, 8, 0);
+    public static final Location PLAYER_TP_LOCATION = DiscoMayhemConst.GAME_START_LOCATION.clone().add(0, 11, 0);
     public static final int MIN_INTERVAL = 1;
 
 

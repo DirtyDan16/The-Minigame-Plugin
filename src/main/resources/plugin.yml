@@ -3,6 +3,9 @@ version: '1.0-SNAPSHOT'
 main: me.stavgordeev.plugin.MinigamePlugin
 api-version: '1.21'
 commands:
+  nuke:
+    description: Nukes the surrounding area. Needs to specify the radius of the nuke.
+    usage: /<command> <radius>
   minigame:
     description: Shows the minigame menu
     usage: /<command> <name>
