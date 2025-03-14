@@ -44,25 +44,6 @@ public class DiscoMayhem extends MinigameSkeleton {
     public void start(Player player) throws InterruptedException {
         super.start(player);
 
-        //----- List Of Actions To Be Done When The Game Starts -----//
-
-        nukeArea(DiscoMayhemConst.GAME_START_LOCATION, 50); // Clear the area before starting the game
-        // Teleport the player to the starting location 8 blocks above the ground
-        player.teleport(DiscoMayhemConst.GAME_START_LOCATION.clone().add(0, 8, 0));
-        Bukkit.getServer().broadcast(Component.text("Minigame started!").color(NamedTextColor.GREEN));
-
-        initFloor(7, 7, Material.GLASS);
-
-        DiscoMayhemConst.WORLD.setTime(6000); // Set the time to day
-        DiscoMayhemConst.WORLD.setStorm(false); // Disable rain
-        DiscoMayhemConst.WORLD.setThundering(false); // Disable thunder
-
-        player.setGameMode(GameMode.ADVENTURE); // Set the player's game mode to adventure
-        player.getInventory().clear(); // Clear the player's inventory
-        player.setSaturation(20); // Set the player's saturation to full
-        player.setHealth(20); // Set the player's health to full
-        //----------------------------------------------------------------//
-
         initModifiers(); // Initialize the modifiers for the game
 
         // Wait a lil before starting game events.
@@ -74,7 +55,7 @@ public class DiscoMayhem extends MinigameSkeleton {
                 new BukkitRunnable(){
                     @Override
                     public void run() {
-                        initFloor(7, 7, Material.AIR);
+                        Utils.initFloor(7, 7, Material.AIR,DiscoMayhemConst.GAME_START_LOCATION,DiscoMayhemConst.WORLD);
                     }
                 }.runTaskLater(plugin, 60);
 
@@ -166,6 +147,27 @@ public class DiscoMayhem extends MinigameSkeleton {
         Utils.nukeGameArea(center, radius);
     }
 
+    @Override
+    public void prepareArea() {
+        nukeArea(DiscoMayhemConst.GAME_START_LOCATION, 50); // Clear the area before starting the game
+        Utils.initFloor(7, 7, Material.GLASS,DiscoMayhemConst.GAME_START_LOCATION,DiscoMayhemConst.WORLD); // Initialize the floor under the player to glass
+    }
+
+    @Override
+    public void prepareGameSetting(Player player) {
+        // Teleport the player to the starting location 8 blocks above the ground
+        player.teleport(DiscoMayhemConst.GAME_START_LOCATION.clone().add(0, 8, 0));
+
+        DiscoMayhemConst.WORLD.setTime(6000); // Set the time to day
+        DiscoMayhemConst.WORLD.setStorm(false); // Disable rain
+        DiscoMayhemConst.WORLD.setThundering(false); // Disable thunder
+
+        player.setGameMode(GameMode.ADVENTURE); // Set the player's game mode to adventure
+        player.getInventory().clear(); // Clear the player's inventory
+        player.setSaturation(20); // Set the player's saturation to full
+        player.setHealth(20); // Set the player's health to full
+    }
+
     /**
      * Prepares for a floor cycle. Initializes the new floor and gives it randomised values.
      * after that starts the floor change logic cycle.
@@ -251,27 +253,7 @@ public class DiscoMayhem extends MinigameSkeleton {
         }.runTaskLater(plugin, interval);
     }
 
-    /**
-     * Initializes the floor under the player to a specific material.
-     * @param xLengthRad The x radius of the floor
-     * @param zLengthRad The z radius of the floor
-     * @param material The material to set the floor to
-     */
-    public void initFloor(int xLengthRad, int zLengthRad,Material material) {
-        if (!isGameRunning || isGamePaused) {
-            return;
-        }
-        // Initialize the floor under the player to stone 1 block at a time. The floor is a rectangle with side lengths 2*xLengthRad+1 and 2*zLengthRad+1.
-        Location center = DiscoMayhemConst.GAME_START_LOCATION.clone().add(new Location(DiscoMayhemConst.WORLD,0,5,0));
-        for (int x = -xLengthRad; x <= xLengthRad; x++) {
-            for (int z = -zLengthRad; z <= zLengthRad; z++) {
-                Location selectedLocation = new Location(DiscoMayhemConst.WORLD, center.getX() + x, center.getY(), center.getZ() + z);
-                selectedLocation.getBlock().setType(material);
-            }
-        }
 
-        Bukkit.broadcastMessage("floor initialized");
-    }
 
     /**
      * Changes the floor to random materials. Needs a center location and the x and z radius of the floor since it doesn't know physically what floor we are talking about.

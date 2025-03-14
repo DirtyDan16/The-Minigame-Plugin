@@ -1,6 +1,5 @@
 package me.stavgordeev.plugin.Minigames;
 // src/main/java/me/stavgordeev/plugin/Minigames/MinigameSkeleton.java
-import me.stavgordeev.plugin.MinigamePlugin;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
@@ -19,7 +18,10 @@ public abstract class MinigameSkeleton {
     }
 
     /**
-     * Starts the minigame. should be followed with code that prepares the arena, the gamerules...
+     * Starts the minigame.
+     * If the game is already running, it should not start the game again.
+     *
+     * The method calls methods that prepare the area (prepareArea()) and the game settings (prepareGameSetting()) which are abstract and should be implemented in the subclass.
      * @param player the player that started the minigame
      * @throws InterruptedException if the game is interrupted
      */
@@ -34,6 +36,12 @@ public abstract class MinigameSkeleton {
         thePlayer = player;
         isGameRunning = true;
         isGamePaused = false;
+
+        //----- List Of Actions To Be Done When The Game Starts -----//
+        prepareArea();
+        prepareGameSetting(player);
+        //----------------------------------------------------------------//
+
     }
 
     /**
@@ -117,4 +125,15 @@ public abstract class MinigameSkeleton {
      * @param radius the radius of the nuke
      */
     public abstract void nukeArea(Location center, int radius);
+
+    /**
+     * Prepares the area. should be followed with code that prepares the physical area. typically should be called in start().
+     */
+    public abstract void prepareArea();
+
+    /**
+     * Prepares the game rules. should be followed with code that prepares the game rules - such as but not limited to player status effects, player location, time of day etc.
+     * typically should be called in start().
+     */
+    public abstract void prepareGameSetting(Player player);
 }

@@ -18,17 +18,18 @@ public class MinigamePlugin extends JavaPlugin {
     @Override
     public void onEnable() {
         plugin = this; // Initialize the plugin reference
-        DiscoMayhem discoMayhem = new DiscoMayhem(this);
-        BlueprintBazaar blueprintBazaar = new BlueprintBazaar(this);
 
         // Create the BlueprintBazaarBuilds folder if it doesn't exist
-        File schematicsFolder = new File(getDataFolder(), "BlueprintBazaarBuilds");
+        schematicsFolder = new File(getDataFolder(), "BlueprintBazaarBuilds");
         if (!schematicsFolder.exists()) {
             schematicsFolder.mkdirs();  // Creates the folder if it doesn't exist
             getLogger().info("Created BlueprintBazaarBuilds folder.");
         } else {
             getLogger().info("BlueprintBazaarBuilds folder already exists.");
         }
+
+        DiscoMayhem discoMayhem = new DiscoMayhem(this);
+        BlueprintBazaar blueprintBazaar = new BlueprintBazaar(this);
 
         // Register the event listeners
         getServer().getPluginManager().registerEvents(new PlayerDeathListener(discoMayhem), this);
@@ -40,6 +41,11 @@ public class MinigamePlugin extends JavaPlugin {
     @Override
     public void onDisable() {
         // Plugin shutdown logic
+    }
+
+    private File schematicsFolder;
+    public File getSchematicsFolder() {
+        return schematicsFolder;
     }
 
 
