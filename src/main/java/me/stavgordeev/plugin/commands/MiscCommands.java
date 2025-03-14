@@ -1,32 +1,30 @@
 package me.stavgordeev.plugin.commands;
 
-import com.sk89q.worldedit.entity.Player;
+import me.stavgordeev.plugin.MinigamePlugin;
 import me.stavgordeev.plugin.Utils;
-import org.apache.maven.artifact.repository.metadata.Plugin;
-import org.bukkit.Location;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabExecutor;
+import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
 public class MiscCommands implements CommandExecutor, TabExecutor {
-    private final Plugin plugin;
+    private final MinigamePlugin plugin;
 
-    public MiscCommands(Plugin plugin) {
+    public MiscCommands(MinigamePlugin plugin) {
         this.plugin = plugin;
     }
 
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, String[] args) {
-        if (args.length < 1) {
-            sender.sendMessage("Please provide a valid command.");
-            return false;
-        } else if (!(sender instanceof Player)) {
+        if (!(sender instanceof Player player)) {
             sender.sendMessage("Only players can execute this command.");
+            return false;
+        } else if (args.length == 0) {
             return false;
         }
 
@@ -34,12 +32,19 @@ public class MiscCommands implements CommandExecutor, TabExecutor {
         switch (args[0].toLowerCase()) {
             case "nuke":
                 if (args.length < 2) {
-                    sender.sendMessage("Please provide a radius for the nuke.");
+                    player.sendMessage("Please provide a radius for the nuke.");
+                    return false;
+                } else if (!args[1].matches("\\d+") || Integer.parseInt(args[1]) <= 0) {
+                    player.sendMessage("Invalid radius.");
                     return false;
                 }
+                sender.sendMessage("Nuking the game area...");
                 int radius = Integer.parseInt(args[1]);
-                Utils.nukeGameArea((Location) sender, radius);
+                Utils.nukeGameArea(player.getLocation(), radius);
                 break;
+            default:
+                sender.sendMessage("Invalid command.");
+                return false;
         }
         return true;
     }

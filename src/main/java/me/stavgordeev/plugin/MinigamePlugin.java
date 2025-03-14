@@ -5,7 +5,7 @@ import me.stavgordeev.plugin.Minigames.BlueprintBazaar;
 import me.stavgordeev.plugin.Minigames.DiscoMayhem;
 import me.stavgordeev.plugin.commands.BlueprintBazaarCommands;
 import me.stavgordeev.plugin.commands.DiscoMayhemCommands;
-import org.bukkit.entity.Player;
+import me.stavgordeev.plugin.commands.MiscCommands;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -37,7 +37,7 @@ public class MinigamePlugin extends JavaPlugin {
 
         Objects.requireNonNull(getCommand("mg_disco_mayhem")).setExecutor(new DiscoMayhemCommands(discoMayhem)); // Register the command relating to the minigame DiscoMayhem.
         Objects.requireNonNull(getCommand("mg_blueprint_bazaar")).setExecutor(new BlueprintBazaarCommands(blueprintBazaar)); // Register the command relating to the minigame BlueprintBazaar.
-        Objects.requireNonNull(getCommand("nuke")).setExecutor(Utils.nukeGameArea(player,50));
+        Objects.requireNonNull(getCommand("misc")).setExecutor(new MiscCommands(this));
     }
 
     @Override

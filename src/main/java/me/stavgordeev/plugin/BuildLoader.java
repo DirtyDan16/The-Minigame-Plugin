@@ -12,7 +12,6 @@ import com.sk89q.worldedit.function.operation.Operations;
 import com.sk89q.worldedit.math.BlockVector3;
 import com.sk89q.worldedit.session.ClipboardHolder;
 import com.sk89q.worldedit.EditSession;
-import com.sk89q.worldedit.EditSessionBuilder;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.Location;
