@@ -8,10 +8,14 @@ import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.scheduler.BukkitScheduler;
+import org.jetbrains.annotations.NotNull;
 
+import java.io.Console;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -39,20 +43,39 @@ public class BlueprintBazaar extends MinigameSkeleton {
         super.start(player);
 
         initSchematics();// Initializes the availableSchematics list
+    }
 
+    //fixme: doesn't get rid of the top of given schematics when we remove an old schematic. didn't manage to solve it.
+    private void cycleThroughSchematics() {
         new BukkitRunnable() {
             int index = 0;
+            int[] currentBorders = null;
+            File schematic = null;
 
-            // This method is called every 2 seconds
+            @Override
             public void run() {
+                // Delete previous build if it exists
+                if (schematic != null) {
+                    deleteBuild(currentBorders);
+                }
+
+                // Check if we've gone through all schematics
                 if (index >= allSchematics.length) {
                     cancel();
                     return;
                 }
-                prepareNewBuild();
+
+                // Display new schematic
+                schematic = chooseNewBuild();
+                if (schematic != null && schematic.exists()) {
+                    BuildLoader.loadSchematic(schematic,BlueprintBazaarConst.WORLD, BlueprintBazaarConst.CENTER_BUILD_PLOT);
+                    currentBorders = BuildLoader.getBuildBorders(schematic, BlueprintBazaarConst.CENTER_BUILD_PLOT);
+                }
+
+                // Move to next schematic
                 index++;
             }
-        }.runTaskTimer(plugin, 0L, 40L); // 40L = 2 seconds (20 ticks per second)
+        }.runTaskTimer(plugin, 0L, 100L);
     }
 
     @Override
@@ -130,21 +153,46 @@ public class BlueprintBazaar extends MinigameSkeleton {
         }
     }
 
-    public void prepareNewBuild() {
+    /**
+     * Chooses a new build from the availableSchematics list. The build is taken out of the available list
+     * @return The chosen build
+     */
+    private File chooseNewBuild() {
         if (availableSchematics.isEmpty()) {
             // Handle the case where there are no available schematics
             plugin.getLogger().severe("No available schematics to choose from.");
-            return;
+            return null;
         }
-
-
         // Choose a random build from the schematics folder and delete it from the list
         Random getARandomBuild = new Random();
         File chosenBuild = availableSchematics.remove(getARandomBuild.nextInt(availableSchematics.size()));
 
+        return chosenBuild;
+    }
+
+    public void prepareNewBuild() {
+        File chosenBuild = chooseNewBuild();
         // Create the new build
         createNewBuild(chosenBuild, BlueprintBazaarConst.CENTER_BUILD_PLOT);
     }
+
+    private void deleteBuild(int @NotNull [] buildBorders) {
+
+        int minX = buildBorders[0], maxX = buildBorders[1],
+            minY = buildBorders[2], maxY = buildBorders[3],
+            minZ = buildBorders[4], maxZ = buildBorders[5];
+
+        // Set all blocks within the boundaries to air
+            for (int x = minX; x < maxX; x++) {
+                for (int y = minY; y < maxY; y++) {
+                    for (int z = minZ; z < maxZ; z++) {
+                        Block block = BlueprintBazaarConst.WORLD.getBlockAt(x, y, z);
+                        block.setType(Material.AIR);
+                    }
+                }
+            }
+    }
+
 
     private void createNewBuild(File chosenBuild, Location location) {
         Bukkit.getServer().broadcast(Component.text("New building created!"));

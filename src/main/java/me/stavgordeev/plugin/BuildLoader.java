@@ -18,6 +18,7 @@ import org.bukkit.Location;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.FallingBlock;
 import org.bukkit.util.Vector;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -79,6 +80,44 @@ public class BuildLoader {
         }
     }
 
+    public static void loadSchematic(File schematic, World world, Location location) {
+        loadSchematic(schematic,world, (int) location.x(), (int) location.y(), (int) location.z());
+    }
+
+    /**
+     * Gets the borders of the existing build at the specified location.
+     *
+     * @param file     The schematic file to load.
+     * @param location The location to get the borders of the existing build.
+     * @return An array containing the minimum and maximum coordinates of the build.
+     */
+    public static int @Nullable [] getBuildBorders(File file, Location location) {
+        // Get the format of the schematic file.
+        ClipboardFormat format = ClipboardFormats.findByFile(file);
+
+        if (format == null) {
+            Bukkit.getLogger().warning("Unsupported schematic format: " + file.getName());
+            return null;
+        }
+        //
+        try (FileInputStream fis = new FileInputStream(file);
+             // Get a reader for the schematic.
+             ClipboardReader reader = format.getReader(fis)) {
+            Clipboard clipboard = reader.read();
+            // Get the dimensions of the clipboard.
+            BlockVector3 dimensions = clipboard.getDimensions();
+            int minX = location.getBlockX(),minY = location.getBlockY(),
+                minZ = location.getBlockZ() ,maxX = minX + dimensions.getX(),
+                maxY = minY + dimensions.getY() ,maxZ = minZ + dimensions.getZ();
+
+            // Store the borders in an array.
+            return new int[]{minX, maxX, minY, maxY, minZ, maxZ};
+        } catch (IOException e) {
+            Bukkit.getLogger().severe("Failed to load schematic: " + e.getMessage());
+            return null;
+        }
+    }
+
     /**
      * Disables gravity for all falling blocks in a certain radius around the center.
      *
@@ -107,5 +146,6 @@ public class BuildLoader {
             }
         }
     }
+
 
 }
