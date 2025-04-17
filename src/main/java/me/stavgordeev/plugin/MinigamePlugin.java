@@ -3,8 +3,10 @@ package me.stavgordeev.plugin;
 import me.stavgordeev.plugin.Listeners.PlayerDeathListener;
 import me.stavgordeev.plugin.Minigames.BlueprintBazaar;
 import me.stavgordeev.plugin.Minigames.DiscoMayhem;
+import me.stavgordeev.plugin.Minigames.HoleInTheWall;
 import me.stavgordeev.plugin.commands.BlueprintBazaarCommands;
 import me.stavgordeev.plugin.commands.DiscoMayhemCommands;
+import me.stavgordeev.plugin.commands.HoleInTheWallCommands;
 import me.stavgordeev.plugin.commands.MiscCommands;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -20,24 +22,38 @@ public class MinigamePlugin extends JavaPlugin {
     public void onEnable() {
         plugin = this; // Initialize the plugin reference
 
-        // Create the BlueprintBazaarBuilds folder if it doesn't exist
-        schematicsFolder = new File(getDataFolder(), "BlueprintBazaarBuilds");
-        if (!schematicsFolder.exists()) {
-            schematicsFolder.mkdirs();  // Creates the folder if it doesn't exist
-            getLogger().info("Created BlueprintBazaarBuilds folder.");
-        } else {
-            getLogger().info("BlueprintBazaarBuilds folder already exists.");
-        }
+        initSchematicsFolders();
 
         DiscoMayhem discoMayhem = new DiscoMayhem(this);
         BlueprintBazaar blueprintBazaar = new BlueprintBazaar(this);
+        HoleInTheWall holeInTheWall = new HoleInTheWall(this);
 
         // Register the event listeners
         getServer().getPluginManager().registerEvents(new PlayerDeathListener(discoMayhem), this);
 
         Objects.requireNonNull(getCommand("mg_disco_mayhem")).setExecutor(new DiscoMayhemCommands(discoMayhem)); // Register the command relating to the minigame DiscoMayhem.
         Objects.requireNonNull(getCommand("mg_blueprint_bazaar")).setExecutor(new BlueprintBazaarCommands(blueprintBazaar)); // Register the command relating to the minigame BlueprintBazaar.
+        Objects.requireNonNull(getCommand("mg_hole_in_the_wall")).setExecutor(new HoleInTheWallCommands(holeInTheWall));
         Objects.requireNonNull(getCommand("misc")).setExecutor(new MiscCommands(this));
+    }
+
+    private void initSchematicsFolders() {
+        // Create the BlueprintBazaarBuilds folder if it doesn't exist
+        blueprintBazaarSchematicsFolder = new File(getDataFolder(), "BlueprintBazaarBuilds");
+        if (!blueprintBazaarSchematicsFolder.exists()) {
+            blueprintBazaarSchematicsFolder.mkdirs();  // Creates the folder if it doesn't exist
+            getLogger().info("Created BlueprintBazaarBuilds folder.");
+        } else {
+            getLogger().info("BlueprintBazaarBuilds folder already exists.");
+        }
+
+        holeInTheWallSchematicsFolder = new File(getDataFolder(), "HoleInTheWall");
+        if (!blueprintBazaarSchematicsFolder.exists()) {
+            blueprintBazaarSchematicsFolder.mkdirs();  // Creates the folder if it doesn't exist
+            getLogger().info("Created HoleInTheWall folder.");
+        } else {
+            getLogger().info("HoleInTheWall folder already exists.");
+        }
     }
 
     @Override
@@ -45,9 +61,13 @@ public class MinigamePlugin extends JavaPlugin {
         // Plugin shutdown logic
     }
 
-    private File schematicsFolder;
-    public File getSchematicsFolder() {
-        return schematicsFolder;
+    private File blueprintBazaarSchematicsFolder,holeInTheWallSchematicsFolder;
+    public File getSchematicsFolder(String minigame) {
+        return switch (minigame) {
+            case "blueprintbazaar" -> blueprintBazaarSchematicsFolder;
+            case "holeinthewall" -> holeInTheWallSchematicsFolder;
+            default -> throw new IllegalStateException("Unexpected value: " + minigame);
+        };
     }
 
 

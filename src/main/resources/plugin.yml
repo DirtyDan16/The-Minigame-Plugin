@@ -15,6 +15,9 @@ commands:
   mg_blueprint_bazaar:
     description: Starts the Blueprint Bazaar minigame
     usage: /<command> <state>
+  mg_hole_in_the_wall:
+    description: Starts the Hole In The Wall minigame
+    usage: /<command> <state>
 
 
 
