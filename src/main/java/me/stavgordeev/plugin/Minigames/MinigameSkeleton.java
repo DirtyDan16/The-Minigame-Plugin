@@ -127,7 +127,7 @@ public abstract class MinigameSkeleton {
     public abstract void nukeArea(Location center, int radius);
 
     /**
-     * Prepares the area. should be followed with code that prepares the physical area. typically should be called in start().
+     * Prepares the area. Should be followed with code that prepares the physical area. Typically should be called in start().
      */
     public abstract void prepareArea();
 

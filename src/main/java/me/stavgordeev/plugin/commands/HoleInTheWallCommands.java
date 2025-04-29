@@ -26,7 +26,6 @@ public class HoleInTheWallCommands extends MinigameCommandsSkeleton {
                     Bukkit.getServer().broadcast(Component.text("When starting this minigame, a given map name needs to be given.").color(NamedTextColor.RED));
                     return false;
                 }
-
                 try {
                     holeInTheWall.start(player,args[1].toLowerCase());
                 } catch (InterruptedException e) {
@@ -59,6 +58,18 @@ public class HoleInTheWallCommands extends MinigameCommandsSkeleton {
 
     @Override
     protected @Nullable List<String> handleTabComplete(CommandSender sender, Command command, String label, String[] args) {
+        if (args.length == 1) {
+            return List.of("start", "stop", "start_hard_mode", "resume", "end", "nuke_area");
+        } else if (args.length == 2 && args[0].equalsIgnoreCase("start")) {
+            return getAvailableMaps();
+        }
         return List.of();
+    }
+
+    private static List<String> getAvailableMaps() {
+        // This method should return a list of available maps for the minigame.
+        // For now, we will return a static list of map names.
+        // In a real implementation, this could be replaced with a dynamic list from a configuration file or database.
+        return List.of("Map1", "Map2", "Map3");
     }
 }

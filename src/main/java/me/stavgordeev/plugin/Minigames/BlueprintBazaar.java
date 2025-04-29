@@ -31,7 +31,7 @@ public class BlueprintBazaar extends MinigameSkeleton {
         super(plugin);
         // Gets the schematics folder from the MinigamePlugin.java. This is where the builds are stored.
         if (plugin instanceof MinigamePlugin) {
-            File schematicsFolder = ((MinigamePlugin) plugin).getSchematicsFolder("blueprintbazzar");// The folder where the builds are stored
+            File schematicsFolder = ((MinigamePlugin) plugin).getSchematicsFolder("blueprintbazaar");// The folder where the builds are stored
             this.allSchematics = schematicsFolder.listFiles(); // Gets the builds from the folder
         } else {
         throw new IllegalArgumentException("Plugin must be an instance of MinigamePlugin");
