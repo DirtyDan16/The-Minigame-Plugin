@@ -1,6 +1,5 @@
 package me.stavgordeev.plugin.Minigames;
 
-import me.stavgordeev.plugin.Constants.HoleInTheWallConst;
 import me.stavgordeev.plugin.MinigamePlugin;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
@@ -13,15 +12,29 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
+import static me.stavgordeev.plugin.Constants.HoleInTheWallConst.*;
+
+
 public class HoleInTheWall extends MinigameSkeleton{
 
 
     private File allSchematicsForAGivenMap;
-    private File[] platformSchematics;
-    private List<File> wallPackSchematics;
+    private File[] platformSchematics;    //the platform stages for a given map
+    private List<File> wallPackSchematics;     //the wallpack selected from a given map. each element features a group of files of walls, whose grouped via difficulty.
     private String mapName = ""; //the map name that is being played. gets a value on the start() method.
-    //the platform stages for a given map
-     //the wallpack selected from a given map. each element features a group of files of walls, whose grouped via difficulty.
+
+    //region ----Game Modifiers that change as the game progresses
+
+    private int gameDuration = Timers.GAME_DURATION; //in seconds
+    private int wallSpeed = Timers.WALL_SPEED[0]; //in ticks
+    private int wallSpeedIndex = 0; //index of the wall speed in the array
+
+    //the current wall difficulty in the pack. starts from EASY and increases as the game progresses.
+    // note that previous wall difficulties are also used in the game, but less frequently.
+    private WallDifficulty curWallDifficultyInPack = WallDifficulty.EASY;
+
+    //endregion -----------------------------------------------------------------------------------
+
 
     public HoleInTheWall(Plugin plugin) {
         super(plugin);
@@ -30,6 +43,14 @@ public class HoleInTheWall extends MinigameSkeleton{
     public void start(Player player,String mapName) throws InterruptedException {
         this.mapName = mapName;
         super.start(player);
+
+        //--------------
+        startGameEvents();
+    }
+
+    private void startGameEvents() {
+        // Start the game duration timer
+
     }
 
     @Override
@@ -60,13 +81,13 @@ public class HoleInTheWall extends MinigameSkeleton{
             if (!(plugin instanceof MinigamePlugin minigamePlugin)) {
                 throw new IllegalStateException("Invalid plugin type");
             }
-            File baseFolder = minigamePlugin.getSchematicsFolder(HoleInTheWallConst.GAME_FOLDER);
+            File baseFolder = minigamePlugin.getSchematicsFolder(GAME_FOLDER);
             Objects.requireNonNull(baseFolder, "Game base folder not found");
             return baseFolder;
         }
 
         private void loadMapSchematics(File baseFolder) {
-            File[] files = Objects.requireNonNull(baseFolder.listFiles(), "No files found in base folder");
+            File[] files = Objects.requireNonNull(baseFolder.listFiles(), "No files found in base folder named " + baseFolder.getName());
             allSchematicsForAGivenMap = Arrays.stream(files)
                     .filter(file -> file.isFile() && file.getName().equals(mapName))
                     .findFirst()
@@ -75,13 +96,13 @@ public class HoleInTheWall extends MinigameSkeleton{
 
         private void processMapComponents() {
             File[] mapComponents = Objects.requireNonNull(allSchematicsForAGivenMap.listFiles(),
-                    "No components found in map folder");
+                    "No components found in map folder named " + allSchematicsForAGivenMap.getName());
             
             for (File component : mapComponents) {
                 switch (component.getName()) {
-                    case HoleInTheWallConst.PLATFORMS_FOLDER -> platformSchematics = component.listFiles();
-                    case HoleInTheWallConst.WALLPACK_FOLDER -> loadWallPackSchematics(component);
-                    case HoleInTheWallConst.MAP_FOLDER -> { /* Reserved for future implementation */ }
+                    case PLATFORMS_FOLDER -> platformSchematics = component.listFiles();
+                    case WALLPACK_FOLDER -> loadWallPackSchematics(component);
+                    case MAP_FOLDER -> { /* Reserved for future implementation */ }
                 }
             }
         }
