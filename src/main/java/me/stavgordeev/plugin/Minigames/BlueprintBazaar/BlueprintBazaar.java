@@ -1,8 +1,8 @@
-package me.stavgordeev.plugin.Minigames;
+package me.stavgordeev.plugin.Minigames.BlueprintBazaar;
 
 import me.stavgordeev.plugin.BuildLoader;
-import me.stavgordeev.plugin.Constants.BlueprintBazaarConst;
 import me.stavgordeev.plugin.MinigamePlugin;
+import me.stavgordeev.plugin.Minigames.MinigameSkeleton;
 import me.stavgordeev.plugin.Utils;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
@@ -12,10 +12,8 @@ import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.scheduler.BukkitRunnable;
-import org.bukkit.scheduler.BukkitScheduler;
 import org.jetbrains.annotations.NotNull;
 
-import java.io.Console;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;

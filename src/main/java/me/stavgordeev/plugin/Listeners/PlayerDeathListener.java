@@ -1,7 +1,7 @@
 // src/main/java/me/stavgordeev/plugin/listeners/PlayerDeathListener.java
 package me.stavgordeev.plugin.Listeners;
 
-import me.stavgordeev.plugin.Minigames.DiscoMayhem;
+import me.stavgordeev.plugin.Minigames.DiscoMayhem.DiscoMayhem;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.PlayerDeathEvent;

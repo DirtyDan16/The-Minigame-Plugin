@@ -1,7 +1,6 @@
-package me.stavgordeev.plugin.commands;
+package me.stavgordeev.plugin.Minigames.BlueprintBazaar;
 
-import me.stavgordeev.plugin.Constants.BlueprintBazaarConst;
-import me.stavgordeev.plugin.Minigames.BlueprintBazaar;
+import me.stavgordeev.plugin.commands.MinigameCommandsSkeleton;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;

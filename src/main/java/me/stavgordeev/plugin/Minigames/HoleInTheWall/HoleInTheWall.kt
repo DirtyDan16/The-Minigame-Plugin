@@ -1,9 +1,8 @@
-package me.stavgordeev.plugin.Minigames
+package me.stavgordeev.plugin.Minigames.HoleInTheWall
 
-import io.papermc.paper.command.brigadier.argument.ArgumentTypes.player
-import me.stavgordeev.plugin.Constants.HoleInTheWallConst
-import me.stavgordeev.plugin.Constants.HoleInTheWallConst.Timers
+import me.stavgordeev.plugin.Minigames.HoleInTheWall.HoleInTheWallConst.Timers
 import me.stavgordeev.plugin.MinigamePlugin
+import me.stavgordeev.plugin.Minigames.MinigameSkeleton
 import net.kyori.adventure.text.logger.slf4j.ComponentLogger.logger
 import org.bukkit.Location
 import org.bukkit.entity.Player
@@ -20,8 +19,8 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
     private lateinit var mapName: String //the map name that is being played. gets a value on the start() method.
 
     //region ----Game Modifiers that change as the game progresses
-    private var timeLeft = Timers.GAME_DURATION
-    private var timeElapsed = 0 //in seconds
+    private var timeLeft: Double = Timers.GAME_DURATION.toDouble()
+    private var timeElapsed: Double = 0.0 //in seconds
     private var wallSpeed = Timers.WALL_SPEED[0] //in ticks
     private val wallSpeedUpLandmarks: IntArray = Timers.WALL_SPEED_UP_LANDMARKS //in seconds
     private var wallSpeedIndex = 0 //index of the wall speed in the array
@@ -38,39 +37,40 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
         super.start(player)
 
         //--------------
-        startGameEvents()
+        periodic()
     }
 
-    private fun startGameEvents() {
+    private fun periodic() {
         //Update every second the time left and the time elapsed, and keep track if certain events should trigger based on the time that has elapsed.
-        run {
-            object : BukkitRunnable() {
-                override fun run() {
-                    timeLeft--
-                    timeElapsed++
-                    if (timeLeft <= 0) {
-                        endGame(thePlayer)
-                        cancel()
-                    }
+        object : BukkitRunnable() {
+            override fun run() {
+                timeLeft-= 1/20
+                timeElapsed+= 1/20
+                if (timeLeft <= 0) {
+                    endGame(thePlayer)
+                    cancel()
+                }
 
-                    //Check if the wall speed should be increased
-                    if (wallSpeedIndex < wallSpeedUpLandmarks.size && timeElapsed >= wallSpeedUpLandmarks[wallSpeedIndex]) {
-                        wallSpeed = Timers.WALL_SPEED[++wallSpeedIndex]
-                    }
+                //Check if the wall speed should be increased
+                if (wallSpeedIndex < wallSpeedUpLandmarks.size && timeElapsed >= wallSpeedUpLandmarks[wallSpeedIndex]) {
+                    wallSpeed = Timers.WALL_SPEED[++wallSpeedIndex]
+                }
 
-                    //Check if the wall difficulty should be increased
-                    //TODO: implement logic
-                    if (curWallDifficultyInPack != HoleInTheWallConst.WallDifficulty.VERY_HARD && timeElapsed >= increaseWallDifficultyLandmarks[curWallDifficultyInPack]) {
-                        when (++curWallDifficultyInPack) {
-                            HoleInTheWallConst.WallDifficulty.MEDIUM -> {}
-                            HoleInTheWallConst.WallDifficulty.HARD -> {}
-                            HoleInTheWallConst.WallDifficulty.VERY_HARD -> {}
-                        }
+                //Check if the wall difficulty should be increased
+                //TODO: implement logic
+                if (curWallDifficultyInPack != HoleInTheWallConst.WallDifficulty.VERY_HARD && timeElapsed >= increaseWallDifficultyLandmarks[curWallDifficultyInPack]) {
+                    when (++curWallDifficultyInPack) {
+                        HoleInTheWallConst.WallDifficulty.MEDIUM -> {}
+                        HoleInTheWallConst.WallDifficulty.HARD -> {}
+                        HoleInTheWallConst.WallDifficulty.VERY_HARD -> {}
                     }
                 }
-            }.runTaskTimer(plugin, 0, 20) // 20 ticks = 1 second
-        }
+
+
+            }
+        }.runTaskTimer(plugin, 0, 1) // 20 ticks = 1 second
     }
+
 
     override fun nukeArea(center: Location?, radius: Int) {
     }
@@ -129,3 +129,4 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
     override fun prepareGameSetting(player: Player?) {
     }
 }
+

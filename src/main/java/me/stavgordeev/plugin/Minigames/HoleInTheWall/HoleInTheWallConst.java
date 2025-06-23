@@ -1,8 +1,4 @@
-package me.stavgordeev.plugin.Constants;
-
-import java.util.Dictionary;
-import java.util.Enumeration;
-import java.util.Hashtable;
+package me.stavgordeev.plugin.Minigames.HoleInTheWall;
 
 public final class HoleInTheWallConst {
 
@@ -11,6 +7,12 @@ public final class HoleInTheWallConst {
         public static final int MEDIUM = 1;
         public static final int HARD = 2;
         public static final int VERY_HARD = 3;
+    }
+
+    // Directions in which the wall can come from. i.e South means that the wall will come from the south side of the arena.
+    // When a new Wall Object is created, it will be assigned a direction which it'll remember for various logic.
+    public enum WallDirection {
+        SOUTH, NORTH, WEST, EAST;
     }
 
     public static final class Timers {

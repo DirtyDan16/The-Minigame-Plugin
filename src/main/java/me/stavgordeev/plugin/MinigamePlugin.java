@@ -1,12 +1,12 @@
 package me.stavgordeev.plugin;
 
 import me.stavgordeev.plugin.Listeners.PlayerDeathListener;
-import me.stavgordeev.plugin.Minigames.BlueprintBazaar;
-import me.stavgordeev.plugin.Minigames.DiscoMayhem;
-import me.stavgordeev.plugin.Minigames.HoleInTheWall;
-import me.stavgordeev.plugin.commands.BlueprintBazaarCommands;
-import me.stavgordeev.plugin.commands.DiscoMayhemCommands;
-import me.stavgordeev.plugin.commands.HoleInTheWallCommands;
+import me.stavgordeev.plugin.Minigames.BlueprintBazaar.BlueprintBazaar;
+import me.stavgordeev.plugin.Minigames.DiscoMayhem.DiscoMayhem;
+import me.stavgordeev.plugin.Minigames.HoleInTheWall.HoleInTheWall;
+import me.stavgordeev.plugin.Minigames.BlueprintBazaar.BlueprintBazaarCommands;
+import me.stavgordeev.plugin.Minigames.DiscoMayhem.DiscoMayhemCommands;
+import me.stavgordeev.plugin.Minigames.HoleInTheWall.HoleInTheWallCommands;
 import me.stavgordeev.plugin.commands.MiscCommands;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;

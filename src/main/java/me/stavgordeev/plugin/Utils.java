@@ -1,6 +1,5 @@
 package me.stavgordeev.plugin;
 
-import me.stavgordeev.plugin.Constants.DiscoMayhemConst;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
