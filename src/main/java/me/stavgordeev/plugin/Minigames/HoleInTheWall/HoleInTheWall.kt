@@ -1,13 +1,16 @@
 package me.stavgordeev.plugin.Minigames.HoleInTheWall
 
+import me.stavgordeev.plugin.BuildLoader
 import me.stavgordeev.plugin.Minigames.HoleInTheWall.HoleInTheWallConst.Timers
 import me.stavgordeev.plugin.MinigamePlugin
 import me.stavgordeev.plugin.Minigames.MinigameSkeleton
+import me.stavgordeev.plugin.Utils
 import net.kyori.adventure.text.logger.slf4j.ComponentLogger.logger
 import org.bukkit.Location
 import org.bukkit.entity.Player
 import org.bukkit.plugin.Plugin
 import org.bukkit.scheduler.BukkitRunnable
+import org.bukkit.scheduler.BukkitTask
 import java.io.File
 import java.io.IOException
 import java.util.*
@@ -15,8 +18,14 @@ import java.util.*
 class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
     private lateinit var selectedMapBaseFile: File
     private lateinit var platformSchematics: Array<File> //the platform stages for a given map
-    private lateinit var wallPackSchematics: MutableList<File> //the wallpack selected from a given map. each element features a group of files of walls, whose grouped via difficulty.
+    private lateinit var wallPackSchematics: Array<File> //the wallpack selected from a given map. each element features a group of files of walls, whose grouped via difficulty.
     private lateinit var mapName: String //the map name that is being played. gets a value on the start() method.
+
+
+
+    private lateinit var gameEvents: BukkitTask //the periodic task that runs every second to update the game state
+
+
 
     //region ----Game Modifiers that change as the game progresses
     private var timeLeft: Double = Timers.GAME_DURATION.toDouble()
@@ -30,6 +39,11 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
     private var curWallDifficultyInPack = HoleInTheWallConst.WallDifficulty.EASY
     private val increaseWallDifficultyLandmarks: IntArray = Timers.INCREASE_WALL_DIFFICULTY_LANDMARKS //in seconds
 
+
+    // A list of walls that are currently alive in the game. This is used to keep track of walls that are currently in play.
+    // This list is updated as walls are spawned and deleted, and is tackled in the periodic() method.
+    private val aliveWallsList: MutableList<Wall> = mutableListOf()
+
     //endregion -----------------------------------------------------------------------------------
     @Throws(InterruptedException::class)
     fun start(player: Player?, mapName: String) {
@@ -40,10 +54,24 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
         periodic()
     }
 
+    override fun endGame(player: Player?) {
+        super.endGame(player)
+        // Cancel the periodic task that updates the game state and handles all game events - such as wall movement, wall spawning, and wall deletion.
+        gameEvents.cancel()
+    }
+
     private fun periodic() {
+        if (!this.isGameRunning || isGamePaused) {
+            logger().warn("HITW: Game is not running, cannot start periodic task")
+            return
+        }
+
+        var tickCount: Int = 0 // Used to keep track of the number of ticks that have passed since the game started
+
         //Update every second the time left and the time elapsed, and keep track if certain events should trigger based on the time that has elapsed.
-        object : BukkitRunnable() {
+        gameEvents = object : BukkitRunnable() {
             override fun run() {
+                tickCount++
                 timeLeft-= 1/20
                 timeElapsed+= 1/20
                 if (timeLeft <= 0) {
@@ -51,12 +79,13 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
                     cancel()
                 }
 
-                //Check if the wall speed should be increased
+
+                //------------Check if the wall speed should be increased
                 if (wallSpeedIndex < wallSpeedUpLandmarks.size && timeElapsed >= wallSpeedUpLandmarks[wallSpeedIndex]) {
                     wallSpeed = Timers.WALL_SPEED[++wallSpeedIndex]
                 }
 
-                //Check if the wall difficulty should be increased
+                //-----------------Check if the wall difficulty should be increased
                 //TODO: implement logic
                 if (curWallDifficultyInPack != HoleInTheWallConst.WallDifficulty.VERY_HARD && timeElapsed >= increaseWallDifficultyLandmarks[curWallDifficultyInPack]) {
                     when (++curWallDifficultyInPack) {
@@ -66,13 +95,35 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
                     }
                 }
 
+                //------------Check if the walls should be moved
+                // If the time elapsed is a multiple of the wall speed (which resembles how often the walls should be moved at in ticks), then move the walls
+                if (tickCount % wallSpeed == 0) {
+                    for (wall in aliveWallsList) {
+                        // Move the wall and check if it is still alive
+                        if (!wall.move()) {
+                            // If the wall is no longer alive, delete it
+                            deleteWall(wall)
+                        }
+                    }
+                }
+
+                //------------Add new walls to the game
+                if (tickCount % 40 == 0) { // Every 2 seconds
+                    if (aliveWallsList.size < 5) { // Limit the number of walls to 5 at a time
+                        val wallFile = wallPackSchematics.random() // Randomly select a wall from the wall pack
+                        val newWall = Wall(wallFile, curWallDifficultyInPack, HoleInTheWallConst.WallDirection.SOUTH) // Create a new wall
+                        aliveWallsList.add(newWall) // Add the new wall to the list of alive walls
+                    }
+                }
+
 
             }
-        }.runTaskTimer(plugin, 0, 1) // 20 ticks = 1 second
+        }.runTaskTimer(plugin, 0, 1)// 20 ticks = 1 second
     }
 
-
     override fun nukeArea(center: Location?, radius: Int) {
+        // Delete the surrounding area.
+        Utils.nukeGameArea(center, radius)
     }
 
     override fun prepareArea() {
@@ -88,22 +139,21 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
             val files: Array<File> = baseFolder.listFiles() ?: throw IOException("No files found in base folder named ${baseFolder.name}")
 
             selectedMapBaseFile = Arrays.stream(files)
-                .filter { file: File -> file.isFile() && file.getName() == mapName }
+                .filter { file: File -> file.isDirectory() && file.getName() == mapName }
                 .findFirst()
                 .orElse(null)
         }
 
         fun processMapComponents() {
-            fun loadWallPackSchematics(wallPack: File) {
-                val wallFiles: Array<File> = wallPack.listFiles() ?: throw IOException("No wall schematics found")
-                Collections.addAll(wallPackSchematics, *wallFiles)
-            }
-
             val mapComponents: Array<File> = selectedMapBaseFile.listFiles()
             for (component in mapComponents) {
                 when (component.getName()) {
-                    HoleInTheWallConst.PLATFORMS_FOLDER -> platformSchematics = component.listFiles()
-                    HoleInTheWallConst.WALLPACK_FOLDER -> loadWallPackSchematics(component)
+                    HoleInTheWallConst.PLATFORMS_FOLDER -> {
+                        platformSchematics = component.listFiles() ?: throw IOException("No platform schematics found in ${component.name}")
+                    }
+                    HoleInTheWallConst.WALLPACK_FOLDER -> {
+                        wallPackSchematics = component.listFiles() ?: throw IOException("No wall pack schematics found in ${component.name}")
+                    }
                     HoleInTheWallConst.MAP_FOLDER -> { /* Reserved for future implementation */
                     }
                 }
@@ -116,17 +166,29 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
             processMapComponents()
         } catch (e: IOException) {
             logger().error("HITW: I/O failure while preparing area", e)
+            endGame(thePlayer);
         } catch (e: IllegalStateException) {
             logger().error("HITW: Invalid state during map preparation", e)
+            endGame(thePlayer);
         } catch (e: Exception) {
             logger().error("HITW: Unexpected error during game setup", e)
-        }
-        finally {
             endGame(thePlayer);
         }
     }
 
     override fun prepareGameSetting(player: Player?) {
+        // teleport the player to the spawn location
+        player?.teleport(HoleInTheWallConst.Locations.SPAWN)
+    }
+
+    public fun deleteWall(wall: Wall) {
+        BuildLoader.deleteSchematic(wall.bottomCorner, wall.topCorner)
+        // delete the wall reference from the AliveWallsList
+        val hasWallBeenDeleted = aliveWallsList.remove(wall)
+
+        if (!hasWallBeenDeleted) {
+            logger().warn("HITW: Wall deletion failed, wall not found in the alive walls list")
+        }
     }
 }
 

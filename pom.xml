@@ -40,7 +40,7 @@
                 <artifactId>maven-jar-plugin</artifactId>
                 <version>3.3.0</version>
                 <configuration>
-                    <outputDirectory>C:\Users\stavg\OneDrive\שולחן העבודה\1.21 Paper MC Server\plugins</outputDirectory>
+                    <outputDirectory>C:\Users\stavg\Desktop\1.21 Paper MC Server\plugins</outputDirectory>
                 </configuration>
             </plugin>
             <plugin>

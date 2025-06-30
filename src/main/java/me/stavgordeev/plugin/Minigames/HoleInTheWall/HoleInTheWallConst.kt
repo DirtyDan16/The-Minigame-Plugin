@@ -14,12 +14,12 @@ object HoleInTheWallConst {
 
     object Locations {
         val WORLD = org.bukkit.Bukkit.getWorld("world")
-        val SPAWN: Location = Location(WORLD,0.0, 70.0, 0.0)
+        val SPAWN: Location = Location(WORLD,0.0, 150.0, 0.0)
         
-        val SOUTH_WALL_SPAWN: Location = Location(WORLD, 0.0, 70.0, -20.0)
-        val NORTH_WALL_SPAWN: Location = Location(WORLD, 0.0, 70.0, 20.0)
-        val WEST_WALL_SPAWN: Location = Location(WORLD, -20.0, 70.0, 0.0)
-        val EAST_WALL_SPAWN: Location = Location(WORLD, 20.0, 70.0, 0.0)
+        val SOUTH_WALL_SPAWN: Location = Location(WORLD, 0.0, 150.0, -20.0)
+        val NORTH_WALL_SPAWN: Location = Location(WORLD, 0.0, 150.0, 20.0)
+        val WEST_WALL_SPAWN: Location = Location(WORLD, -20.0, 150.0, 0.0)
+        val EAST_WALL_SPAWN: Location = Location(WORLD, 20.0, 150.0, 0.0)
     }
     
     object WallDifficulty {
