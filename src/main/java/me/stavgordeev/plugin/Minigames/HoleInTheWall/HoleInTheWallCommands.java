@@ -26,7 +26,7 @@ public class HoleInTheWallCommands extends MinigameCommandsSkeleton {
                     return false;
                 }
                 try {
-                    holeInTheWall.start(player,args[1].toLowerCase());
+                    holeInTheWall.start(player,args[1]);
                 } catch (InterruptedException e) {
                     throw new RuntimeException(e);
                 }

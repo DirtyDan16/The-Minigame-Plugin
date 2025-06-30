@@ -37,6 +37,12 @@ public class MinigamePlugin extends JavaPlugin {
         Objects.requireNonNull(getCommand("misc")).setExecutor(new MiscCommands(this));
     }
 
+        @Override
+    public void onDisable() {
+        // Plugin shutdown logic
+    }
+
+    private File blueprintBazaarSchematicsFolder,holeInTheWallSchematicsFolder;
     private void initSchematicsFolders() {
         // Create the BlueprintBazaarBuilds folder if it doesn't exist
         blueprintBazaarSchematicsFolder = new File(getDataFolder(), "BlueprintBazaarBuilds");
@@ -49,19 +55,14 @@ public class MinigamePlugin extends JavaPlugin {
 
         holeInTheWallSchematicsFolder = new File(getDataFolder(), "HoleInTheWall");
         if (!blueprintBazaarSchematicsFolder.exists()) {
-            blueprintBazaarSchematicsFolder.mkdirs();  // Creates the folder if it doesn't exist
-            getLogger().info("Created HoleInTheWall folder.");
+            // Creates the folder if it doesn't exist
+            if (blueprintBazaarSchematicsFolder.mkdirs()) getLogger().info("Created HoleInTheWall folder.");
+            else getLogger().warning("Failed to create HoleInTheWall folder.");
         } else {
             getLogger().info("HoleInTheWall folder already exists.");
         }
     }
 
-    @Override
-    public void onDisable() {
-        // Plugin shutdown logic
-    }
-
-    private File blueprintBazaarSchematicsFolder,holeInTheWallSchematicsFolder;
     public File getSchematicsFolder(String minigame) {
         return switch (minigame) {
             case "blueprintbazaar" -> blueprintBazaarSchematicsFolder;
