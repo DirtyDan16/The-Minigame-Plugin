@@ -1,5 +1,6 @@
 package me.stavgordeev.plugin.Minigames;
 // src/main/java/me/stavgordeev/plugin/Minigames/MinigameSkeleton.java
+import me.stavgordeev.plugin.Utils;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
@@ -120,11 +121,14 @@ public abstract class MinigameSkeleton {
     }
 
     /**
-     * Nukes an area. should be followed with code that clears the physical area. typically should be called in endGame().
+     * Nukes an area. should be overridden and followed with code that clears the physical area. typically should be called in endGame().
      * @param center the center of the nuke
      * @param radius the radius of the nuke
      */
-    public abstract void nukeArea(Location center, int radius);
+    public void nukeArea(Location center, int radius) {
+        // Delete the surrounding area.
+        Utils.nukeGameArea(center, radius);
+    }
 
     /**
      * Prepares the area. Should be followed with code that prepares the physical area. Typically should be called in start().

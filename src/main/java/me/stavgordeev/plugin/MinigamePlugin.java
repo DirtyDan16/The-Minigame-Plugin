@@ -29,7 +29,7 @@ public class MinigamePlugin extends JavaPlugin {
         HoleInTheWall holeInTheWall = new HoleInTheWall(this);
 
         // Register the event listeners
-        getServer().getPluginManager().registerEvents(new PlayerDeathListener(discoMayhem), this);
+        getServer().getPluginManager().registerEvents(new PlayerDeathListener(discoMayhem,holeInTheWall), this);
 
         Objects.requireNonNull(getCommand("mg_disco_mayhem")).setExecutor(new DiscoMayhemCommands(discoMayhem)); // Register the command relating to the minigame DiscoMayhem.
         Objects.requireNonNull(getCommand("mg_blueprint_bazaar")).setExecutor(new BlueprintBazaarCommands(blueprintBazaar)); // Register the command relating to the minigame BlueprintBazaar.

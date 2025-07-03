@@ -19,11 +19,12 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
     private lateinit var selectedMapBaseFile: File
     private lateinit var platformSchematics: Array<File> //the platform stages for a given map
     private lateinit var wallPackSchematics: Array<File> //the wallpack selected from a given map. each element features a group of files of walls, whose grouped via difficulty.
+    private lateinit var mapSchematic: File //the map schematic that is being played.
     private lateinit var mapName: String //the map name that is being played. gets a value on the start() method.
 
 
-
-    private lateinit var gameEvents: BukkitTask //the periodic task that runs every second to update the game state
+    //the periodic task that runs every second to update the game state
+    private lateinit var gameEvents: BukkitTask
 
 
 
@@ -58,6 +59,7 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
         super.endGame(player)
         // Cancel the periodic task that updates the game state and handles all game events - such as wall movement, wall spawning, and wall deletion.
         gameEvents.cancel()
+        this.nukeArea(HoleInTheWallConst.Locations.PIVOT, 60) // Clear the area around the spawn point
     }
 
     private fun periodic() {
@@ -154,11 +156,17 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
                     HoleInTheWallConst.WALLPACK_FOLDER -> {
                         wallPackSchematics = component.listFiles() ?: throw IOException("No wall pack schematics found in ${component.name}")
                     }
-                    HoleInTheWallConst.MAP_FOLDER -> { /* Reserved for future implementation */
+                    HoleInTheWallConst.MAP_FOLDER -> {
+                        mapSchematic = component.listFiles()?.firstOrNull()
+                            ?: throw IOException("No map schematic found in ${component.name}")
                     }
                 }
             }
         }
+
+
+        // Clear the area around the spawn point
+        this.nukeArea(HoleInTheWallConst.Locations.PIVOT, 60)
 
         try {
             val baseFolder = getGameBaseFolder()
@@ -174,11 +182,25 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
             logger().error("HITW: Unexpected error during game setup", e)
             endGame(thePlayer);
         }
+
+        // Load the map schematic (the deco arena)
+        BuildLoader.loadSchematic(mapSchematic, HoleInTheWallConst.Locations.CENTER_OF_MAP)
+        // Load the platform schematic (the platform that players will stand on)
+        BuildLoader.loadSchematic(platformSchematics[0], HoleInTheWallConst.Locations.PLATFORM)
     }
 
-    override fun prepareGameSetting(player: Player?) {
-        // teleport the player to the spawn location
-        player?.teleport(HoleInTheWallConst.Locations.SPAWN)
+    override fun prepareGameSetting(player: Player) {
+        player.teleport(HoleInTheWallConst.Locations.SPAWN) // Teleport the player to the spawn point of the game
+
+        //give the player infinite jump boost 2.
+        player.addPotionEffect(PotionEffect(PotionEffectType.JUMP_BOOST, -1, 2, false))
+
+        //give the player infinite saturation
+        player.addPotionEffect(PotionEffect(PotionEffectType.SATURATION, -1, 255, false))
+
+        //clear the weather and set the time to day
+        HoleInTheWallConst.Locations.WORLD.setStorm(false)
+        HoleInTheWallConst.Locations.WORLD.time = 1000
     }
 
     public fun deleteWall(wall: Wall) {

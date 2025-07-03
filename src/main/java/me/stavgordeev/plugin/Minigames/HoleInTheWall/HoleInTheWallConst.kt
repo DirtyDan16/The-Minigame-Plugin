@@ -1,6 +1,8 @@
 package me.stavgordeev.plugin.Minigames.HoleInTheWall
 
+import org.bukkit.Bukkit.getWorld
 import org.bukkit.Location
+import org.bukkit.World
 
 
 object HoleInTheWallConst {
@@ -13,13 +15,21 @@ object HoleInTheWallConst {
     const val DEFAULT_WALL_TRAVEL_LIFESPAN: Int = 20 // How many blocks the wall travels before it disappears. This is the default value, but can be overridden by the wall file itself.
 
     object Locations {
-        val WORLD = org.bukkit.Bukkit.getWorld("world")
-        val SPAWN: Location = Location(WORLD,0.0, 150.0, 0.0)
-        
-        val SOUTH_WALL_SPAWN: Location = Location(WORLD, 0.0, 150.0, -20.0)
-        val NORTH_WALL_SPAWN: Location = Location(WORLD, 0.0, 150.0, 20.0)
-        val WEST_WALL_SPAWN: Location = Location(WORLD, -20.0, 150.0, 0.0)
-        val EAST_WALL_SPAWN: Location = Location(WORLD, 20.0, 150.0, 0.0)
+        val WORLD: World = getWorld("world") ?: throw IllegalStateException("World 'world' not found. Please ensure the world is loaded.")
+
+        // The pivot point - everything is centered around this point. The idea is that this is the center of the map
+        val PIVOT: Location = Location(WORLD,0.0, 150.0, 0.0)
+
+        // The offset needed to center the arena (deco) relative to walls and the floor of the game. SHOULD NOT BE REFERENCED FOR LOCATIONS OTHER THAN THE PLAYER SPAWN.
+        val CENTER_OF_MAP: Location = PIVOT.clone().add(6.0, 0.0, -6.0)
+
+        val SPAWN: Location = PIVOT.clone().add(0.0, 3.0, 0.0) // The spawn point of the player in the game.
+
+        val PLATFORM: Location = PIVOT.clone()
+        val SOUTH_WALL_SPAWN: Location = PIVOT.clone().add(0.0, 0.0, -17.0)
+        val NORTH_WALL_SPAWN: Location = PIVOT.clone().add(0.0, 0.0, 17.0)
+        val WEST_WALL_SPAWN: Location = PIVOT.clone().add(-17.0, 0.0, 0.0)
+        val EAST_WALL_SPAWN: Location = PIVOT.clone().add(17.0, 0.0, 0.0)
     }
     
     object WallDifficulty {
@@ -34,6 +44,8 @@ object HoleInTheWallConst {
     enum class WallDirection {
         SOUTH, NORTH, WEST, EAST
     }
+
+    const val HARD_CAP_MAX_POSSIBLE_AMOUNT_OF_WALLS: Int = 40
 
     object Timers {
         const val GAME_DURATION: Int = 300 // in seconds

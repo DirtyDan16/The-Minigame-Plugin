@@ -136,7 +136,7 @@ public class DiscoMayhem extends MinigameSkeleton {
      * @param radius The radius of the area
      **/
     public void nukeArea(Location center, int radius) {
-        Utils.nukeGameArea(center, radius);
+        super.nukeArea(center, radius);
     }
 
     @Override

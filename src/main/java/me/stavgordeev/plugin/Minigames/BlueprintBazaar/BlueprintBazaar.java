@@ -103,7 +103,7 @@ public class BlueprintBazaar extends MinigameSkeleton {
 
     @Override
     public void nukeArea(Location center, int radius) {
-        Utils.nukeGameArea(center, radius);
+        super.nukeArea(center, radius);
     }
 
 
