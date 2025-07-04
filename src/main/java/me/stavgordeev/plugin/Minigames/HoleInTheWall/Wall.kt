@@ -65,6 +65,32 @@ class Wall(
      * If the wall has a lifespan of 0, it will be stopped, but not necessarily removed from the game. The game logic handles the logic for removing the wall.
      */
     fun move() {
+        fun powerOnAndOffButton(block: Block) {
+            val state: BlockState = block.state
+
+            val powerableState: Powerable = state.blockData as Powerable
+
+            // Change the state of the button to powered if it is not already powered
+            if (!powerableState.isPowered) {
+                powerableState.isPowered = true // Power the button
+                state.blockData = powerableState
+                state.update(true, true) // Update the block state
+
+                // Now we turn off the button after a short delay of X ticks in order to simulate the button being pressed which activates the piston.
+
+                object : BukkitRunnable() {
+                    override fun run() {
+                        powerableState.isPowered = false // Unpower the button
+                        state.blockData = powerableState
+                        state.update(true, true) // Update the block state
+                    }
+                }.runTaskLater(plugin, 5L)
+
+            }
+        }
+
+        // -------------------------------------------------------------------------------------------- //
+
         if (lifespan <= 0) {
             this.shouldBeStopped = true // If the wall has reached its lifespan, it should be stopped (it'll be determined by the game logic if it should be removed or continue living on for later).
 
@@ -75,6 +101,38 @@ class Wall(
 
         //region ----Moving Wall Logic - Press Buttons on Pistons---------------------------------------------------
 
+        val minX = bottomCorner.x; val maxX = topCorner.x
+        val minZ = bottomCorner.z; val maxZ = topCorner.z
+        val minY = bottomCorner.y; val maxY = topCorner.y
+
+        // get the locations of all piston blocks within the bounding box of the wall
+        val pistonLocations: Sequence<Location> = sequence {
+            for (x in minX.toInt()..maxX.toInt()) {
+                for (y in minY.toInt()..maxY.toInt()) {
+                    for (z in minZ.toInt()..maxZ.toInt()) {
+                        val block = bottomCorner.world.getBlockAt(x, y, z)
+                        // Only check blocks that are pistons
+                        if (block.type == Material.PISTON) yield(Location(bottomCorner.world, x.toDouble(), y.toDouble(), z.toDouble()))
+                    }
+                }
+            }
+        }
+
+        // The faces of the pistons that we want to activate buttons on
+        // For a given block, we need to check it's faces in the direction of the wall movement - only this way we can actually detect the buttons that are attached to the pistons.
+        val faces = listOf(BlockFace.NORTH, BlockFace.SOUTH, BlockFace.EAST, BlockFace.WEST)
+
+        // Now that we have the locations of all pistons, we can iterate through them and activate the buttons on their faces. we need to check each piston block's faces for buttons.
+        pistonLocations.forEach { loc ->
+            faces.forEach { face ->
+                // Get the face of the block
+                val side = loc.block.getRelative(face)
+                // Activate the button at this location (if it exists)
+                if (side.type == Material.STONE_BUTTON) {
+                    powerOnAndOffButton(side)
+                }
+            }
+        }
         //endregion
         // region ---Update the bottom and top corners based on the wall direction, since in the physical world, the slime wall has moved.
         //endregion
