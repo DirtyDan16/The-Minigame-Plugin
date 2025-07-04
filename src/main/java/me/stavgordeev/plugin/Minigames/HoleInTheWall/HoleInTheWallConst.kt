@@ -24,15 +24,18 @@ object HoleInTheWallConst {
         val PIVOT: Location = Location(WORLD,0.0, 150.0, 0.0)
 
         // The offset needed to center the arena (deco) relative to walls and the floor of the game. SHOULD NOT BE REFERENCED FOR LOCATIONS OTHER THAN THE PLAYER SPAWN.
-        val CENTER_OF_MAP: Location = PIVOT.clone().add(6.0, 0.0, -6.0)
+        val CENTER_OF_MAP: Location = PIVOT.clone().add(1.0, 0.0, -1.0)
 
         val SPAWN: Location = PIVOT.clone().add(0.0, 3.0, 0.0) // The spawn point of the player in the game.
 
         val PLATFORM: Location = PIVOT.clone()
-        val SOUTH_WALL_SPAWN: Location = PIVOT.clone().add(0.0, 0.0, -17.0)
-        val NORTH_WALL_SPAWN: Location = PIVOT.clone().add(0.0, 0.0, 17.0)
-        val WEST_WALL_SPAWN: Location = PIVOT.clone().add(-17.0, 0.0, 0.0)
-        val EAST_WALL_SPAWN: Location = PIVOT.clone().add(17.0, 0.0, 0.0)
+
+        const val DISTANCE_OF_WALL_FROM_CENTER_OF_PLATFORM: Double = 8.0
+
+        val SOUTH_WALL_SPAWN: Location = PIVOT.clone().add(1.0, 0.0, DISTANCE_OF_WALL_FROM_CENTER_OF_PLATFORM)
+        val NORTH_WALL_SPAWN: Location = PIVOT.clone().add(0.0, 0.0, -DISTANCE_OF_WALL_FROM_CENTER_OF_PLATFORM - 1.0)
+        val WEST_WALL_SPAWN: Location = PIVOT.clone().add(-DISTANCE_OF_WALL_FROM_CENTER_OF_PLATFORM, 0.0, 0.0)
+        val EAST_WALL_SPAWN: Location = PIVOT.clone().add(DISTANCE_OF_WALL_FROM_CENTER_OF_PLATFORM + 1.0, 0.0, -1.0)
     }
     
     object WallDifficulty {

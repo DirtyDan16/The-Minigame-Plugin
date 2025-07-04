@@ -1,31 +1,30 @@
-package me.stavgordeev.plugin;
+package me.stavgordeev.plugin
 
-import com.sk89q.worldedit.WorldEdit;
-import com.sk89q.worldedit.WorldEditException;
-import com.sk89q.worldedit.bukkit.BukkitAdapter;
-import com.sk89q.worldedit.extent.clipboard.Clipboard;
-import com.sk89q.worldedit.extent.clipboard.io.ClipboardFormat;
-import com.sk89q.worldedit.extent.clipboard.io.ClipboardFormats;
-import com.sk89q.worldedit.extent.clipboard.io.ClipboardReader;
-import com.sk89q.worldedit.function.operation.Operation;
-import com.sk89q.worldedit.function.operation.Operations;
-import com.sk89q.worldedit.math.BlockVector3;
-import com.sk89q.worldedit.math.transform.AffineTransform;
-import com.sk89q.worldedit.session.ClipboardHolder;
-import com.sk89q.worldedit.EditSession;
-import org.bukkit.Bukkit;
-import org.bukkit.World;
-import org.bukkit.Location;
-import org.bukkit.entity.Entity;
-import org.bukkit.entity.FallingBlock;
-import org.bukkit.util.Vector;
-import org.jetbrains.annotations.Nullable;
+import com.sk89q.worldedit.WorldEdit
+import com.sk89q.worldedit.WorldEditException
+import com.sk89q.worldedit.bukkit.BukkitAdapter
+import com.sk89q.worldedit.extent.clipboard.io.ClipboardFormat
+import com.sk89q.worldedit.extent.clipboard.io.ClipboardFormats
+import com.sk89q.worldedit.function.operation.Operations
+import com.sk89q.worldedit.math.BlockVector3
+import com.sk89q.worldedit.math.transform.AffineTransform
+import com.sk89q.worldedit.session.ClipboardHolder
+import org.bukkit.Bukkit
+import org.bukkit.Location
+import org.bukkit.Material
+import org.bukkit.World
+import org.bukkit.entity.FallingBlock
+import org.bukkit.util.Vector
+import java.io.File
+import java.io.FileInputStream
+import java.io.IOException
+import java.util.*
+import kotlin.apply
+import kotlin.math.max
+import kotlin.math.min
+import kotlin.text.toDouble
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-
-public class BuildLoader {
+object BuildLoader {
     /**
      * Load a schematic file into the world at the specified location.
      *
@@ -35,147 +34,189 @@ public class BuildLoader {
      * @param y           The y-coordinate to paste the schematic at.
      * @param z           The z-coordinate to paste the schematic at.
      */
-    public static void loadSchematic(File file, World world, int x, int y, int z) {
+    @JvmStatic
+    fun loadSchematic(file: File, world: World, x: Int, y: Int, z: Int) {
         //fixme: make sure that pasted blocks are not affected by gravity
-        ClipboardFormat format = ClipboardFormats.findByFile(file);
+        val format = ClipboardFormats.findByFile(file)
         if (format == null) {
-            Bukkit.getLogger().warning("Unsupported schematic format: " + file.getName());
-            return;
+            Bukkit.getLogger().warning("Unsupported schematic format: " + file.getName())
+            return
         }
 
         //Location location = new Location(world, x, y, z);
 
         // Load the schematic. We'll wrap it in a try-resource to make sure it's closed properly.
-        try (FileInputStream fis = new FileInputStream(file);
-             ClipboardReader reader = format.getReader(fis)) // Get a reader for the schematic.
-        {
-            Clipboard clipboard = reader.read(); // Load the schematic into a clipboard.
-            // Create an edit session and paste the schematic.
-            EditSession editSession = WorldEdit.getInstance()
-                    .newEditSessionBuilder()
-                    .world(BukkitAdapter.adapt(world))
-                    .build();
-            // Create an operation to paste the schematic.
-            Operation operation = new ClipboardHolder(clipboard)
-                    .createPaste(editSession)
-                    .to(BlockVector3.at(x, y, z)) // Paste location
-                    .ignoreAirBlocks(false)
-                    .build();
+        try {
+            FileInputStream(file).use { fis ->
+                format.getReader(fis).use { reader ->
+                    val clipboard = reader.read() // Load the schematic into a clipboard.
+                    // Create an edit session and paste the schematic.
+                    val editSession = WorldEdit.getInstance()
+                        .newEditSessionBuilder()
+                        .world(BukkitAdapter.adapt(world))
+                        .build()
+                    // Create an operation to paste the schematic.
+                    val operation = ClipboardHolder(clipboard)
+                        .createPaste(editSession)
+                        .to(BlockVector3.at(x, y, z)) // Paste location
+                        .ignoreAirBlocks(false)
+                        .build()
 
 
-            //disableGravity(location,10); // Disable gravity for the blocks in the schematic.
+                    //disableGravity(location,10); // Disable gravity for the blocks in the schematic.
 
-            // Execute the operation.
-            Operations.complete(operation);
-            // Close the edit session.
-            editSession.close();
+                    // Execute the operation.
+                    Operations.complete(operation)
+                    // Close the edit session.
+                    editSession.close()
 
-            //enableGravity(location,10); // Re-enable gravity at the area where the schematic was pasted. However, the current pasted blocks will not be affected by this.
-
-            Bukkit.getLogger().info("Successfully pasted schematic: " + file.getName());
-
-        } catch (IOException e) {
-            Bukkit.getLogger().severe("Failed to load schematic: " + e.getMessage());
-        } catch (WorldEditException e) {
-            Bukkit.getLogger().severe("WorldEdit error while pasting schematic: " + e.getMessage());
+                    //enableGravity(location,10); // Re-enable gravity at the area where the schematic was pasted. However, the current pasted blocks will not be affected by this.
+                    Bukkit.getLogger().info("Successfully pasted schematic: " + file.getName())
+                }
+            }
+        } catch (e: IOException) {
+            Bukkit.getLogger().severe("Failed to load schematic: " + e.message)
+        } catch (e: WorldEditException) {
+            Bukkit.getLogger().severe("WorldEdit error while pasting schematic: " + e.message)
         }
     }
 
-    public static void loadSchematic(File schematic, World world, Location location) {
-        loadSchematic(schematic,world, (int) location.x(), (int) location.y(), (int) location.z());
-    }
-    public static void loadSchematic(File schematic, Location location) {
-        loadSchematic(schematic,location.getWorld(), (int) location.x(), (int) location.y(), (int) location.z());
+    @JvmStatic
+    fun loadSchematic(schematic: File, world: World, location: Location) {
+        loadSchematic(schematic, world, location.x().toInt(), location.y().toInt(), location.z().toInt())
     }
 
-    public static void loadSchematicByDirection(File file, Location location, String direction) {
-        ClipboardFormat format = ClipboardFormats.findByFile(file);
-        if (format == null) {
-            Bukkit.getLogger().warning("Unsupported schematic format: " + file.getName());
-            return;
+    fun loadSchematic(schematic: File, location: Location) {
+        loadSchematic(schematic, location.getWorld(), location.x().toInt(), location.y().toInt(), location.z().toInt())
+    }
+
+    fun loadSchematicByDirection(file: File, location: Location, direction: String) {
+        val format: ClipboardFormat = ClipboardFormats.findByFile(file) ?: run {
+            Bukkit.getLogger().warning("Unsupported schematic format: " + file.getName())
+            return
         }
-
-        World world = location.getWorld();
-        int x = location.getBlockX(); int y = location.getBlockY(); int z = location.getBlockZ();
-
 
         // get the current direction the schematic is already facing, and based on that and the desired direction, calculate by how much to rotate the schematic.
-        int rotation = switch (direction.toUpperCase()) {
-                case "NORTH" -> 0;
-                case "EAST" -> 90;
-                case "SOUTH" -> 180;
-                case "WEST" -> 270;
-                default -> {
-                    Bukkit.getLogger().warning("Unknown direction: " + direction + ", defaulting to NORTH (0°)");
-                    yield 0;
-                }
-
-        };
+        val rotation = getRotationForDirection(direction)
+        val world = location.getWorld()
+        val x = location.blockX
+        val y = location.blockY
+        val z = location.blockZ
 
 
         // Load the schematic. We'll wrap it in a try-resource to make sure it's closed properly.
-        try (FileInputStream fis = new FileInputStream(file);
-             ClipboardReader reader = format.getReader(fis)) // Get a reader for the schematic.
-        {
-            Clipboard clipboard = reader.read(); // Load the schematic into a clipboard.
-            // Create an edit session, rotate the schematic based on the 'direction' parameter and then paste the schematic.
-            EditSession editSession = WorldEdit.getInstance()
+        try {
+            format.getReader(FileInputStream(file)).use { reader ->
+                // have a ClipboardHolder to hold the clipboard to apply the rotation.
+                val holder = ClipboardHolder(reader.read())
+
+
+                // Create an edit session to paste the schematic.
+                val editSession = WorldEdit.getInstance()
                     .newEditSessionBuilder()
                     .world(BukkitAdapter.adapt(world))
-                    .build();
+                    .build()
 
+                // Rotate clipboard - Convert degrees to WorldEdit's 2D Y-axis rotation
+                holder.setTransform(AffineTransform().rotateY(rotation.toDouble()))
 
-            // Rotate clipboard
-            ClipboardHolder holder = new ClipboardHolder(clipboard);
-            // Convert degrees to WorldEdit's 2D Y-axis rotation
-            AffineTransform transform = new AffineTransform();
-            transform = transform.rotateY(rotation);
-            holder.setTransform(transform);
-
-
-            // Create an operation to paste the schematic.
-            Operation operation = new ClipboardHolder(clipboard)
+                // paste the schematic with the applied rotation that 'holder' has.
+                val operation = holder
                     .createPaste(editSession)
                     .to(BlockVector3.at(x, y, z)) // Paste location
                     .ignoreAirBlocks(false)
-                    .build();
+                    .build()
 
-
-            // Execute the operation.
-            Operations.complete(operation);
-            // Close the edit session.
-            editSession.close();
-
-            Bukkit.getLogger().info("Successfully pasted schematic: " + file.getName());
-
-        } catch (IOException e) {
-            Bukkit.getLogger().severe("Failed to load schematic: " + e.getMessage());
-        } catch (WorldEditException e) {
-            Bukkit.getLogger().severe("WorldEdit error while pasting schematic: " + e.getMessage());
+                // Execute the operation.
+                Operations.complete(operation)
+                // Close the edit session.
+                editSession.close()
+                Bukkit.getLogger().info("Successfully pasted schematic: " + file.getName())
+            }
+        } catch (e: IOException) {
+            Bukkit.getLogger().severe("Failed to load schematic: " + e.message)
+        } catch (e: WorldEditException) {
+            Bukkit.getLogger().severe("WorldEdit error while pasting schematic: " + e.message)
         }
     }
 
-    public static void deleteSchematic(Location firstCorner, Location secondCorner) {
+    fun getRotatedCorners(wallFile: File, pasteLocation: Location, direction: String): Pair<Location, Location> {
+        val format = ClipboardFormats.findByFile(wallFile) ?: error("Unsupported format")
+        FileInputStream(wallFile).use { fis ->
+            format.getReader(fis).use { reader ->
+                val clipboard = reader.read()
+                val rotation: Double = getRotationForDirection(direction).toDouble()
+                val transform = AffineTransform().rotateY(rotation)
+                val region = clipboard.region
+                val min = region.minimumPoint
+                val max = region.maximumPoint
+
+                // Use apply() instead of transform()
+                val minTrans = transform.apply(min.toVector3())
+                val maxTrans = transform.apply(max.toVector3())
+
+                val minX = minOf(minTrans.x, maxTrans.x)
+                val minY = minOf(minTrans.y, maxTrans.y)
+                val minZ = minOf(minTrans.z, maxTrans.z)
+                val maxX = maxOf(minTrans.x, maxTrans.x)
+                val maxY = maxOf(minTrans.y, maxTrans.y)
+                val maxZ = maxOf(minTrans.z, maxTrans.z)
+
+                val originalMin = region.minimumPoint
+
+                val minLoc = pasteLocation.clone().add(
+                    minX - originalMin.x,
+                    minY - originalMin.y,
+                    minZ - originalMin.z
+                )
+                val maxLoc = pasteLocation.clone().add(
+                    maxX - originalMin.x,
+                    maxY - originalMin.y,
+                    maxZ - originalMin.z
+                )
+                return Pair(minLoc, maxLoc)
+            }
+        }
+    }
+
+
+    /**
+     * Returns the rotation in degrees for the given direction.
+     */
+    private fun getRotationForDirection(direction: String): Int {
+        return when (direction.uppercase(Locale.getDefault())) {
+            "SOUTH" -> 0
+            "EAST" -> 90
+            "NORTH" -> 180
+            "WEST" -> 270
+            else -> {
+                Bukkit.getLogger().warning("Unknown direction: " + direction + ", defaulting to NORTH (0°)")
+                0
+            }
+        }
+    }
+
+    fun deleteSchematic(firstCorner: Location, secondCorner: Location) {
         // Get the world from the first corner.
-        World world = firstCorner.getWorld();
+        val world = firstCorner.getWorld()
         if (world == null) {
-            Bukkit.getLogger().severe("World is null for the given location.");
-            return;
+            Bukkit.getLogger().severe("World is null for the given location.")
+            return
         }
 
         // Calculate the boundaries of the area to delete.
-        int minX = Math.min(firstCorner.getBlockX(), secondCorner.getBlockX());
-        int maxX = Math.max(firstCorner.getBlockX(), secondCorner.getBlockX());
-        int minY = Math.min(firstCorner.getBlockY(), secondCorner.getBlockY());
-        int maxY = Math.max(firstCorner.getBlockY(), secondCorner.getBlockY());
-        int minZ = Math.min(firstCorner.getBlockZ(), secondCorner.getBlockZ());
-        int maxZ = Math.max(firstCorner.getBlockZ(), secondCorner.getBlockZ());
+        val minX = min(firstCorner.blockX, secondCorner.blockX)
+        val maxX = max(firstCorner.blockX, secondCorner.blockX)
+        val minY = min(firstCorner.blockY, secondCorner.blockY)
+        val maxY = max(firstCorner.blockY, secondCorner.blockY)
+        val minZ = min(firstCorner.blockZ, secondCorner.blockZ)
+        val maxZ = max(firstCorner.blockZ, secondCorner.blockZ)
 
         // Loop through the area and set all blocks to air.
-        for (int x = minX; x <= maxX; x++) {
-            for (int y = minY; y <= maxY; y++) {
-                for (int z = minZ; z <= maxZ; z++) {
-                    world.getBlockAt(x, y, z).setType(org.bukkit.Material.AIR);
+        for (x in minX..maxX) {
+            for (y in minY..maxY) {
+                for (z in minZ..maxZ) {
+                    world.getBlockAt(x, y, z).type = Material.AIR
                 }
             }
         }
@@ -188,50 +229,37 @@ public class BuildLoader {
      * @param location The location to get the borders of the existing build.
      * @return An array containing the minimum and maximum coordinates of the build.
      */
-    public static int[] getBuildBorders(File file, Location location) {
+    @JvmStatic
+    fun getBuildBorders(file: File, location: Location): IntArray? {
         // Get the format of the schematic file.
-        ClipboardFormat format = ClipboardFormats.findByFile(file);
+        val format = ClipboardFormats.findByFile(file)
 
         if (format == null) {
-            Bukkit.getLogger().warning("Unsupported schematic format: " + file.getName());
-            return null;
+            Bukkit.getLogger().warning("Unsupported schematic format: " + file.getName())
+            return null
         }
         //
-        try (FileInputStream fis = new FileInputStream(file);
-             // Get a reader for the schematic.
-             ClipboardReader reader = format.getReader(fis)) {
-            Clipboard clipboard = reader.read();
-            // Get the dimensions of the clipboard.
-            BlockVector3 dimensions = clipboard.getDimensions();
-            int minX = location.getBlockX(),minY = location.getBlockY(),
-                minZ = location.getBlockZ() ,maxX = minX + dimensions.getX(),
-                maxY = minY + dimensions.getY() ,maxZ = minZ + dimensions.getZ();
+        try {
+            FileInputStream(file).use { fis ->
+                format.getReader(fis).use { reader ->
+                    val clipboard = reader.read()
+                    // Get the dimensions of the clipboard.
+                    val dimensions = clipboard.dimensions
+                    val minX = location.blockX
+                    val minY = location.blockY
+                    val minZ = location.blockZ
+                    val maxX = minX + dimensions.x
+                    val maxY = minY + dimensions.y
+                    val maxZ = minZ + dimensions.z
 
-            // Store the borders in an array.
-            return new int[]{minX, maxX, minY, maxY, minZ, maxZ};
-        } catch (IOException e) {
-            Bukkit.getLogger().severe("Failed to load schematic: " + e.getMessage());
-            return null;
+                    // Store the borders in an array.
+                    return intArrayOf(minX, maxX, minY, maxY, minZ, maxZ)
+                }
+            }
+        } catch (e: IOException) {
+            Bukkit.getLogger().severe("Failed to load schematic: " + e.message)
+            return null
         }
-    }
-
-    public static Location getBottomCornerOfBuild(File file, Location location) {
-        // Get the borders of the build.
-        int[] borders = getBuildBorders(file, location);
-        if (borders == null) {
-            throw new IllegalArgumentException("Borders could not be determined for the build at " + location);
-        }
-        // Create a new location with the minimum coordinates of the build.
-        return new Location(location.getWorld(), borders[0], borders[2], borders[4]);
-    }
-    public static Location getTopCornerOfBuild(File file, Location location) {
-        // Get the borders of the build.
-        int[] borders = getBuildBorders(file, location);
-        if (borders == null) {
-            throw new IllegalArgumentException("Borders could not be determined for the build at " + location);
-        }
-        // Create a new location with the maximum coordinates of the build.
-        return new Location(location.getWorld(), borders[1], borders[3], borders[5]);
     }
 
     /**
@@ -240,11 +268,12 @@ public class BuildLoader {
      * @param center The center of the area to disable gravity in.
      * @param radius The radius of the area to disable gravity in.
      */
-    private static void disableGravity(Location center, int radius) {
-        for (Entity entity : center.getWorld().getNearbyEntities(center, radius, radius, radius)) {
-            if (entity instanceof FallingBlock) {
-                entity.setGravity(false);
-                entity.setVelocity(new Vector(0, 0, 0));
+    private fun disableGravity(center: Location, radius: Int) {
+        for (entity in center.getWorld()
+            .getNearbyEntities(center, radius.toDouble(), radius.toDouble(), radius.toDouble())) {
+            if (entity is FallingBlock) {
+                entity.setGravity(false)
+                entity.velocity = Vector(0, 0, 0)
             }
         }
     }
@@ -255,13 +284,12 @@ public class BuildLoader {
      * @param center The center of the area to enable gravity in.
      * @param radius The radius of the area to enable gravity in.
      */
-    private static void enableGravity(Location center, int radius) {
-        for (Entity entity : center.getWorld().getNearbyEntities(center, radius, radius, radius)) {
-            if (entity instanceof FallingBlock) {
-                entity.setGravity(true);
+    private fun enableGravity(center: Location, radius: Int) {
+        for (entity in center.getWorld()
+            .getNearbyEntities(center, radius.toDouble(), radius.toDouble(), radius.toDouble())) {
+            if (entity is FallingBlock) {
+                entity.setGravity(true)
             }
         }
     }
-
-
 }

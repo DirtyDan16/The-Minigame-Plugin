@@ -13,16 +13,22 @@ import me.stavgordeev.plugin.MinigamePlugin.plugin
 
 class Wall(
     val wallFile: File,
-    val wallDirection: HoleInTheWallConst.WallDirection,
+    val directionWallComesFrom: HoleInTheWallConst.WallDirection,
 ) {
     var bottomCorner: Location
     var topCorner: Location
     var lifespan: Int = HoleInTheWallConst.DEFAULT_WALL_TRAVEL_LIFESPAN //How many blocks the wall travels before it disappears.
-    val spawnLocation: Location = when (wallDirection) {
+    val spawnLocation: Location = when (directionWallComesFrom) {
             HoleInTheWallConst.WallDirection.SOUTH -> HoleInTheWallConst.Locations.SOUTH_WALL_SPAWN
             HoleInTheWallConst.WallDirection.NORTH -> HoleInTheWallConst.Locations.NORTH_WALL_SPAWN
             HoleInTheWallConst.WallDirection.WEST -> HoleInTheWallConst.Locations.WEST_WALL_SPAWN
             HoleInTheWallConst.WallDirection.EAST -> HoleInTheWallConst.Locations.EAST_WALL_SPAWN
+    }
+    val directionWallIsFacing: String = when (directionWallComesFrom) {
+        HoleInTheWallConst.WallDirection.SOUTH -> "north"
+        HoleInTheWallConst.WallDirection.NORTH -> "south"
+        HoleInTheWallConst.WallDirection.WEST -> "east"
+        HoleInTheWallConst.WallDirection.EAST -> "west"
     }
 
     var shouldBeRemoved: Boolean = false // If the wall should be removed from the game.
@@ -38,25 +44,15 @@ class Wall(
         }
 
         // Rotate the wall schematic based on the direction the wall comes from.
-        // ie if a wall comes from the south, we need to load it facing north.
-        when (wallDirection) {
-            HoleInTheWallConst.WallDirection.SOUTH -> {
-                BuildLoader.loadSchematicByDirection(wallFile, spawnLocation, "north")
-            }
-            HoleInTheWallConst.WallDirection.NORTH -> {
-                BuildLoader.loadSchematicByDirection(wallFile, spawnLocation, "south")
-            }
-            HoleInTheWallConst.WallDirection.WEST -> {
-                BuildLoader.loadSchematicByDirection(wallFile, spawnLocation, "east")
-            }
-            HoleInTheWallConst.WallDirection.EAST -> {
-                BuildLoader.loadSchematicByDirection(wallFile, spawnLocation, "west")
-            }
-        }
-        // Set the top and bottom corners based on the wall file and spawn location
-        bottomCorner = BuildLoader.getBottomCornerOfBuild(wallFile, spawnLocation)
-        topCorner = BuildLoader.getTopCornerOfBuild(wallFile, spawnLocation)
+        // i.e., if a wall comes from the south, we need to load it facing north.
+        BuildLoader.loadSchematicByDirection(wallFile, spawnLocation, directionWallIsFacing)
+
+        // we also set the top and bottom corners based on the spawn location and the wall direction.
+        val (minCorner, maxCorner) = BuildLoader.getRotatedCorners(wallFile, spawnLocation, directionWallIsFacing)
+        bottomCorner = minCorner
+        topCorner = maxCorner
     }
+
 
     /**
      * Moves the wall in the specified direction by a singular block via activating the pistons.
@@ -99,6 +95,7 @@ class Wall(
             this.shouldBeRemoved = true
         }
 
+        //TODO: Improve complexity -since atm we have a O(n^3) for getting the pistonLoc *each* time we call move(). pistonLoc should be calc once at the start and then modified.
         //region ----Moving Wall Logic - Press Buttons on Pistons---------------------------------------------------
 
         val minX = bottomCorner.x; val maxX = topCorner.x
