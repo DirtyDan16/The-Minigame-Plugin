@@ -48,7 +48,11 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
     // This list is updated as walls are spawned and deleted, and is tackled in the periodic() method.
     private val aliveWallsList: MutableList<Wall> = mutableListOf()
 
+    private val wallsToDelete: MutableList<Wall> = mutableListOf() // A list of walls that are to be deleted. This is used to delete walls that are no longer alive
+
+
     //endregion -----------------------------------------------------------------------------------
+
     @Throws(InterruptedException::class)
     fun start(player: Player?, mapName: String) {
         if (isGameRunning) {
@@ -57,7 +61,7 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
         }
 
         this.mapName = mapName
-        super.start(player)
+        start(player)
 
         //--------------
         periodic()
@@ -90,12 +94,13 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
                 }
 
 
-                //------------Check if the wall speed should be increased
+                //region ---Check if the wall speed should be increased
                 if (wallSpeedIndex < wallSpeedUpLandmarks.size && timeElapsed >= wallSpeedUpLandmarks[wallSpeedIndex]) {
                     wallSpeed = Timers.WALL_SPEED[++wallSpeedIndex]
                 }
+                //endregion
 
-                //-----------------Check if the wall difficulty should be increased
+                //region ---Check if the wall difficulty should be increased
                 //TODO: implement logic
                 if (curWallDifficultyInPack != HoleInTheWallConst.WallDifficulty.VERY_HARD && timeElapsed >= increaseWallDifficultyLandmarks[curWallDifficultyInPack]) {
                     when (++curWallDifficultyInPack) {
@@ -104,8 +109,9 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
                         HoleInTheWallConst.WallDifficulty.VERY_HARD -> {}
                     }
                 }
+                //endregion
 
-                //------------Check if the walls should be moved
+                //region --Check if the walls should be moved
                 // If the time elapsed is a multiple of the wall speed (which resembles how often the walls should be moved at in ticks), then move the walls
                 if (tickCount % wallSpeed == 0) {
                     for (wall in aliveWallsList) {
@@ -115,7 +121,18 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
                             deleteWall(wall)
                         }
                     }
+                        // Move the wall if its lifespan is greater than 0 and it should not be stopped
+                        if (!wall.shouldBeStopped) wall.move()
+                        // If the wall is no longer alive, delete it via adding it to a new list of walls to delete
+                        if (wall.shouldBeRemoved) wallsToDelete.add(wall)
+                    }
+
+                    // Delete the walls that are no longer alive
+                    wallsToDelete.forEach { deleteWall(it) }
+                     // Clear the list of walls to delete after deleting them so that we don't delete the same walls again
+                    wallsToDelete.clear()
                 }
+                //endregion
 
                 //------------Add new walls to the game
                 if (tickCount % 40 == 0) { // Every 2 seconds
@@ -125,6 +142,8 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
                         aliveWallsList.add(newWall) // Add the new wall to the list of alive walls
                     }
                 }
+                //region --Add new walls to the game
+                //endregion
 
 
             }
