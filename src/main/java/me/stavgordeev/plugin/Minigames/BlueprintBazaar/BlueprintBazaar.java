@@ -115,6 +115,7 @@ public class BlueprintBazaar extends MinigameSkeleton {
 
     @Override
     public void prepareGameSetting(Player player) {
+        super.prepareGameSetting(player);
         player.teleport(BlueprintBazaarConst.GAME_START_LOCATION.clone().add(0, 8, 0)); // Teleport the player to the start location
     }
 

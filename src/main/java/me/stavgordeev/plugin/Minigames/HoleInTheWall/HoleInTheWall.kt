@@ -1,14 +1,17 @@
 package me.stavgordeev.plugin.Minigames.HoleInTheWall
 
 import me.stavgordeev.plugin.BuildLoader
-import me.stavgordeev.plugin.Minigames.HoleInTheWall.HoleInTheWallConst.Timers
 import me.stavgordeev.plugin.MinigamePlugin
+import me.stavgordeev.plugin.Minigames.HoleInTheWall.HoleInTheWallConst.Timers
 import me.stavgordeev.plugin.Minigames.MinigameSkeleton
-import me.stavgordeev.plugin.Utils
+import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.logger.slf4j.ComponentLogger.logger
-import org.bukkit.Location
+import org.bukkit.Bukkit
+import org.bukkit.GameMode
 import org.bukkit.entity.Player
 import org.bukkit.plugin.Plugin
+import org.bukkit.potion.PotionEffect
+import org.bukkit.potion.PotionEffectType
 import org.bukkit.scheduler.BukkitRunnable
 import org.bukkit.scheduler.BukkitTask
 import java.io.File
@@ -48,6 +51,11 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
     //endregion -----------------------------------------------------------------------------------
     @Throws(InterruptedException::class)
     fun start(player: Player?, mapName: String) {
+        if (isGameRunning) {
+            Bukkit.getServer().broadcast(Component.text("Minigame is already running!"))
+            return
+        }
+
         this.mapName = mapName
         super.start(player)
 
@@ -123,11 +131,6 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
         }.runTaskTimer(plugin, 0, 1)// 20 ticks = 1 second
     }
 
-    override fun nukeArea(center: Location?, radius: Int) {
-        // Delete the surrounding area.
-        Utils.nukeGameArea(center, radius)
-    }
-
     override fun prepareArea() {
         fun getGameBaseFolder(): File {
             check(plugin is MinigamePlugin) { "Invalid plugin type" }
@@ -190,20 +193,23 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
     }
 
     override fun prepareGameSetting(player: Player) {
-        player.teleport(HoleInTheWallConst.Locations.SPAWN) // Teleport the player to the spawn point of the game
+        super.prepareGameSetting(player)
+
+        //if we want to test the game easily, we'll set the isDevelopment flag to true, which will set the player to creative mode, and disable tp'ing
+        if (HoleInTheWallConst.isInDevelopment) {
+            player.gameMode = GameMode.CREATIVE
+        } else {
+            player.gameMode = GameMode.ADVENTURE
+            player.teleport(HoleInTheWallConst.Locations.SPAWN) // Teleport the player to the spawn point of the game
+        }
 
         //give the player infinite jump boost 2.
-        player.addPotionEffect(PotionEffect(PotionEffectType.JUMP_BOOST, -1, 2, false))
+        player.addPotionEffect(PotionEffect(PotionEffectType.JUMP_BOOST, -1, 1, false))
 
-        //give the player infinite saturation
-        player.addPotionEffect(PotionEffect(PotionEffectType.SATURATION, -1, 255, false))
 
-        //clear the weather and set the time to day
-        HoleInTheWallConst.Locations.WORLD.setStorm(false)
-        HoleInTheWallConst.Locations.WORLD.time = 1000
     }
 
-    public fun deleteWall(wall: Wall) {
+    fun deleteWall(wall: Wall) {
         BuildLoader.deleteSchematic(wall.bottomCorner, wall.topCorner)
         // delete the wall reference from the AliveWallsList
         val hasWallBeenDeleted = aliveWallsList.remove(wall)

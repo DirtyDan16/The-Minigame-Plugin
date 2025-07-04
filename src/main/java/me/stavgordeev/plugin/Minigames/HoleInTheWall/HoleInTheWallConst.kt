@@ -6,6 +6,9 @@ import org.bukkit.World
 
 
 object HoleInTheWallConst {
+    const val isInDevelopment: Boolean = true // If the plugin is in development mode, some features may be disabled or behave differently. this is so that the plugin can be tested easily without constantly tempering with the code.
+
+
     const val PLATFORMS_FOLDER: String = "platforms"
     const val WALLPACK_FOLDER: String = "wallpack"
     const val MAP_FOLDER: String = "map"

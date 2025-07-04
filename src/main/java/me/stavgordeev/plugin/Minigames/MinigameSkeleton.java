@@ -4,9 +4,12 @@ import me.stavgordeev.plugin.Utils;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
+import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
+
+import static org.bukkit.Bukkit.getWorld;
 
 public abstract class MinigameSkeleton {
     protected final Plugin plugin;
@@ -136,8 +139,23 @@ public abstract class MinigameSkeleton {
     public abstract void prepareArea();
 
     /**
-     * Prepares the game rules. should be followed with code that prepares the game rules - such as but not limited to player status effects, player location, time of day etc.
-     * typically should be called in start().
+     * Prepares the game rules.
+     * This method is called when the game starts and is responsible for setting up the game environment.
+     * This includes setting the weather, time of day, inventory, health, saturation, and other game-related settings.
+     *
+     * should be overriden with extra settings for the minigame.
+     * For example, tping the player to a specific location.
      */
-    public abstract void prepareGameSetting(Player player);
+    public void prepareGameSetting(Player player) {
+        //clear the weather and set the time to day
+        // ~~~~ note: the dimension got is hardcoded, and it is the overworld.
+        getWorld("world").setStorm(false);
+        getWorld("world").setTime(1000);
+        getWorld("world").setThundering(false);
+
+
+        player.getInventory().clear(); // Clear the player's inventory
+        player.setSaturation(20f); // Set the player's saturation to full
+        player.setHealth(20.0); // Set the player's health to full
+    }
 }
