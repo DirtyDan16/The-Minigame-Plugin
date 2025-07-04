@@ -10,6 +10,7 @@ import com.sk89q.worldedit.extent.clipboard.io.ClipboardReader;
 import com.sk89q.worldedit.function.operation.Operation;
 import com.sk89q.worldedit.function.operation.Operations;
 import com.sk89q.worldedit.math.BlockVector3;
+import com.sk89q.worldedit.math.transform.AffineTransform;
 import com.sk89q.worldedit.session.ClipboardHolder;
 import com.sk89q.worldedit.EditSession;
 import org.bukkit.Bukkit;
@@ -42,7 +43,7 @@ public class BuildLoader {
             return;
         }
 
-        Location location = new Location(world, x, y, z);
+        //Location location = new Location(world, x, y, z);
 
         // Load the schematic. We'll wrap it in a try-resource to make sure it's closed properly.
         try (FileInputStream fis = new FileInputStream(file);
@@ -83,6 +84,102 @@ public class BuildLoader {
     public static void loadSchematic(File schematic, World world, Location location) {
         loadSchematic(schematic,world, (int) location.x(), (int) location.y(), (int) location.z());
     }
+    public static void loadSchematic(File schematic, Location location) {
+        loadSchematic(schematic,location.getWorld(), (int) location.x(), (int) location.y(), (int) location.z());
+    }
+
+    public static void loadSchematicByDirection(File file, Location location, String direction) {
+        ClipboardFormat format = ClipboardFormats.findByFile(file);
+        if (format == null) {
+            Bukkit.getLogger().warning("Unsupported schematic format: " + file.getName());
+            return;
+        }
+
+        World world = location.getWorld();
+        int x = location.getBlockX(); int y = location.getBlockY(); int z = location.getBlockZ();
+
+
+        // get the current direction the schematic is already facing, and based on that and the desired direction, calculate by how much to rotate the schematic.
+        int rotation = switch (direction.toUpperCase()) {
+                case "NORTH" -> 0;
+                case "EAST" -> 90;
+                case "SOUTH" -> 180;
+                case "WEST" -> 270;
+                default -> {
+                    Bukkit.getLogger().warning("Unknown direction: " + direction + ", defaulting to NORTH (0°)");
+                    yield 0;
+                }
+
+        };
+
+
+        // Load the schematic. We'll wrap it in a try-resource to make sure it's closed properly.
+        try (FileInputStream fis = new FileInputStream(file);
+             ClipboardReader reader = format.getReader(fis)) // Get a reader for the schematic.
+        {
+            Clipboard clipboard = reader.read(); // Load the schematic into a clipboard.
+            // Create an edit session, rotate the schematic based on the 'direction' parameter and then paste the schematic.
+            EditSession editSession = WorldEdit.getInstance()
+                    .newEditSessionBuilder()
+                    .world(BukkitAdapter.adapt(world))
+                    .build();
+
+
+            // Rotate clipboard
+            ClipboardHolder holder = new ClipboardHolder(clipboard);
+            // Convert degrees to WorldEdit's 2D Y-axis rotation
+            AffineTransform transform = new AffineTransform();
+            transform = transform.rotateY(rotation);
+            holder.setTransform(transform);
+
+
+            // Create an operation to paste the schematic.
+            Operation operation = new ClipboardHolder(clipboard)
+                    .createPaste(editSession)
+                    .to(BlockVector3.at(x, y, z)) // Paste location
+                    .ignoreAirBlocks(false)
+                    .build();
+
+
+            // Execute the operation.
+            Operations.complete(operation);
+            // Close the edit session.
+            editSession.close();
+
+            Bukkit.getLogger().info("Successfully pasted schematic: " + file.getName());
+
+        } catch (IOException e) {
+            Bukkit.getLogger().severe("Failed to load schematic: " + e.getMessage());
+        } catch (WorldEditException e) {
+            Bukkit.getLogger().severe("WorldEdit error while pasting schematic: " + e.getMessage());
+        }
+    }
+
+    public static void deleteSchematic(Location firstCorner, Location secondCorner) {
+        // Get the world from the first corner.
+        World world = firstCorner.getWorld();
+        if (world == null) {
+            Bukkit.getLogger().severe("World is null for the given location.");
+            return;
+        }
+
+        // Calculate the boundaries of the area to delete.
+        int minX = Math.min(firstCorner.getBlockX(), secondCorner.getBlockX());
+        int maxX = Math.max(firstCorner.getBlockX(), secondCorner.getBlockX());
+        int minY = Math.min(firstCorner.getBlockY(), secondCorner.getBlockY());
+        int maxY = Math.max(firstCorner.getBlockY(), secondCorner.getBlockY());
+        int minZ = Math.min(firstCorner.getBlockZ(), secondCorner.getBlockZ());
+        int maxZ = Math.max(firstCorner.getBlockZ(), secondCorner.getBlockZ());
+
+        // Loop through the area and set all blocks to air.
+        for (int x = minX; x <= maxX; x++) {
+            for (int y = minY; y <= maxY; y++) {
+                for (int z = minZ; z <= maxZ; z++) {
+                    world.getBlockAt(x, y, z).setType(org.bukkit.Material.AIR);
+                }
+            }
+        }
+    }
 
     /**
      * Gets the borders of the existing build at the specified location.
@@ -91,7 +188,7 @@ public class BuildLoader {
      * @param location The location to get the borders of the existing build.
      * @return An array containing the minimum and maximum coordinates of the build.
      */
-    public static int @Nullable [] getBuildBorders(File file, Location location) {
+    public static int[] getBuildBorders(File file, Location location) {
         // Get the format of the schematic file.
         ClipboardFormat format = ClipboardFormats.findByFile(file);
 
@@ -116,6 +213,25 @@ public class BuildLoader {
             Bukkit.getLogger().severe("Failed to load schematic: " + e.getMessage());
             return null;
         }
+    }
+
+    public static Location getBottomCornerOfBuild(File file, Location location) {
+        // Get the borders of the build.
+        int[] borders = getBuildBorders(file, location);
+        if (borders == null) {
+            throw new IllegalArgumentException("Borders could not be determined for the build at " + location);
+        }
+        // Create a new location with the minimum coordinates of the build.
+        return new Location(location.getWorld(), borders[0], borders[2], borders[4]);
+    }
+    public static Location getTopCornerOfBuild(File file, Location location) {
+        // Get the borders of the build.
+        int[] borders = getBuildBorders(file, location);
+        if (borders == null) {
+            throw new IllegalArgumentException("Borders could not be determined for the build at " + location);
+        }
+        // Create a new location with the maximum coordinates of the build.
+        return new Location(location.getWorld(), borders[1], borders[3], borders[5]);
     }
 
     /**
