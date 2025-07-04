@@ -1,5 +1,6 @@
 package me.stavgordeev.plugin.Minigames.HoleInTheWall
 
+import com.sk89q.worldedit.regions.CuboidRegion
 import me.stavgordeev.plugin.BuildLoader
 import org.bukkit.Location
 import org.bukkit.Material
@@ -15,8 +16,9 @@ class Wall(
     val wallFile: File,
     val directionWallComesFrom: HoleInTheWallConst.WallDirection,
 ) {
-    var bottomCorner: Location
-    var topCorner: Location
+
+    //region -- Properties --
+    lateinit var wallRegion: CuboidRegion
     var lifespan: Int = HoleInTheWallConst.DEFAULT_WALL_TRAVEL_LIFESPAN //How many blocks the wall travels before it disappears.
     val spawnLocation: Location = when (directionWallComesFrom) {
             HoleInTheWallConst.WallDirection.SOUTH -> HoleInTheWallConst.Locations.SOUTH_WALL_SPAWN
@@ -34,6 +36,8 @@ class Wall(
     var shouldBeRemoved: Boolean = false // If the wall should be removed from the game.
     var shouldBeStopped: Boolean = false // If the wall should be stopped from moving. It doesn't mean it should be removed from the game, but it has the possibility (for example - Psych walls)
 
+    //endregion
+
     init {
         // Load the wall file and validate its contents if necessary
         if (wallFile.isDirectory) {
@@ -47,12 +51,9 @@ class Wall(
         // i.e., if a wall comes from the south, we need to load it facing north.
         BuildLoader.loadSchematicByDirection(wallFile, spawnLocation, directionWallIsFacing)
 
-        // we also set the top and bottom corners based on the spawn location and the wall direction.
-        val (minCorner, maxCorner) = BuildLoader.getRotatedCorners(wallFile, spawnLocation, directionWallIsFacing)
-        bottomCorner = minCorner
-        topCorner = maxCorner
+        // we also set the volume of the wall based on the spawn location and the wall direction.
+        wallRegion = BuildLoader.getRotatedRegion(wallFile, spawnLocation, directionWallIsFacing)
     }
-
 
     /**
      * Moves the wall in the specified direction by a singular block via activating the pistons.
@@ -98,18 +99,18 @@ class Wall(
         //TODO: Improve complexity -since atm we have a O(n^3) for getting the pistonLoc *each* time we call move(). pistonLoc should be calc once at the start and then modified.
         //region ----Moving Wall Logic - Press Buttons on Pistons---------------------------------------------------
 
-        val minX = bottomCorner.x; val maxX = topCorner.x
-        val minZ = bottomCorner.z; val maxZ = topCorner.z
-        val minY = bottomCorner.y; val maxY = topCorner.y
+        val minX = wallRegion.minimumPoint.x; val maxX = wallRegion.maximumPoint.x
+        val minY = wallRegion.minimumPoint.y; val maxY = wallRegion.maximumPoint.y
+        val minZ = wallRegion.minimumPoint.z; val maxZ = wallRegion.maximumPoint.z
 
         // get the locations of all piston blocks within the bounding box of the wall
         val pistonLocations: Sequence<Location> = sequence {
-            for (x in minX.toInt()..maxX.toInt()) {
-                for (y in minY.toInt()..maxY.toInt()) {
-                    for (z in minZ.toInt()..maxZ.toInt()) {
-                        val block = bottomCorner.world.getBlockAt(x, y, z)
+            for (x in minX..maxX) {
+                for (y in minY..maxY) {
+                    for (z in minZ..maxZ) {
+                        val block = HoleInTheWallConst.Locations.WORLD.getBlockAt(x, y, z)
                         // Only check blocks that are pistons
-                        if (block.type == Material.PISTON) yield(Location(bottomCorner.world, x.toDouble(), y.toDouble(), z.toDouble()))
+                        if (block.type == Material.PISTON) yield(Location(HoleInTheWallConst.Locations.WORLD, x.toDouble(), y.toDouble(), z.toDouble()))
                     }
                 }
             }

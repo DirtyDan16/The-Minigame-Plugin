@@ -32,10 +32,10 @@ object HoleInTheWallConst {
 
         const val DISTANCE_OF_WALL_FROM_CENTER_OF_PLATFORM: Double = 8.0
 
-        val SOUTH_WALL_SPAWN: Location = PIVOT.clone().add(1.0, 0.0, DISTANCE_OF_WALL_FROM_CENTER_OF_PLATFORM)
-        val NORTH_WALL_SPAWN: Location = PIVOT.clone().add(0.0, 0.0, -DISTANCE_OF_WALL_FROM_CENTER_OF_PLATFORM - 1.0)
-        val WEST_WALL_SPAWN: Location = PIVOT.clone().add(-DISTANCE_OF_WALL_FROM_CENTER_OF_PLATFORM, 0.0, 0.0)
-        val EAST_WALL_SPAWN: Location = PIVOT.clone().add(DISTANCE_OF_WALL_FROM_CENTER_OF_PLATFORM + 1.0, 0.0, -1.0)
+        val SOUTH_WALL_SPAWN: Location = PIVOT.clone().add(1.0, 1.0, DISTANCE_OF_WALL_FROM_CENTER_OF_PLATFORM)
+        val NORTH_WALL_SPAWN: Location = PIVOT.clone().add(0.0, 1.0, -DISTANCE_OF_WALL_FROM_CENTER_OF_PLATFORM - 1.0)
+        val WEST_WALL_SPAWN: Location = PIVOT.clone().add(-DISTANCE_OF_WALL_FROM_CENTER_OF_PLATFORM, 1.0, 0.0)
+        val EAST_WALL_SPAWN: Location = PIVOT.clone().add(DISTANCE_OF_WALL_FROM_CENTER_OF_PLATFORM + 1.0, 1.0, -1.0)
     }
     
     object WallDifficulty {

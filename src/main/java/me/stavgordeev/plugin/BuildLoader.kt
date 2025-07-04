@@ -7,8 +7,11 @@ import com.sk89q.worldedit.extent.clipboard.io.ClipboardFormat
 import com.sk89q.worldedit.extent.clipboard.io.ClipboardFormats
 import com.sk89q.worldedit.function.operation.Operations
 import com.sk89q.worldedit.math.BlockVector3
+import com.sk89q.worldedit.math.Vector3
 import com.sk89q.worldedit.math.transform.AffineTransform
+import com.sk89q.worldedit.regions.CuboidRegion
 import com.sk89q.worldedit.session.ClipboardHolder
+import me.stavgordeev.plugin.MinigamePlugin.world
 import org.bukkit.Bukkit
 import org.bukkit.Location
 import org.bukkit.Material
@@ -19,10 +22,8 @@ import java.io.File
 import java.io.FileInputStream
 import java.io.IOException
 import java.util.*
-import kotlin.apply
 import kotlin.math.max
 import kotlin.math.min
-import kotlin.text.toDouble
 
 object BuildLoader {
     /**
@@ -140,41 +141,40 @@ object BuildLoader {
         }
     }
 
-    fun getRotatedCorners(wallFile: File, pasteLocation: Location, direction: String): Pair<Location, Location> {
+    fun getRotatedRegion(wallFile: File, pasteLocation: Location, direction: String): CuboidRegion {
         val format = ClipboardFormats.findByFile(wallFile) ?: error("Unsupported format")
         FileInputStream(wallFile).use { fis ->
             format.getReader(fis).use { reader ->
                 val clipboard = reader.read()
-                val rotation: Double = getRotationForDirection(direction).toDouble()
+                val rotation = getRotationForDirection(direction).toDouble()
                 val transform = AffineTransform().rotateY(rotation)
                 val region = clipboard.region
-                val min = region.minimumPoint
-                val max = region.maximumPoint
+                val origin = clipboard.origin
 
-                // Use apply() instead of transform()
-                val minTrans = transform.apply(min.toVector3())
-                val maxTrans = transform.apply(max.toVector3())
+                // Transform all corners of the region
+                val points: List<Location> = listOf(
+                    region.minimumPoint,
+                    region.maximumPoint
+                ).map { point ->
+                    // Calculate the relative position from the origin
+                    val rel: BlockVector3 = point.subtract(origin)
+                    // Apply the rotation transform to the relative position
+                    val transformed: Vector3 = transform.apply(rel.toVector3())
+                    // Convert back to a Location relative to the paste location
+                    pasteLocation.clone().add(transformed.x, transformed.y, transformed.z)
+                }
 
-                val minX = minOf(minTrans.x, maxTrans.x)
-                val minY = minOf(minTrans.y, maxTrans.y)
-                val minZ = minOf(minTrans.z, maxTrans.z)
-                val maxX = maxOf(minTrans.x, maxTrans.x)
-                val maxY = maxOf(minTrans.y, maxTrans.y)
-                val maxZ = maxOf(minTrans.z, maxTrans.z)
+                // find the minimum and maximum coordinates from the transformed points
+                val minX = points.minOf { it.x }
+                val minY = points.minOf { it.y }
+                val minZ = points.minOf { it.z }
+                val maxX = points.maxOf { it.x }
+                val maxY = points.maxOf { it.y }
+                val maxZ = points.maxOf { it.z }
 
-                val originalMin = region.minimumPoint
-
-                val minLoc = pasteLocation.clone().add(
-                    minX - originalMin.x,
-                    minY - originalMin.y,
-                    minZ - originalMin.z
-                )
-                val maxLoc = pasteLocation.clone().add(
-                    maxX - originalMin.x,
-                    maxY - originalMin.y,
-                    maxZ - originalMin.z
-                )
-                return Pair(minLoc, maxLoc)
+                val min = BlockVector3.at(minX, minY, minZ)
+                val max = BlockVector3.at(maxX, maxY, maxZ)
+                return CuboidRegion(min, max)
             }
         }
     }
@@ -196,14 +196,7 @@ object BuildLoader {
         }
     }
 
-    fun deleteSchematic(firstCorner: Location, secondCorner: Location) {
-        // Get the world from the first corner.
-        val world = firstCorner.getWorld()
-        if (world == null) {
-            Bukkit.getLogger().severe("World is null for the given location.")
-            return
-        }
-
+    fun deleteSchematic(firstCorner: BlockVector3, secondCorner: BlockVector3) {
         // Calculate the boundaries of the area to delete.
         val minX = min(firstCorner.blockX, secondCorner.blockX)
         val maxX = max(firstCorner.blockX, secondCorner.blockX)

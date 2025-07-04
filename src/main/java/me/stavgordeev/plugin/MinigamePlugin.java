@@ -8,6 +8,7 @@ import me.stavgordeev.plugin.Minigames.BlueprintBazaar.BlueprintBazaarCommands;
 import me.stavgordeev.plugin.Minigames.DiscoMayhem.DiscoMayhemCommands;
 import me.stavgordeev.plugin.Minigames.HoleInTheWall.HoleInTheWallCommands;
 import me.stavgordeev.plugin.commands.MiscCommands;
+import org.bukkit.World;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -17,10 +18,12 @@ import java.util.Objects;
 public class MinigamePlugin extends JavaPlugin {
 
     public static Plugin plugin;
+    public static World world;
 
     @Override
     public void onEnable() {
         plugin = this; // Initialize the plugin reference
+        world = getServer().getWorld("world"); // Initialize the world object
 
         initSchematicsFolders();
 
