@@ -63,14 +63,21 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
         this.mapName = mapName
         start(player)
 
-        //--------------
         periodic()
     }
 
     override fun endGame(player: Player?) {
+        if (!isGameRunning) {
+            player!!.sendMessage("Minigame is not running!")
+            return
+        }
         super.endGame(player)
         // Cancel the periodic task that updates the game state and handles all game events - such as wall movement, wall spawning, and wall deletion.
         gameEvents.cancel()
+
+        // Clear the list of alive walls
+        aliveWallsList.clear()
+
         this.nukeArea(HoleInTheWallConst.Locations.PIVOT, 60) // Clear the area around the spawn point
     }
 
@@ -115,12 +122,6 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
                 // If the time elapsed is a multiple of the wall speed (which resembles how often the walls should be moved at in ticks), then move the walls
                 if (tickCount % wallSpeed == 0) {
                     for (wall in aliveWallsList) {
-                        // Move the wall and check if it is still alive
-                        if (!wall.move()) {
-                            // If the wall is no longer alive, delete it
-                            deleteWall(wall)
-                        }
-                    }
                         // Move the wall if its lifespan is greater than 0 and it should not be stopped
                         if (!wall.shouldBeStopped) wall.move()
                         // If the wall is no longer alive, delete it via adding it to a new list of walls to delete
@@ -134,15 +135,16 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
                 }
                 //endregion
 
-                //------------Add new walls to the game
-                if (tickCount % 40 == 0) { // Every 2 seconds
-                    if (aliveWallsList.size < 5) { // Limit the number of walls to 5 at a time
+                //region --Add new walls to the game
+                if (tickCount % 60 == 0) {
+                    if (aliveWallsList.size < HoleInTheWallConst.HARD_CAP_MAX_POSSIBLE_AMOUNT_OF_WALLS) { // Limit the number of walls to HARD_CAP_MAX_POSSIBLE_AMOUNT_OF_WALLS at a time
                         val wallFile = wallPackSchematics.random() // Randomly select a wall from the wall pack
-                        val newWall = Wall(wallFile, curWallDifficultyInPack, HoleInTheWallConst.WallDirection.SOUTH) // Create a new wall
+                        val direction = HoleInTheWallConst.WallDirection.entries.toTypedArray().random() // Randomly select a direction for the wall
+
+                        val newWall = Wall(wallFile, direction) // Create a new wall
                         aliveWallsList.add(newWall) // Add the new wall to the list of alive walls
                     }
                 }
-                //region --Add new walls to the game
                 //endregion
 
 
@@ -229,7 +231,7 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
     }
 
     fun deleteWall(wall: Wall) {
-        BuildLoader.deleteSchematic(wall.bottomCorner, wall.topCorner)
+        BuildLoader.deleteSchematic(wall.wallRegion.minimumPoint, wall.wallRegion.maximumPoint)
         // delete the wall reference from the AliveWallsList
         val hasWallBeenDeleted = aliveWallsList.remove(wall)
 

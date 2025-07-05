@@ -59,6 +59,6 @@ object HoleInTheWallConst {
         val INCREASE_WALL_DIFFICULTY_LANDMARKS: IntArray = intArrayOf(45, 90, 155) // in seconds
         val PLATFORM_SHRINKAGE_LANDMARKS: IntArray = intArrayOf(70, 155)
 
-        val WALL_SPEED: IntArray = intArrayOf(20, 15, 12, 10, 7, 5, 4, 3, 2) //in ticks
+        val WALL_SPEED: IntArray = intArrayOf(15, 12, 10, 7, 5, 4, 3, 2) //in ticks
     }
 }
