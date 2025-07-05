@@ -30,7 +30,7 @@ object HoleInTheWallConst {
 
         val PLATFORM: Location = PIVOT.clone()
 
-        const val DISTANCE_OF_WALL_FROM_CENTER_OF_PLATFORM: Double = 8.0
+        const val DISTANCE_OF_WALL_FROM_CENTER_OF_PLATFORM: Double = 12.0
 
         val SOUTH_WALL_SPAWN: Location = PIVOT.clone().add(1.0, 1.0, DISTANCE_OF_WALL_FROM_CENTER_OF_PLATFORM)
         val NORTH_WALL_SPAWN: Location = PIVOT.clone().add(0.0, 1.0, -DISTANCE_OF_WALL_FROM_CENTER_OF_PLATFORM - 1.0)

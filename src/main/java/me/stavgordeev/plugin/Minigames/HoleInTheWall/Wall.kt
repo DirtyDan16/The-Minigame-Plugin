@@ -1,5 +1,6 @@
 package me.stavgordeev.plugin.Minigames.HoleInTheWall
 
+import com.sk89q.worldedit.math.BlockVector3
 import com.sk89q.worldedit.regions.CuboidRegion
 import me.stavgordeev.plugin.BuildLoader
 import org.bukkit.Location
@@ -18,13 +19,17 @@ class Wall(
 ) {
 
     //region -- Properties --
-    lateinit var wallRegion: CuboidRegion
-    var lifespan: Int = HoleInTheWallConst.DEFAULT_WALL_TRAVEL_LIFESPAN //How many blocks the wall travels before it disappears.
+    var wallRegion: CuboidRegion
+    val locationOfPistons: MutableList<Location>
+
+    var lifespan: Int =
+        HoleInTheWallConst.DEFAULT_WALL_TRAVEL_LIFESPAN //How many blocks the wall travels before it disappears.
+
     val spawnLocation: Location = when (directionWallComesFrom) {
-            HoleInTheWallConst.WallDirection.SOUTH -> HoleInTheWallConst.Locations.SOUTH_WALL_SPAWN
-            HoleInTheWallConst.WallDirection.NORTH -> HoleInTheWallConst.Locations.NORTH_WALL_SPAWN
-            HoleInTheWallConst.WallDirection.WEST -> HoleInTheWallConst.Locations.WEST_WALL_SPAWN
-            HoleInTheWallConst.WallDirection.EAST -> HoleInTheWallConst.Locations.EAST_WALL_SPAWN
+        HoleInTheWallConst.WallDirection.SOUTH -> HoleInTheWallConst.Locations.SOUTH_WALL_SPAWN
+        HoleInTheWallConst.WallDirection.NORTH -> HoleInTheWallConst.Locations.NORTH_WALL_SPAWN
+        HoleInTheWallConst.WallDirection.WEST -> HoleInTheWallConst.Locations.WEST_WALL_SPAWN
+        HoleInTheWallConst.WallDirection.EAST -> HoleInTheWallConst.Locations.EAST_WALL_SPAWN
     }
     val directionWallIsFacing: String = when (directionWallComesFrom) {
         HoleInTheWallConst.WallDirection.SOUTH -> "north"
@@ -34,7 +39,8 @@ class Wall(
     }
 
     var shouldBeRemoved: Boolean = false // If the wall should be removed from the game.
-    var shouldBeStopped: Boolean = false // If the wall should be stopped from moving. It doesn't mean it should be removed from the game, but it has the possibility (for example - Psych walls)
+    var shouldBeStopped: Boolean =
+        false // If the wall should be stopped from moving. It doesn't mean it should be removed from the game, but it has the possibility (for example - Psych walls)
 
     //endregion
 
@@ -53,7 +59,36 @@ class Wall(
 
         // we also set the volume of the wall based on the spawn location and the wall direction.
         wallRegion = BuildLoader.getRotatedRegion(wallFile, spawnLocation, directionWallIsFacing)
+
+        // Get the locations of all pistons in the wall region. important that this is done after the wall region is set, since the method relies on the wall region to get the piston locations.
+        locationOfPistons = getPistonLocations()
     }
+
+    private fun getPistonLocations(): MutableList<Location> {
+        // Get the locations of all piston blocks within the bounding box of the wall
+        val locations = mutableListOf<Location>()
+
+        for (x in wallRegion.minimumPoint.x..wallRegion.maximumPoint.x) {
+            for (y in wallRegion.minimumPoint.y..wallRegion.maximumPoint.y) {
+                for (z in wallRegion.minimumPoint.z..wallRegion.maximumPoint.z) {
+                    val block = HoleInTheWallConst.Locations.WORLD.getBlockAt(x, y, z)
+                    // Only check blocks that are pistons
+                    if (block.type == Material.PISTON) {
+                        locations.add(
+                            Location(
+                                HoleInTheWallConst.Locations.WORLD,
+                                x.toDouble(),
+                                y.toDouble(),
+                                z.toDouble()
+                            )
+                        )
+                    }
+                }
+            }
+        }
+        return locations;
+    }
+
 
     /**
      * Moves the wall in the specified direction by a singular block via activating the pistons.
@@ -75,13 +110,6 @@ class Wall(
 
                 // Now we turn off the button after a short delay of X ticks in order to simulate the button being pressed which activates the piston.
 
-                object : BukkitRunnable() {
-                    override fun run() {
-                        powerableState.isPowered = false // Unpower the button
-                        state.blockData = powerableState
-                        state.update(true, true) // Update the block state
-                    }
-                }.runTaskLater(plugin, 5L)
 
             }
         }
@@ -89,55 +117,110 @@ class Wall(
         // -------------------------------------------------------------------------------------------- //
 
         if (lifespan <= 0) {
-            this.shouldBeStopped = true // If the wall has reached its lifespan, it should be stopped (it'll be determined by the game logic if it should be removed or continue living on for later).
+            this.shouldBeStopped =
+                true // If the wall has reached its lifespan, it should be stopped (it'll be determined by the game logic if it should be removed or continue living on for later).
 
             //FOR NOW - all walls that have a lifespan of 0 will be removed from the game.
             //TODO: Implement logic to determine if the wall should be removed or not.
             this.shouldBeRemoved = true
         }
 
-        //TODO: Improve complexity -since atm we have a O(n^3) for getting the pistonLoc *each* time we call move(). pistonLoc should be calc once at the start and then modified.
-        //region ----Moving Wall Logic - Press Buttons on Pistons---------------------------------------------------
+        //region ----Moving Wall Logic - add and Press Buttons on Pistons---------------------------------------------------
 
-        val minX = wallRegion.minimumPoint.x; val maxX = wallRegion.maximumPoint.x
-        val minY = wallRegion.minimumPoint.y; val maxY = wallRegion.maximumPoint.y
-        val minZ = wallRegion.minimumPoint.z; val maxZ = wallRegion.maximumPoint.z
-
-        // get the locations of all piston blocks within the bounding box of the wall
-        val pistonLocations: Sequence<Location> = sequence {
-            for (x in minX..maxX) {
-                for (y in minY..maxY) {
-                    for (z in minZ..maxZ) {
-                        val block = HoleInTheWallConst.Locations.WORLD.getBlockAt(x, y, z)
-                        // Only check blocks that are pistons
-                        if (block.type == Material.PISTON) yield(Location(HoleInTheWallConst.Locations.WORLD, x.toDouble(), y.toDouble(), z.toDouble()))
-                    }
+        // We'll iterate through the locations of all pistons. we'll add behind them a stone button and activate the buttons on their faces.
+        locationOfPistons.forEach { loc ->
+            // the direction the wall is facing is the same as the direction the piston is facing. calculate the button location based on the direction the wall is facing.
+            val buttonLocation: Location = when (directionWallIsFacing) {
+                "south" -> loc.clone().add(0.0, 0.0, -1.0)
+                "north" -> loc.clone().add(0.0, 0.0, 1.0)
+                "west" -> loc.clone().add(1.0, 0.0, 0.0)
+                "east" -> loc.clone().add(-1.0, 0.0, 0.0)
+                else -> {
+                    throw IllegalArgumentException("HITW: Invalid wall direction: $directionWallIsFacing")
                 }
             }
-        }
 
-        // The faces of the pistons that we want to activate buttons on
-        // For a given block, we need to check it's faces in the direction of the wall movement - only this way we can actually detect the buttons that are attached to the pistons.
-        val faces = listOf(BlockFace.NORTH, BlockFace.SOUTH, BlockFace.EAST, BlockFace.WEST)
 
-        // Now that we have the locations of all pistons, we can iterate through them and activate the buttons on their faces. we need to check each piston block's faces for buttons.
-        pistonLocations.forEach { loc ->
-            faces.forEach { face ->
-                // Get the face of the block
-                val side = loc.block.getRelative(face)
-                // Activate the button at this location (if it exists)
-                if (side.type == Material.STONE_BUTTON) {
-                    powerOnAndOffButton(side)
-                }
+            // Check if the block behind the piston is air, if it is not, then we can't place a button there.
+            if (buttonLocation.block.type != Material.AIR) {
+                throw IllegalStateException("HITW: expected air behind the piston, but found ${buttonLocation.block.type} at ${buttonLocation.block.location}")
             }
+
+            // Get the block behind the piston where we will place the button.
+            val buttonBlock: Block = buttonLocation.block
+            buttonBlock.type = Material.STONE_BUTTON
+
+            // now we need the button to lay flat against the piston, so we need to set the block data of the button to face *against* the piston.
+            val data = buttonBlock.blockData as org.bukkit.block.data.type.Switch
+
+            data.facing = when (directionWallIsFacing) {
+                "south" -> BlockFace.NORTH
+                "north" -> BlockFace.SOUTH
+                "west" -> BlockFace.EAST
+                "east" -> BlockFace.WEST
+                else -> throw IllegalArgumentException("Invalid wall direction: $directionWallIsFacing")
+            }
+            // set the direction of the button to face the piston.
+            buttonBlock.blockData = data
+
+            // Now we can power the button to activate the piston.
+            powerOnAndOffButton(buttonBlock)
         }
         //endregion
-        // region ---Update the bottom and top corners based on the wall direction, since in the physical world, the slime wall has moved.
+
+
+        // IMPORTANT: We need to let the pistons extend before we move the wall region, so we will wait for a lil before excecuting the entire logic of this function..
+
+        object : BukkitRunnable() {
+            override fun run() {
+                // After the pistons have been activated, we can now move the wall region and update the pistons' locations.
+                updateWallRegionAndPistons()
+            }
+        }.runTaskLater(plugin, 2L)
+    }
+
+    private fun updateWallRegionAndPistons() {
+        // region ---Update the region of the wall based on the wall direction, since in the physical world, the slime wall has moved.
+
+        //shift the wall region in the direction it is facing by 1 block.
+        when (directionWallIsFacing) {
+            "south" -> wallRegion.shift(BlockVector3.at(0, 0, 1))
+            "north" -> wallRegion.shift(BlockVector3.at(0, 0, -1))
+            "west" -> wallRegion.shift(BlockVector3.at(-1, 0, 0))
+            "east" -> wallRegion.shift(BlockVector3.at(1, 0, 0))
+        }
         //endregion
+
         //region --- Update the Pistons' location so that they match the new wall location and aren't left behind.
+
+        locationOfPistons.forEach { location ->
+            // First we need to remove the pistons from their current locations, so that they can be moved to their new locations.
+            location.block.type = Material.AIR
+
+            //then we need to update the location of the piston in the list so that it matches the new wall location.
+            when (directionWallIsFacing) {
+                "south" -> location.add(0.0, 0.0, 1.0)
+                "north" -> location.add(0.0, 0.0, -1.0)
+                "west" -> location.add(-1.0, 0.0, 0.0)
+                "east" -> location.add(1.0, 0.0, 0.0)
+            }
+
+            // Now we physically move the pistons to their new locations.
+            location.block.type = Material.PISTON
+            // Set the piston block data to face the direction the wall is facing.
+            val pistonData = location.block.blockData as org.bukkit.block.data.type.Piston
+            pistonData.facing = when (directionWallIsFacing) {
+                "south" -> BlockFace.SOUTH
+                "north" -> BlockFace.NORTH
+                "west" -> BlockFace.WEST
+                "east" -> BlockFace.EAST
+                else -> throw IllegalArgumentException("Invalid wall direction: $directionWallIsFacing")
+            }
+
+            location.block.blockData = pistonData
+        }
         //endregion
-        //region ---- After successfully moving the wall, we need to re-add the buttons that are attached to the pistons, since they will be removed when the wall is moved.
-        //endregion
+
         lifespan--
     }
 }
