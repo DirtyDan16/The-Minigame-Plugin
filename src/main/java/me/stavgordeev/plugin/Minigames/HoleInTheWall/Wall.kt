@@ -12,6 +12,7 @@ import org.bukkit.block.data.Powerable
 import org.bukkit.scheduler.BukkitRunnable
 import java.io.File
 import me.stavgordeev.plugin.MinigamePlugin.plugin
+import org.bukkit.Bukkit
 
 class Wall(
     val wallFile: File,
@@ -96,6 +97,7 @@ class Wall(
      * Each time the wall moves, its lifespan is decremented by 1.
      * If the wall has a lifespan of 0, it will be stopped, but not necessarily removed from the game. The game logic handles the logic for removing the wall.
      */
+    //fixme: If you end game while the wall is moving, it will secretely still be remembered by the game logic, and its pistons will reappear if the game is started again
     fun move() {
         fun powerOnAndOffButton(block: Block) {
             val state: BlockState = block.state
@@ -123,9 +125,16 @@ class Wall(
             //FOR NOW - all walls that have a lifespan of 0 will be removed from the game.
             //TODO: Implement logic to determine if the wall should be removed or not.
             this.shouldBeRemoved = true
+
+            // We will not continue with the logic of moving the wall, since it has reached its lifespan.
+            return
         }
 
         //region ----Moving Wall Logic - add and Press Buttons on Pistons---------------------------------------------------
+
+
+        // We'll create a list of locations where the buttons will be placed. this will be used when we will want to eventually remove the buttons.
+        val buttonLocations: MutableList<Location> = mutableListOf()
 
         // We'll iterate through the locations of all pistons. we'll add behind them a stone button and activate the buttons on their faces.
         locationOfPistons.forEach { loc ->
@@ -140,11 +149,13 @@ class Wall(
                 }
             }
 
-
             // Check if the block behind the piston is air, if it is not, then we can't place a button there.
             if (buttonLocation.block.type != Material.AIR) {
                 throw IllegalStateException("HITW: expected air behind the piston, but found ${buttonLocation.block.type} at ${buttonLocation.block.location}")
             }
+
+            // Update the button location to the list of button locations.
+            buttonLocations.add(buttonLocation)
 
             // Get the block behind the piston where we will place the button.
             val buttonBlock: Block = buttonLocation.block
@@ -171,15 +182,7 @@ class Wall(
 
         // IMPORTANT: We need to let the pistons extend before we move the wall region, so we will wait for a lil before excecuting the entire logic of this function..
 
-        object : BukkitRunnable() {
-            override fun run() {
-                // After the pistons have been activated, we can now move the wall region and update the pistons' locations.
-                updateWallRegionAndPistons()
-            }
-        }.runTaskLater(plugin, 2L)
-    }
-
-    private fun updateWallRegionAndPistons() {
+        Bukkit.getScheduler().runTaskLater(plugin, Runnable {
         // region ---Update the region of the wall based on the wall direction, since in the physical world, the slime wall has moved.
 
         //shift the wall region in the direction it is facing by 1 block.
@@ -193,6 +196,13 @@ class Wall(
 
         //region --- Update the Pistons' location so that they match the new wall location and aren't left behind.
 
+
+        // First things first, we want to remove the buttons that were placed behind the pistons, since if we will move the pistons, the buttons will be dropped as items.
+        buttonLocations.forEach { location ->
+            location.block.type = Material.AIR
+        }
+
+
         locationOfPistons.forEach { location ->
             // First we need to remove the pistons from their current locations, so that they can be moved to their new locations.
             location.block.type = Material.AIR
@@ -205,22 +215,27 @@ class Wall(
                 "east" -> location.add(1.0, 0.0, 0.0)
             }
 
-            // Now we physically move the pistons to their new locations.
-            location.block.type = Material.PISTON
-            // Set the piston block data to face the direction the wall is facing.
-            val pistonData = location.block.blockData as org.bukkit.block.data.type.Piston
-            pistonData.facing = when (directionWallIsFacing) {
-                "south" -> BlockFace.SOUTH
-                "north" -> BlockFace.NORTH
-                "west" -> BlockFace.WEST
-                "east" -> BlockFace.EAST
-                else -> throw IllegalArgumentException("Invalid wall direction: $directionWallIsFacing")
-            }
+            // If the lifespan is greater than 0, we will move the pistons to their new locations. this is to ensure that no weird scenarios happen - such as pistons being left behind when the wall is being deleted. (recall this method is inside a BukkitRunnable, so it is delayed and independent of the main thread actions).
+            if (lifespan > 0) {
+                // Now we physically move the pistons to their new locations.
+                location.block.type = Material.PISTON
+                // Set the piston block data to face the direction the wall is facing.
+                val pistonData = location.block.blockData as org.bukkit.block.data.type.Piston
+                pistonData.facing = when (directionWallIsFacing) {
+                    "south" -> BlockFace.SOUTH
+                    "north" -> BlockFace.NORTH
+                    "west" -> BlockFace.WEST
+                    "east" -> BlockFace.EAST
+                    else -> throw IllegalArgumentException("Invalid wall direction: $directionWallIsFacing")
+                }
 
-            location.block.blockData = pistonData
+                location.block.blockData = pistonData
+            }
         }
         //endregion
 
         lifespan--
+
+        } , 2L)
     }
 }
