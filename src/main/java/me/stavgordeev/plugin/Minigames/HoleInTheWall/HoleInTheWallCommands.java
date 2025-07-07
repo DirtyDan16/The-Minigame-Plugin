@@ -50,6 +50,12 @@ public class HoleInTheWallCommands extends MinigameCommandsSkeleton {
             case "nuke_area":
                 //holeInTheWall.nukeArea(holeInTheWallConst.GAME_START_LOCATION, 50);
                 break;
+            case "spawn_wall":
+                holeInTheWall.createNewWall();
+                break;
+            case "clear_walls":
+                holeInTheWall.clearWalls();
+                break;
         }
 
         return true;
@@ -58,7 +64,8 @@ public class HoleInTheWallCommands extends MinigameCommandsSkeleton {
     @Override
     protected @Nullable List<String> handleTabComplete(CommandSender sender, Command command, String label, String[] args) {
         if (args.length == 1) {
-            return List.of("start", "stop", "start_hard_mode", "resume", "end", "nuke_area");
+            return List.of("start", "stop", "start_hard_mode", "resume", "end", "nuke_area",
+                    "spawn_wall", "clear_walls");
         } else if (args.length == 2 && args[0].equalsIgnoreCase("start")) {
             return getAvailableMaps();
         }

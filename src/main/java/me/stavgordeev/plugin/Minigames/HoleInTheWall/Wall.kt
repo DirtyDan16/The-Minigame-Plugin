@@ -2,6 +2,7 @@ package me.stavgordeev.plugin.Minigames.HoleInTheWall
 
 import com.sk89q.worldedit.math.BlockVector3
 import com.sk89q.worldedit.regions.CuboidRegion
+import com.sk89q.worldedit.session.ClipboardHolder
 import me.stavgordeev.plugin.BuildLoader
 import org.bukkit.Location
 import org.bukkit.Material
@@ -9,14 +10,14 @@ import org.bukkit.block.Block
 import org.bukkit.block.BlockFace
 import org.bukkit.block.BlockState
 import org.bukkit.block.data.Powerable
-import org.bukkit.scheduler.BukkitRunnable
 import java.io.File
 import me.stavgordeev.plugin.MinigamePlugin.plugin
 import org.bukkit.Bukkit
 
 class Wall(
     val wallFile: File,
-    val directionWallComesFrom: HoleInTheWallConst.WallDirection,
+    val directionWallComesFrom: String,
+    val isFlipped: Boolean
 ) {
 
     //region -- Properties --
@@ -27,21 +28,22 @@ class Wall(
         HoleInTheWallConst.DEFAULT_WALL_TRAVEL_LIFESPAN //How many blocks the wall travels before it disappears.
 
     val spawnLocation: Location = when (directionWallComesFrom) {
-        HoleInTheWallConst.WallDirection.SOUTH -> HoleInTheWallConst.Locations.SOUTH_WALL_SPAWN
-        HoleInTheWallConst.WallDirection.NORTH -> HoleInTheWallConst.Locations.NORTH_WALL_SPAWN
-        HoleInTheWallConst.WallDirection.WEST -> HoleInTheWallConst.Locations.WEST_WALL_SPAWN
-        HoleInTheWallConst.WallDirection.EAST -> HoleInTheWallConst.Locations.EAST_WALL_SPAWN
+        "south" -> HoleInTheWallConst.Locations.SOUTH_WALL_SPAWN.clone()
+        "north" -> HoleInTheWallConst.Locations.NORTH_WALL_SPAWN.clone()
+        "west" -> HoleInTheWallConst.Locations.WEST_WALL_SPAWN.clone()
+        "east" -> HoleInTheWallConst.Locations.EAST_WALL_SPAWN.clone()
+        else -> {throw IllegalArgumentException("HITW: Invalid wall direction: $directionWallComesFrom")}
     }
     val directionWallIsFacing: String = when (directionWallComesFrom) {
-        HoleInTheWallConst.WallDirection.SOUTH -> "north"
-        HoleInTheWallConst.WallDirection.NORTH -> "south"
-        HoleInTheWallConst.WallDirection.WEST -> "east"
-        HoleInTheWallConst.WallDirection.EAST -> "west"
+        "south" -> "north"
+        "north" -> "south"
+        "west" -> "east"
+        "east" -> "west"
+        else -> {throw IllegalArgumentException("HITW: Invalid wall direction: $directionWallComesFrom")}
     }
 
     var shouldBeRemoved: Boolean = false // If the wall should be removed from the game.
-    var shouldBeStopped: Boolean =
-        false // If the wall should be stopped from moving. It doesn't mean it should be removed from the game, but it has the possibility (for example - Psych walls)
+    var shouldBeStopped: Boolean = false // If the wall should be stopped from moving. It doesn't mean it should be removed from the game, but it has the possibility (for example - Psych walls)
 
     //endregion
 
@@ -54,12 +56,28 @@ class Wall(
             throw IllegalArgumentException("Wall file does not exist: ${wallFile.path}")
         }
 
-        // Rotate the wall schematic based on the direction the wall comes from.
-        // i.e., if a wall comes from the south, we need to load it facing north.
-        BuildLoader.loadSchematicByDirection(wallFile, spawnLocation, directionWallIsFacing)
+        // We will gather the schematic as a Clipboard from the wall file.
+        // This is to easily and conveniently manipulate the schematic based on the characteristics of the wall.
 
-        // we also set the volume of the wall based on the spawn location and the wall direction.
-        wallRegion = BuildLoader.getRotatedRegion(wallFile, spawnLocation, directionWallIsFacing)
+        var holder: ClipboardHolder = BuildLoader.getClipboardHolderFromFile(wallFile,spawnLocation)
+
+        // Make the schematic face the direction it is supposed to face.
+        BuildLoader.applyDirectionToClipboardHolder(holder, directionWallIsFacing)
+
+        // mirror the schematic if the wall is flipped.
+        if (isFlipped) {
+            BuildLoader.mirrorClipboardHolder(holder, directionWallIsFacing)
+        }
+
+        // Create the wall region based on the clipboard's dimensions.
+        wallRegion = BuildLoader.getRotatedRegion(holder, spawnLocation, directionWallIsFacing)
+
+        // Now we have the schematic ready to be pasted into the world.
+        // after modifying the schematic, now we can finally paste the schematic into the world at the spawn location.
+
+        BuildLoader.loadSchematic(holder)
+
+        // -------------------------------------------------------------------------------------------- //
 
         // Get the locations of all pistons in the wall region. important that this is done after the wall region is set, since the method relies on the wall region to get the piston locations.
         locationOfPistons = getPistonLocations()
@@ -237,5 +255,27 @@ class Wall(
         lifespan--
 
         } , 2L)
+    }
+
+    fun showBlocks() {
+        fun putBlock(location: Location) {
+            location.block.type = Material.DIAMOND_BLOCK
+        }
+
+        val min: Location = Location(
+            HoleInTheWallConst.Locations.WORLD,
+            wallRegion.minimumPoint.x.toDouble(),
+            wallRegion.minimumPoint.y.toDouble(),
+            wallRegion.minimumPoint.z.toDouble()
+        )
+        val max: Location = Location(
+            HoleInTheWallConst.Locations.WORLD,
+            wallRegion.maximumPoint.x.toDouble(),
+            wallRegion.maximumPoint.y.toDouble(),
+            wallRegion.maximumPoint.z.toDouble()
+        )
+
+        putBlock(min)
+        putBlock(max)
     }
 }

@@ -5,6 +5,7 @@ import me.stavgordeev.plugin.MinigamePlugin
 import me.stavgordeev.plugin.Minigames.HoleInTheWall.HoleInTheWallConst.Timers
 import me.stavgordeev.plugin.Minigames.MinigameSkeleton
 import net.kyori.adventure.text.Component
+import net.kyori.adventure.text.format.NamedTextColor
 import net.kyori.adventure.text.logger.slf4j.ComponentLogger.logger
 import org.bukkit.Bukkit
 import org.bukkit.GameMode
@@ -12,7 +13,6 @@ import org.bukkit.entity.Player
 import org.bukkit.plugin.Plugin
 import org.bukkit.potion.PotionEffect
 import org.bukkit.potion.PotionEffectType
-import org.bukkit.scheduler.BukkitRunnable
 import org.bukkit.scheduler.BukkitTask
 import java.io.File
 import java.io.IOException
@@ -90,66 +90,60 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
         var tickCount: Int = 0 // Used to keep track of the number of ticks that have passed since the game started
 
         //Update every second the time left and the time elapsed, and keep track if certain events should trigger based on the time that has elapsed.
-        gameEvents = object : BukkitRunnable() {
-            override fun run() {
-                tickCount++
-                timeLeft-= 1/20
-                timeElapsed+= 1/20
-                if (timeLeft <= 0) {
-                    endGame(thePlayer)
-                    cancel()
-                }
+        gameEvents = Bukkit.getScheduler().runTaskTimer(plugin,
+    Runnable {
 
 
-                //region ---Check if the wall speed should be increased
-                if (wallSpeedIndex < wallSpeedUpLandmarks.size && timeElapsed >= wallSpeedUpLandmarks[wallSpeedIndex]) {
-                    wallSpeed = Timers.WALL_SPEED[++wallSpeedIndex]
-                }
-                //endregion
+        tickCount++
+        timeLeft-= 1/20
+        timeElapsed+= 1/20
+        if (timeLeft <= 0) {
+            endGame(thePlayer)
+        }
 
-                //region ---Check if the wall difficulty should be increased
-                //TODO: implement logic
-                if (curWallDifficultyInPack != HoleInTheWallConst.WallDifficulty.VERY_HARD && timeElapsed >= increaseWallDifficultyLandmarks[curWallDifficultyInPack]) {
-                    when (++curWallDifficultyInPack) {
-                        HoleInTheWallConst.WallDifficulty.MEDIUM -> {}
-                        HoleInTheWallConst.WallDifficulty.HARD -> {}
-                        HoleInTheWallConst.WallDifficulty.VERY_HARD -> {}
-                    }
-                }
-                //endregion
+        //region ---Check if the wall speed should be increased
+        if (wallSpeedIndex < wallSpeedUpLandmarks.size && timeElapsed >= wallSpeedUpLandmarks[wallSpeedIndex]) {
+            wallSpeed = Timers.WALL_SPEED[++wallSpeedIndex]
+        }
+        //endregion
 
-                //region --Check if the walls should be moved
-                // If the time elapsed is a multiple of the wall speed (which resembles how often the walls should be moved at in ticks), then move the walls
-                if (tickCount % wallSpeed == 0) {
-                    for (wall in aliveWallsList) {
-                        // Move the wall if its lifespan is greater than 0 and it should not be stopped
-                        if (!wall.shouldBeStopped) wall.move()
-                        // If the wall is no longer alive, delete it via adding it to a new list of walls to delete
-                        if (wall.shouldBeRemoved) wallsToDelete.add(wall)
-                    }
-
-                    // Delete the walls that are no longer alive
-                    wallsToDelete.forEach { deleteWall(it) }
-                     // Clear the list of walls to delete after deleting them so that we don't delete the same walls again
-                    wallsToDelete.clear()
-                }
-                //endregion
-
-                //region --Add new walls to the game
-                if (tickCount % 60 == 0) {
-                    if (aliveWallsList.size < HoleInTheWallConst.HARD_CAP_MAX_POSSIBLE_AMOUNT_OF_WALLS) { // Limit the number of walls to HARD_CAP_MAX_POSSIBLE_AMOUNT_OF_WALLS at a time
-                        val wallFile = wallPackSchematics.random() // Randomly select a wall from the wall pack
-                        val direction = HoleInTheWallConst.WallDirection.entries.toTypedArray().random() // Randomly select a direction for the wall
-
-                        val newWall = Wall(wallFile, direction) // Create a new wall
-                        aliveWallsList.add(newWall) // Add the new wall to the list of alive walls
-                    }
-                }
-                //endregion
-
-
+        //region ---Check if the wall difficulty should be increased
+        //TODO: implement logic
+        if (curWallDifficultyInPack != HoleInTheWallConst.WallDifficulty.VERY_HARD && timeElapsed >= increaseWallDifficultyLandmarks[curWallDifficultyInPack]) {
+            when (++curWallDifficultyInPack) {
+                HoleInTheWallConst.WallDifficulty.MEDIUM -> {}
+                HoleInTheWallConst.WallDifficulty.HARD -> {}
+                HoleInTheWallConst.WallDifficulty.VERY_HARD -> {}
             }
-        }.runTaskTimer(plugin, 0, 1)// 20 ticks = 1 second
+        }
+        //endregion
+
+
+        //region --Check if the walls should be moved
+        //If the time elapsed is a multiple of the wall speed (which resembles how often the walls should be moved at in ticks), then move the walls
+        if (tickCount % wallSpeed == 0) {
+            for (wall in aliveWallsList) {
+                // Move the wall if its lifespan is greater than 0 and it should not be stopped
+                if (!wall.shouldBeStopped) wall.move()
+                // If the wall is no longer alive, delete it via adding it to a new list of walls to delete
+                if (wall.shouldBeRemoved) wallsToDelete.add(wall)
+            }
+
+            // Delete the walls that are no longer alive
+            wallsToDelete.forEach { deleteWall(it) }
+             // Clear the list of walls to delete after deleting them so that we don't delete the same walls again
+            wallsToDelete.clear()
+        }
+        //endregion
+
+        //region --Add new walls to the game
+        if (aliveWallsList.size < HoleInTheWallConst.HARD_CAP_MAX_POSSIBLE_AMOUNT_OF_WALLS) { // Limit the number of walls to HARD_CAP_MAX_POSSIBLE_AMOUNT_OF_WALLS at a time
+            createNewWall()
+        }
+        //endregion
+
+        },20L,1L)
+
     }
 
     override fun prepareArea() {
@@ -208,26 +202,23 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
         }
 
         // Load the map schematic (the deco arena)
-        BuildLoader.loadSchematic(mapSchematic, HoleInTheWallConst.Locations.CENTER_OF_MAP)
+        BuildLoader.loadSchematicByFileAndLocation(mapSchematic, HoleInTheWallConst.Locations.CENTER_OF_MAP)
         // Load the platform schematic (the platform that players will stand on)
-        BuildLoader.loadSchematic(platformSchematics[0], HoleInTheWallConst.Locations.PLATFORM)
+        BuildLoader.loadSchematicByFileAndLocation(platformSchematics[2], HoleInTheWallConst.Locations.PLATFORM)
     }
 
     override fun prepareGameSetting(player: Player) {
-        super.prepareGameSetting(player)
-
-        //if we want to test the game easily, we'll set the isDevelopment flag to true, which will set the player to creative mode, and disable tp'ing
+        //if we want to test the game easily, we'll set the isDevelopment flag to true
         if (HoleInTheWallConst.isInDevelopment) {
             player.gameMode = GameMode.CREATIVE
         } else {
+            super.prepareGameSetting(player)
             player.gameMode = GameMode.ADVENTURE
             player.teleport(HoleInTheWallConst.Locations.SPAWN) // Teleport the player to the spawn point of the game
         }
 
         //give the player infinite jump boost 2.
         player.addPotionEffect(PotionEffect(PotionEffectType.JUMP_BOOST, -1, 1, false))
-
-
     }
 
     fun deleteWall(wall: Wall) {
@@ -237,6 +228,25 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
 
         if (!hasWallBeenDeleted) {
             logger().warn("HITW: Wall deletion failed, wall not found in the alive walls list")
+        }
+    }
+
+    fun createNewWall() {
+        val wallFile = wallPackSchematics.random() // Randomly select a wall from the wall pack
+        val direction = arrayOf("south", "north", "west", "east").random() // Randomly select a direction for the wall to come from
+        val shouldBeFlipped = true // Randomly decide if the wall should be flipped
+
+        val newWall = Wall(wallFile, direction,shouldBeFlipped) // Create a new wall
+        aliveWallsList.add(newWall) // Add the new wall to the list of alive walls
+
+
+        newWall.showBlocks() // Show the corners of the wall for debugging purposes
+        Bukkit.getServer().broadcast(Component.text("flipped: ${newWall.isFlipped}. DirectionWallCome: ${newWall.directionWallComesFrom}").color(NamedTextColor.DARK_AQUA))
+    }
+
+    fun clearWalls() {
+        while (aliveWallsList.isNotEmpty()) {
+            deleteWall(aliveWallsList[0])
         }
     }
 }
