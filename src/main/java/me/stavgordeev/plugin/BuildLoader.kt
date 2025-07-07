@@ -3,6 +3,8 @@ package me.stavgordeev.plugin
 import com.sk89q.worldedit.WorldEdit
 import com.sk89q.worldedit.WorldEditException
 import com.sk89q.worldedit.bukkit.BukkitAdapter
+import com.sk89q.worldedit.extent.clipboard.BlockArrayClipboard
+import com.sk89q.worldedit.extent.clipboard.Clipboard
 import com.sk89q.worldedit.extent.clipboard.io.ClipboardFormat
 import com.sk89q.worldedit.extent.clipboard.io.ClipboardFormats
 import com.sk89q.worldedit.function.operation.Operations
@@ -10,12 +12,13 @@ import com.sk89q.worldedit.math.BlockVector3
 import com.sk89q.worldedit.math.Vector3
 import com.sk89q.worldedit.math.transform.AffineTransform
 import com.sk89q.worldedit.regions.CuboidRegion
+import com.sk89q.worldedit.regions.Region
 import com.sk89q.worldedit.session.ClipboardHolder
+import com.sk89q.worldedit.world.block.BlockState
 import me.stavgordeev.plugin.MinigamePlugin.world
 import org.bukkit.Bukkit
 import org.bukkit.Location
 import org.bukkit.Material
-import org.bukkit.World
 import org.bukkit.entity.FallingBlock
 import org.bukkit.util.Vector
 import java.io.File
@@ -26,158 +29,168 @@ import kotlin.math.max
 import kotlin.math.min
 
 object BuildLoader {
-    /**
-     * Load a schematic file into the world at the specified location.
-     *
-     * @param file        The schematic file to load.
-     * @param world The world to load the schematic into.
-     * @param x           The x-coordinate to paste the schematic at.
-     * @param y           The y-coordinate to paste the schematic at.
-     * @param z           The z-coordinate to paste the schematic at.
-     */
-    @JvmStatic
-    fun loadSchematic(file: File, world: World, x: Int, y: Int, z: Int) {
-        //fixme: make sure that pasted blocks are not affected by gravity
-        val format = ClipboardFormats.findByFile(file)
-        if (format == null) {
-            Bukkit.getLogger().warning("Unsupported schematic format: " + file.getName())
-            return
-        }
+    //--region ---------------Helper methods for loading schematics -//
+    fun getClipboardHolderFromFile(file: File,location: Location?): ClipboardHolder {
+        val format: ClipboardFormat = ClipboardFormats.findByFile(file) ?: throw IllegalArgumentException("Unsupported schematic format: ${file.name}")
 
-        //Location location = new Location(world, x, y, z);
-
-        // Load the schematic. We'll wrap it in a try-resource to make sure it's closed properly.
         try {
             FileInputStream(file).use { fis ->
                 format.getReader(fis).use { reader ->
-                    val clipboard = reader.read() // Load the schematic into a clipboard.
-                    // Create an edit session and paste the schematic.
-                    val editSession = WorldEdit.getInstance()
-                        .newEditSessionBuilder()
-                        .world(BukkitAdapter.adapt(world))
-                        .build()
-                    // Create an operation to paste the schematic.
-                    val operation = ClipboardHolder(clipboard)
-                        .createPaste(editSession)
-                        .to(BlockVector3.at(x, y, z)) // Paste location
-                        .ignoreAirBlocks(false)
-                        .build()
+
+                    // Read the clipboard from the file.
+                    val clipboard: Clipboard = reader.read()
 
 
-                    //disableGravity(location,10); // Disable gravity for the blocks in the schematic.
+                    // If no location is provided, return the ClipboardHolder without applying any translation.
+                    if (location == null) return ClipboardHolder(clipboard)
 
-                    // Execute the operation.
-                    Operations.complete(operation)
-                    // Close the edit session.
-                    editSession.close()
+                    // Otherwise, read the clipboard and apply the transform based on the provided location. We are going to make a new clipboard with the same blocks, but shifted to the location provided.
 
-                    //enableGravity(location,10); // Re-enable gravity at the area where the schematic was pasted. However, the current pasted blocks will not be affected by this.
-                    Bukkit.getLogger().info("Successfully pasted schematic: " + file.getName())
+                    val newOrigin = BlockVector3.at(location.blockX, location.blockY, location.blockZ)
+                    val offset: BlockVector3 = newOrigin.subtract(clipboard.origin)
+
+                    val newRegion: Region = CuboidRegion(clipboard.region.world,
+                        clipboard.region.minimumPoint.add(offset),
+                        clipboard.region.maximumPoint.add(offset)
+                    )
+
+                    val newClipboard = BlockArrayClipboard(newRegion)
+
+                    // Copy block data into the new clipboard at the shifted positions
+                    for (pos in clipboard.region) {
+                        val shiftedPos: BlockVector3 = pos.add(offset)
+                        val block: BlockState = clipboard.getBlock(pos)
+                        newClipboard.setBlock(shiftedPos, block)
+                    }
+
+                    // Set the new origin to the location provided
+                    newClipboard.origin = newOrigin
+
+                    return ClipboardHolder(newClipboard)
                 }
             }
-        } catch (e: IOException) {
-            Bukkit.getLogger().severe("Failed to load schematic: " + e.message)
-        } catch (e: WorldEditException) {
-            Bukkit.getLogger().severe("WorldEdit error while pasting schematic: " + e.message)
+        } catch (e: Exception) {
+        val reason = when (e) {
+            is IOException -> "I/O error"
+            is WorldEditException -> "WorldEdit error"
+            else -> "Unexpected error"
+        }
+        Bukkit.getLogger().severe("Failed to load schematic (${file.name}): $reason: ${e.message}")
+        throw IllegalArgumentException("Failed to load clipboard from file: ${file.name}", e)
         }
     }
 
-    @JvmStatic
-    fun loadSchematic(schematic: File, world: World, location: Location) {
-        loadSchematic(schematic, world, location.x().toInt(), location.y().toInt(), location.z().toInt())
-    }
-
-    fun loadSchematic(schematic: File, location: Location) {
-        loadSchematic(schematic, location.getWorld(), location.x().toInt(), location.y().toInt(), location.z().toInt())
-    }
-
-    fun loadSchematicByDirection(file: File, location: Location, direction: String) {
-        val format: ClipboardFormat = ClipboardFormats.findByFile(file) ?: run {
-            Bukkit.getLogger().warning("Unsupported schematic format: " + file.getName())
-            return
-        }
-
+    fun applyDirectionToClipboardHolder(clipboardHolder: ClipboardHolder, direction: String) {
         // get the current direction the schematic is already facing, and based on that and the desired direction, calculate by how much to rotate the schematic.
         val rotation = getRotationForDirection(direction)
-        val world = location.getWorld()
-        val x = location.blockX
-        val y = location.blockY
-        val z = location.blockZ
-
-
-        // Load the schematic. We'll wrap it in a try-resource to make sure it's closed properly.
-        try {
-            format.getReader(FileInputStream(file)).use { reader ->
-                // have a ClipboardHolder to hold the clipboard to apply the rotation.
-                val holder = ClipboardHolder(reader.read())
-
-
-                // Create an edit session to paste the schematic.
-                val editSession = WorldEdit.getInstance()
-                    .newEditSessionBuilder()
-                    .world(BukkitAdapter.adapt(world))
-                    .build()
-
-                // Rotate clipboard - Convert degrees to WorldEdit's 2D Y-axis rotation
-                holder.setTransform(AffineTransform().rotateY(rotation.toDouble()))
-
-                // paste the schematic with the applied rotation that 'holder' has.
-                val operation = holder
-                    .createPaste(editSession)
-                    .to(BlockVector3.at(x, y, z)) // Paste location
-                    .ignoreAirBlocks(false)
-                    .build()
-
-                // Execute the operation.
-                Operations.complete(operation)
-                // Close the edit session.
-                editSession.close()
-                Bukkit.getLogger().info("Successfully pasted schematic: " + file.getName())
-            }
-        } catch (e: IOException) {
-            Bukkit.getLogger().severe("Failed to load schematic: " + e.message)
-        } catch (e: WorldEditException) {
-            Bukkit.getLogger().severe("WorldEdit error while pasting schematic: " + e.message)
-        }
+        // Rotate clipboard - Convert degrees to WorldEdit's 2D Y-axis rotation
+        clipboardHolder.transform = AffineTransform().rotateY(rotation.toDouble())
     }
 
-    fun getRotatedRegion(wallFile: File, pasteLocation: Location, direction: String): CuboidRegion {
-        val format = ClipboardFormats.findByFile(wallFile) ?: error("Unsupported format")
-        FileInputStream(wallFile).use { fis ->
-            format.getReader(fis).use { reader ->
-                val clipboard = reader.read()
-                val rotation = getRotationForDirection(direction).toDouble()
-                val transform = AffineTransform().rotateY(rotation)
-                val region = clipboard.region
-                val origin = clipboard.origin
-
-                // Transform all corners of the region
-                val points: List<Location> = listOf(
-                    region.minimumPoint,
-                    region.maximumPoint
-                ).map { point ->
-                    // Calculate the relative position from the origin
-                    val rel: BlockVector3 = point.subtract(origin)
-                    // Apply the rotation transform to the relative position
-                    val transformed: Vector3 = transform.apply(rel.toVector3())
-                    // Convert back to a Location relative to the paste location
-                    pasteLocation.clone().add(transformed.x, transformed.y, transformed.z)
-                }
-
-                // find the minimum and maximum coordinates from the transformed points
-                val minX = points.minOf { it.x }
-                val minY = points.minOf { it.y }
-                val minZ = points.minOf { it.z }
-                val maxX = points.maxOf { it.x }
-                val maxY = points.maxOf { it.y }
-                val maxZ = points.maxOf { it.z }
-
-                val min = BlockVector3.at(minX, minY, minZ)
-                val max = BlockVector3.at(maxX, maxY, maxZ)
-                return CuboidRegion(min, max)
+    fun mirrorClipboardHolder(clipboardHolder: ClipboardHolder, facingDirection: String) {
+        val mirrorTransform = when (facingDirection.lowercase()) {
+            "north" -> {
+                AffineTransform().scale(-1.0, 1.0, 1.0)
+                    .translate(1.0,0.0,0.0)
             }
+            "south" -> {
+                AffineTransform().scale(-1.0, 1.0, 1.0)
+                    .translate(-1.0,0.0,0.0)
+            }
+            "east" -> {
+                AffineTransform().scale(1.0, 1.0, -1.0)
+                    .translate(0.0,0.0,1.0)
+            }
+            "west" -> {
+                AffineTransform().scale(1.0, 1.0, -1.0)
+                    .translate(0.0,0.0,-1.0)
+            }
+
+            else -> throw IllegalArgumentException("Invalid facing direction: $facingDirection")
         }
+
+        clipboardHolder.transform = mirrorTransform.combine(clipboardHolder.transform)
     }
+
+    fun loadSchematic(clipboardHolder: ClipboardHolder) {
+        // Create an edit session to paste the schematic.
+        val editSession = WorldEdit.getInstance()
+            .newEditSessionBuilder()
+            .world(BukkitAdapter.adapt(world))
+            .build()
+
+        // Paste the schematic.
+        val operation = clipboardHolder
+            .createPaste(editSession)
+            .to(clipboardHolder.clipboard.origin)
+            .ignoreAirBlocks(false)
+            .build()
+
+        // Execute the operation.
+        Operations.complete(operation)
+        // Close the edit session.
+        editSession.close()
+
+        Bukkit.getLogger().info("Successfully pasted schematic at Location: ${clipboardHolder.clipboard.origin}. Minimum Point: ${clipboardHolder.clipboard.region.minimumPoint}, Maximum Point: ${clipboardHolder.clipboard.region.maximumPoint}")
+    }
+
+    fun getRotatedRegion(clipboardHolder: ClipboardHolder, pasteLocation: Location, direction: String): CuboidRegion {
+        val clipboard = clipboardHolder.clipboard
+        val rotation = getRotationForDirection(direction).toDouble()
+        val transform = AffineTransform().rotateY(rotation)
+        val region = clipboard.region
+        val origin = clipboard.origin
+
+        // Transform all corners of the region
+        val points: List<Location> = listOf(
+            region.minimumPoint,
+            region.maximumPoint
+        ).map { point ->
+            // Calculate the relative position from the origin
+            val rel: BlockVector3 = point.subtract(origin)
+            // Apply the rotation transform to the relative position
+            val transformed: Vector3 = transform.apply(rel.toVector3())
+            // Convert back to a Location relative to the paste location
+            pasteLocation.clone().add(transformed.x, transformed.y, transformed.z)
+        }
+
+        // find the minimum and maximum coordinates from the transformed points
+        val minX = points.minOf { it.x }
+        val minY = points.minOf { it.y }
+        val minZ = points.minOf { it.z }
+        val maxX = points.maxOf { it.x }
+        val maxY = points.maxOf { it.y }
+        val maxZ = points.maxOf { it.z }
+
+        val min = BlockVector3.at(minX, minY, minZ)
+        val max = BlockVector3.at(maxX, maxY, maxZ)
+        return CuboidRegion(min, max)
+    }
+
+    //endregion -------------------------------------------------------------
+
+
+    fun loadSchematicByFile(file: File) {
+        val clipboardHolder = getClipboardHolderFromFile(file, null)
+        loadSchematic(clipboardHolder)
+    }
+
+    fun loadSchematicByFileAndLocation(file: File, location: Location) {
+        val clipboardHolder = getClipboardHolderFromFile(file,location)
+        loadSchematic(clipboardHolder)
+    }
+
+    fun loadSchematicByFileAndCoordinates(file: File, x: Int, y: Int, z: Int) {
+        val location = Location(world, x.toDouble(), y.toDouble(), z.toDouble())
+        loadSchematicByFileAndLocation(file, location)
+    }
+
+    fun loadSchematicByFileAndLocationAndDirection(schematic: File, location: Location, direction: String) {
+        val clipboardHolder = getClipboardHolderFromFile(schematic,location)
+        applyDirectionToClipboardHolder(clipboardHolder, direction)
+        loadSchematic(clipboardHolder)
+    }
+
 
 
     /**

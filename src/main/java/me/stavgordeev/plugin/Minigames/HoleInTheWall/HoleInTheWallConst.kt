@@ -6,7 +6,7 @@ import org.bukkit.World
 
 
 object HoleInTheWallConst {
-    const val isInDevelopment: Boolean = true // If the plugin is in development mode, some features may be disabled or behave differently. this is so that the plugin can be tested easily without constantly tempering with the code.
+    const val isInDevelopment: Boolean = false // If the plugin is in development mode, some features may be disabled or behave differently. this is so that the plugin can be tested easily without constantly tempering with the code.
 
 
     const val PLATFORMS_FOLDER: String = "platforms"
@@ -51,7 +51,7 @@ object HoleInTheWallConst {
         SOUTH, NORTH, WEST, EAST
     }
 
-    const val HARD_CAP_MAX_POSSIBLE_AMOUNT_OF_WALLS: Int = 40
+    const val HARD_CAP_MAX_POSSIBLE_AMOUNT_OF_WALLS: Int = 1
 
     object Timers {
         const val GAME_DURATION: Int = 300 // in seconds
@@ -59,6 +59,7 @@ object HoleInTheWallConst {
         val INCREASE_WALL_DIFFICULTY_LANDMARKS: IntArray = intArrayOf(45, 90, 155) // in seconds
         val PLATFORM_SHRINKAGE_LANDMARKS: IntArray = intArrayOf(70, 155)
 
-        val WALL_SPEED: IntArray = intArrayOf(15, 12, 10, 7, 5, 4, 3, 2) //in ticks
+//        val WALL_SPEED: IntArray = intArrayOf(15, 12, 10, 7, 5, 4, 3, 2) //in ticks
+        val WALL_SPEED: IntArray = intArrayOf(4) //in ticks
     }
 }

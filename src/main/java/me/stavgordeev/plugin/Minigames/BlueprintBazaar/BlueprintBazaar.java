@@ -66,7 +66,7 @@ public class BlueprintBazaar extends MinigameSkeleton {
                 // Display new schematic
                 schematic = chooseNewBuild();
                 if (schematic != null && schematic.exists()) {
-                    BuildLoader.loadSchematic(schematic,BlueprintBazaarConst.WORLD, BlueprintBazaarConst.CENTER_BUILD_PLOT);
+                    BuildLoader.INSTANCE.loadSchematicByFileAndLocation(schematic, BlueprintBazaarConst.CENTER_BUILD_PLOT);
                     currentBorders = BuildLoader.getBuildBorders(schematic, BlueprintBazaarConst.CENTER_BUILD_PLOT);
                 }
 
@@ -145,7 +145,7 @@ public class BlueprintBazaar extends MinigameSkeleton {
             Utils.initFloor(6,6, Material.RED_WOOL,
                     new Location(BlueprintBazaarConst.WORLD, curX-3, curY-2, curZ),BlueprintBazaarConst.WORLD);
             // Load the schematic
-            BuildLoader.loadSchematic(schematic, BlueprintBazaarConst.WORLD, curX, curY, curZ);
+            BuildLoader.INSTANCE.loadSchematicByFileAndCoordinates(schematic, curX, curY, curZ);
 
             // Increment the index for the position of the next build
             index++;
@@ -195,6 +195,6 @@ public class BlueprintBazaar extends MinigameSkeleton {
 
     private void createNewBuild(File chosenBuild, Location location) {
         Bukkit.getServer().broadcast(Component.text("New building created!"));
-        BuildLoader.loadSchematic(chosenBuild, BlueprintBazaarConst.WORLD, (int) location.x(), (int) location.y(), (int) location.z());
+        BuildLoader.INSTANCE.loadSchematicByFileAndLocation(chosenBuild,location);
     }
 }
