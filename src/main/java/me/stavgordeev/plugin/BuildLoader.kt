@@ -27,6 +27,7 @@ import java.io.IOException
 import java.util.*
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.properties.Delegates
 
 object BuildLoader {
     //--region ---------------Helper methods for loading schematics -//
@@ -88,28 +89,34 @@ object BuildLoader {
     }
 
     fun mirrorClipboardHolder(clipboardHolder: ClipboardHolder, facingDirection: String) {
-        val mirrorTransform = when (facingDirection.lowercase()) {
-            "north" -> {
-                AffineTransform().scale(-1.0, 1.0, 1.0)
-                    .translate(1.0,0.0,0.0)
-            }
-            "south" -> {
-                AffineTransform().scale(-1.0, 1.0, 1.0)
-                    .translate(-1.0,0.0,0.0)
-            }
-            "east" -> {
-                AffineTransform().scale(1.0, 1.0, -1.0)
-                    .translate(0.0,0.0,1.0)
-            }
-            "west" -> {
-                AffineTransform().scale(1.0, 1.0, -1.0)
-                    .translate(0.0,0.0,-1.0)
-            }
+        val region: Region = clipboardHolder.clipboard.region
 
+        val wallLongestLength: Int = when (facingDirection.lowercase()) {
+            "north","south" -> region.width
+            "east","west" -> region.length
             else -> throw IllegalArgumentException("Invalid facing direction: $facingDirection")
         }
 
-        clipboardHolder.transform = mirrorTransform.combine(clipboardHolder.transform)
+        val mirrorTransform = when (facingDirection.lowercase()) {
+            "north", "south" -> AffineTransform().scale(-1.0, 1.0, 1.0)
+            "east", "west" -> AffineTransform().scale(1.0, 1.0, -1.0)
+            else -> throw IllegalArgumentException("Invalid facing direction: $facingDirection")
+        }
+
+        // If the wall's length is even, it doesn't have a proper center. we need to move it so when we paste it, it won't have an offset.
+        if (wallLongestLength % 2 == 0) {
+            val offsetCorrection = when (facingDirection.lowercase()) {
+                "north" -> AffineTransform().translate(1.0, 0.0, 0.0)
+                "south" -> AffineTransform().translate(-1.0, 0.0, 0.0)
+                "east" -> AffineTransform().translate(0.0, 0.0, 1.0)
+                "west" -> AffineTransform().translate(0.0, 0.0, -1.0)
+                else -> throw IllegalArgumentException("Invalid facing direction: $facingDirection")
+            }
+
+            clipboardHolder.transform = mirrorTransform.combine(offsetCorrection).combine(clipboardHolder.transform)
+        } else {
+            clipboardHolder.transform = mirrorTransform.combine(clipboardHolder.transform)
+        }
     }
 
     fun loadSchematic(clipboardHolder: ClipboardHolder) {

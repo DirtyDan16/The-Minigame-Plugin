@@ -234,14 +234,14 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
     fun createNewWall() {
         val wallFile = wallPackSchematics.random() // Randomly select a wall from the wall pack
         val direction = arrayOf("south", "north", "west", "east").random() // Randomly select a direction for the wall to come from
-        val shouldBeFlipped = true // Randomly decide if the wall should be flipped
+        val shouldBeFlipped: Boolean = Random().nextBoolean() // Randomly decide if the wall should be flipped
 
         val newWall = Wall(wallFile, direction,shouldBeFlipped) // Create a new wall
         aliveWallsList.add(newWall) // Add the new wall to the list of alive walls
 
 
-        newWall.showBlocks() // Show the corners of the wall for debugging purposes
-        Bukkit.getServer().broadcast(Component.text("flipped: ${newWall.isFlipped}. DirectionWallCome: ${newWall.directionWallComesFrom}").color(NamedTextColor.DARK_AQUA))
+        //newWall.showBlocks() // Show the corners of the wall for debugging purposes
+//        Bukkit.getServer().broadcast(Component.text("flipped: ${newWall.isFlipped}. DirectionWallCome: ${newWall.directionWallComesFrom}").color(NamedTextColor.DARK_AQUA))
     }
 
     fun clearWalls() {
