@@ -1,6 +1,7 @@
 package me.stavgordeev.plugin.Minigames.HoleInTheWall
 
 import me.stavgordeev.plugin.BuildLoader
+import me.stavgordeev.plugin.Direction
 import me.stavgordeev.plugin.MinigamePlugin
 import me.stavgordeev.plugin.Minigames.HoleInTheWall.HoleInTheWallConst.Timers
 import me.stavgordeev.plugin.Minigames.MinigameSkeleton
@@ -65,7 +66,7 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
         this.mapName = mapName
         start(player)
 
-        startRepeatingGameLoop()
+        //startRepeatingGameLoop()
     }
 
     override fun endGame(player: Player?) {
@@ -141,7 +142,7 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
         // Limit the number of walls to HARD_CAP_MAX_POSSIBLE_AMOUNT_OF_WALLS at a time
         if (aliveWallsList.size < HoleInTheWallConst.HARD_CAP_MAX_POSSIBLE_AMOUNT_OF_WALLS) {
             // We'll make a state machine. depending on the state of the game, we'll decide to spawn new walls with different behavior and traits.
-            wallSpawnerStateMachineHandler()
+            manageWallSpawning()
         }
         //endregion
 
@@ -149,10 +150,11 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
 
     }
 
-    var DirectionOfUpcomingWall: String = ""
-    private fun wallSpawnerStateMachineHandler() {
+    lateinit var DirectionOfUpcomingWall: Direction
+    private fun manageWallSpawning() {
         fun changeStateTo(newState: WallSpawnerState) {
             stateOfWallSpawner = newState
+            Bukkit.getServer().broadcast(Component.text("Wall spawner state changed to: $newState").color(NamedTextColor.GRAY))
         }
 
         when (stateOfWallSpawner) {
@@ -164,27 +166,26 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
                 ).random() // Randomly select a state to transition to
 
 
-                stateOfWallSpawner = spawningState
+                changeStateTo(spawningState)
             }
 
             WallSpawnerState.SPAWNING -> {
                 // If the spawner is spawning a wall, we can create a new wall
-                createNewWall(DirectionOfUpcomingWall)
-                stateOfWallSpawner = WallSpawnerState.IDLE
+                createNewWall(DirectionOfUpcomingWall,false)
+                changeStateTo(WallSpawnerState.IDLE)
             }
 
             WallSpawnerState.INTENDING_TO_CREATE_WALL_IN_A_DIFFERENT_DIRECTION -> {
                 // gather the direction of the last wall that was spawned
-                val directionOfLastWall = aliveWallsList.lastOrNull()?.directionWallComesFrom ?: "north"
+                val directionOfLastWall = aliveWallsList.lastOrNull()?.directionWallComesFrom ?: Direction.NORTH
 
                 // Randomly select a new direction that is different from the last wall's direction
                 //TODO: atm this will spawn walls in the adjacent directions, but we can make it so that it spawns walls in the opposite direction as well.
                 DirectionOfUpcomingWall = when (directionOfLastWall) {
-                    "south" -> arrayOf("west", "east").random()
-                    "north" -> arrayOf("west", "east").random()
-                    "west" -> arrayOf("north", "south").random()
-                    "east" -> arrayOf("north", "south").random()
-                    else -> throw IllegalStateException("Invalid direction: $directionOfLastWall")
+                    Direction.SOUTH -> arrayOf(Direction.WEST, Direction.EAST).random()
+                    Direction.NORTH -> arrayOf(Direction.WEST, Direction.EAST).random()
+                    Direction.WEST -> arrayOf(Direction.NORTH, Direction.SOUTH).random()
+                    Direction.EAST -> arrayOf(Direction.NORTH, Direction.SOUTH).random()
                 }
 
                 // the time to wait before spawning a new wall from the same direction
@@ -196,12 +197,12 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
                     waitingTime)
 
 
-                stateOfWallSpawner = WallSpawnerState.WAITING_FOR_NEXT_WALL
+                changeStateTo(WallSpawnerState.WAITING_FOR_NEXT_WALL)
             }
 
             WallSpawnerState.INTENDING_TO_CREATE_WALL_IN_THE_SAME_DIRECTION -> {
                 // gather the direction of the last wall that was spawned
-                DirectionOfUpcomingWall = aliveWallsList.lastOrNull()?.directionWallComesFrom ?: "north"
+                DirectionOfUpcomingWall = aliveWallsList.lastOrNull()?.directionWallComesFrom ?: Direction.NORTH
 
                 // the time to wait before spawning a new wall from the same direction
                 val waitingTime: Long = Timers.DELAY_BEFORE_SPAWNING_A_WALL_FROM_THE_SAME_DIRECTION.random()
@@ -212,7 +213,7 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
                     waitingTime)
 
 
-                stateOfWallSpawner = WallSpawnerState.WAITING_FOR_NEXT_WALL
+                changeStateTo(WallSpawnerState.WAITING_FOR_NEXT_WALL)
             }
 
             WallSpawnerState.WAITING_FOR_NEXT_WALL -> {
@@ -307,16 +308,12 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
     }
 
     // DO NOT MODIFY THIS FOR DEBUGGING PURPOSES
-    fun createNewWall(direction: String) {
-        if (direction !in arrayOf("south", "north", "west", "east")) {
-            throw IllegalArgumentException("Invalid direction: $direction. Must be one of: south, north, west, east.")
-        }
-
+    fun createNewWall(direction: Direction,isPsych: Boolean) {
         val wallFile = wallPackSchematics.random() // Randomly select a wall from the wall pack
         val shouldBeFlipped: Boolean = Random().nextBoolean() // Randomly decide if the wall should be flipped
 
 
-        val newWall = Wall(wallFile, direction, shouldBeFlipped) // Create a new wall
+        val newWall = Wall(wallFile, direction, shouldBeFlipped,isPsych) // Create a new wall
         aliveWallsList.add(newWall) // Add the new wall to the list of alive walls
 
     }
@@ -324,9 +321,9 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
     //MODIFY THIS FOR DEBUGGING PURPOSES
     fun createNewWall() {
         val wallFile = wallPackSchematics.random() // Randomly select a wall from the wall pack
-        val direction = arrayOf("south", "north", "west", "east").random() // Randomly select a direction for the wall to come from
+        val direction = Direction.entries.toTypedArray().random() // Randomly select a direction for the wall to come from
         val shouldBeFlipped: Boolean = Random().nextBoolean() // Randomly decide if the wall should be flipped
-        val newWall = Wall(wallFile, direction,shouldBeFlipped) // Create a new wall
+        val newWall = Wall(wallFile, direction,shouldBeFlipped,false) // Create a new wall
         aliveWallsList.add(newWall) // Add the new wall to the list of alive walls
 
 

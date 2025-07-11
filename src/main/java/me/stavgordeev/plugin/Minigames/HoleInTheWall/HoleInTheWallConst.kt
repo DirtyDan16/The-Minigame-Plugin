@@ -17,6 +17,7 @@ object HoleInTheWallConst {
     const val HARD_CAP_MAX_POSSIBLE_AMOUNT_OF_WALLS: Int = 4
 
     const val DEFAULT_WALL_TRAVEL_LIFESPAN: Int = 20 // How many blocks the wall travels before it disappears. This is the default value, but can be overridden by the wall file itself.
+    const val DEFAULT_PSYCH_WALL_TRAVEL_LIFESPAN: Int = 5 // How many blocks the psych wall travels before it stops moving, then it'll be decided if it gets deleted or not and continues to move later on. This is the default value, but can be overridden by the wall file itself.
 
     object Locations {
         val WORLD: World = getWorld("world") ?: throw IllegalStateException("World 'world' not found. Please ensure the world is loaded.")

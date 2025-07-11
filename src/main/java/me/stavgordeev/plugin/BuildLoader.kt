@@ -24,10 +24,8 @@ import org.bukkit.util.Vector
 import java.io.File
 import java.io.FileInputStream
 import java.io.IOException
-import java.util.*
 import kotlin.math.max
 import kotlin.math.min
-import kotlin.properties.Delegates
 
 object BuildLoader {
     //--region ---------------Helper methods for loading schematics -//
@@ -81,36 +79,33 @@ object BuildLoader {
         }
     }
 
-    fun applyDirectionToClipboardHolder(clipboardHolder: ClipboardHolder, direction: String) {
+    fun applyDirectionToClipboardHolder(clipboardHolder: ClipboardHolder, direction: Direction) {
         // get the current direction the schematic is already facing, and based on that and the desired direction, calculate by how much to rotate the schematic.
         val rotation = getRotationForDirection(direction)
         // Rotate clipboard - Convert degrees to WorldEdit's 2D Y-axis rotation
         clipboardHolder.transform = AffineTransform().rotateY(rotation.toDouble())
     }
 
-    fun mirrorClipboardHolder(clipboardHolder: ClipboardHolder, facingDirection: String) {
+    fun mirrorClipboardHolder(clipboardHolder: ClipboardHolder, facingDirection: Direction) {
         val region: Region = clipboardHolder.clipboard.region
 
-        val wallLongestLength: Int = when (facingDirection.lowercase()) {
-            "north","south" -> region.width
-            "east","west" -> region.length
-            else -> throw IllegalArgumentException("Invalid facing direction: $facingDirection")
+        val wallLongestLength: Int = when (facingDirection) {
+            Direction.NORTH,Direction.SOUTH -> region.width
+            Direction.EAST,Direction.WEST -> region.length
         }
 
-        val mirrorTransform = when (facingDirection.lowercase()) {
-            "north", "south" -> AffineTransform().scale(-1.0, 1.0, 1.0)
-            "east", "west" -> AffineTransform().scale(1.0, 1.0, -1.0)
-            else -> throw IllegalArgumentException("Invalid facing direction: $facingDirection")
+        val mirrorTransform = when (facingDirection) {
+            Direction.NORTH, Direction.SOUTH -> AffineTransform().scale(-1.0, 1.0, 1.0)
+            Direction.EAST, Direction.WEST -> AffineTransform().scale(1.0, 1.0, -1.0)
         }
 
         // If the wall's length is even, it doesn't have a proper center. we need to move it so when we paste it, it won't have an offset.
         if (wallLongestLength % 2 == 0) {
-            val offsetCorrection = when (facingDirection.lowercase()) {
-                "north" -> AffineTransform().translate(1.0, 0.0, 0.0)
-                "south" -> AffineTransform().translate(-1.0, 0.0, 0.0)
-                "east" -> AffineTransform().translate(0.0, 0.0, 1.0)
-                "west" -> AffineTransform().translate(0.0, 0.0, -1.0)
-                else -> throw IllegalArgumentException("Invalid facing direction: $facingDirection")
+            val offsetCorrection = when (facingDirection) {
+                Direction.NORTH -> AffineTransform().translate(1.0, 0.0, 0.0)
+                Direction.SOUTH -> AffineTransform().translate(-1.0, 0.0, 0.0)
+                Direction.EAST -> AffineTransform().translate(0.0, 0.0, 1.0)
+                Direction.WEST -> AffineTransform().translate(0.0, 0.0, -1.0)
             }
 
             clipboardHolder.transform = mirrorTransform.combine(offsetCorrection).combine(clipboardHolder.transform)
@@ -141,7 +136,7 @@ object BuildLoader {
         Bukkit.getLogger().info("Successfully pasted schematic at Location: ${clipboardHolder.clipboard.origin}. Minimum Point: ${clipboardHolder.clipboard.region.minimumPoint}, Maximum Point: ${clipboardHolder.clipboard.region.maximumPoint}")
     }
 
-    fun getRotatedRegion(clipboardHolder: ClipboardHolder, pasteLocation: Location, direction: String): CuboidRegion {
+    fun getRotatedRegion(clipboardHolder: ClipboardHolder, pasteLocation: Location, direction: Direction): CuboidRegion {
         val clipboard = clipboardHolder.clipboard
         val rotation = getRotationForDirection(direction).toDouble()
         val transform = AffineTransform().rotateY(rotation)
@@ -192,7 +187,7 @@ object BuildLoader {
         loadSchematicByFileAndLocation(file, location)
     }
 
-    fun loadSchematicByFileAndLocationAndDirection(schematic: File, location: Location, direction: String) {
+    fun loadSchematicByFileAndLocationAndDirection(schematic: File, location: Location, direction: Direction) {
         val clipboardHolder = getClipboardHolderFromFile(schematic,location)
         applyDirectionToClipboardHolder(clipboardHolder, direction)
         loadSchematic(clipboardHolder)
@@ -203,16 +198,12 @@ object BuildLoader {
     /**
      * Returns the rotation in degrees for the given direction.
      */
-    private fun getRotationForDirection(direction: String): Int {
-        return when (direction.uppercase(Locale.getDefault())) {
-            "SOUTH" -> 0
-            "EAST" -> 90
-            "NORTH" -> 180
-            "WEST" -> 270
-            else -> {
-                Bukkit.getLogger().warning("Unknown direction: " + direction + ", defaulting to NORTH (0°)")
-                0
-            }
+    private fun getRotationForDirection(direction: Direction): Int {
+        return when (direction) {
+            Direction.SOUTH -> 0
+            Direction.EAST -> 90
+            Direction.NORTH -> 180
+            Direction.WEST -> 270
         }
     }
 

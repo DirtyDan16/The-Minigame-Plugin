@@ -14,31 +14,36 @@ import java.io.File
 import me.stavgordeev.plugin.MinigamePlugin.plugin
 import org.bukkit.Bukkit
 
+import me.stavgordeev.plugin.Direction
+
 class Wall(
     val wallFile: File,
-    val directionWallComesFrom: String,
-    val isFlipped: Boolean
+    val directionWallComesFrom: Direction,
+    val isFlipped: Boolean,
+    val isPsych: Boolean
 ) {
 
     //region -- Properties --
     var wallRegion: CuboidRegion
     val locationOfPistons: MutableList<Location>
 
+    //How many blocks the wall travels before it stops moving.
     var lifespan: Int =
-        HoleInTheWallConst.DEFAULT_WALL_TRAVEL_LIFESPAN //How many blocks the wall travels before it disappears.
+        if (!isPsych) HoleInTheWallConst.DEFAULT_WALL_TRAVEL_LIFESPAN 
+        else HoleInTheWallConst.DEFAULT_PSYCH_WALL_TRAVEL_LIFESPAN 
 
     val spawnLocation: Location = when (directionWallComesFrom) {
-        "south" -> HoleInTheWallConst.Locations.SOUTH_WALL_SPAWN.clone()
-        "north" -> HoleInTheWallConst.Locations.NORTH_WALL_SPAWN.clone()
-        "west" -> HoleInTheWallConst.Locations.WEST_WALL_SPAWN.clone()
-        "east" -> HoleInTheWallConst.Locations.EAST_WALL_SPAWN.clone()
+        Direction.SOUTH -> HoleInTheWallConst.Locations.SOUTH_WALL_SPAWN.clone()
+        Direction.NORTH -> HoleInTheWallConst.Locations.NORTH_WALL_SPAWN.clone()
+        Direction.WEST -> HoleInTheWallConst.Locations.WEST_WALL_SPAWN.clone()
+        Direction.EAST -> HoleInTheWallConst.Locations.EAST_WALL_SPAWN.clone()
         else -> {throw IllegalArgumentException("HITW: Invalid wall direction: $directionWallComesFrom")}
     }
-    val directionWallIsFacing: String = when (directionWallComesFrom) {
-        "south" -> "north"
-        "north" -> "south"
-        "west" -> "east"
-        "east" -> "west"
+    val directionWallIsFacing: Direction = when (directionWallComesFrom) {
+        Direction.SOUTH -> Direction.NORTH
+        Direction.NORTH -> Direction.SOUTH
+        Direction.WEST -> Direction.EAST
+        Direction.EAST -> Direction.WEST
         else -> {throw IllegalArgumentException("HITW: Invalid wall direction: $directionWallComesFrom")}
     }
 
@@ -158,13 +163,10 @@ class Wall(
         locationOfPistons.forEach { loc ->
             // the direction the wall is facing is the same as the direction the piston is facing. calculate the button location based on the direction the wall is facing.
             val buttonLocation: Location = when (directionWallIsFacing) {
-                "south" -> loc.clone().add(0.0, 0.0, -1.0)
-                "north" -> loc.clone().add(0.0, 0.0, 1.0)
-                "west" -> loc.clone().add(1.0, 0.0, 0.0)
-                "east" -> loc.clone().add(-1.0, 0.0, 0.0)
-                else -> {
-                    throw IllegalArgumentException("HITW: Invalid wall direction: $directionWallIsFacing")
-                }
+                Direction.SOUTH -> loc.clone().add(0.0, 0.0, -1.0)
+                Direction.NORTH -> loc.clone().add(0.0, 0.0, 1.0)
+                Direction.WEST -> loc.clone().add(1.0, 0.0, 0.0)
+                Direction.EAST -> loc.clone().add(-1.0, 0.0, 0.0)
             }
 
             // Check if the block behind the piston is air, if it is not, then we can't place a button there.
@@ -183,11 +185,10 @@ class Wall(
             val data = buttonBlock.blockData as org.bukkit.block.data.type.Switch
 
             data.facing = when (directionWallIsFacing) {
-                "south" -> BlockFace.NORTH
-                "north" -> BlockFace.SOUTH
-                "west" -> BlockFace.EAST
-                "east" -> BlockFace.WEST
-                else -> throw IllegalArgumentException("Invalid wall direction: $directionWallIsFacing")
+                Direction.SOUTH -> BlockFace.NORTH
+                Direction.NORTH -> BlockFace.SOUTH
+                Direction.WEST -> BlockFace.EAST
+                Direction.EAST -> BlockFace.WEST
             }
             // set the direction of the button to face the piston.
             buttonBlock.blockData = data
@@ -205,10 +206,10 @@ class Wall(
 
         //shift the wall region in the direction it is facing by 1 block.
         when (directionWallIsFacing) {
-            "south" -> wallRegion.shift(BlockVector3.at(0, 0, 1))
-            "north" -> wallRegion.shift(BlockVector3.at(0, 0, -1))
-            "west" -> wallRegion.shift(BlockVector3.at(-1, 0, 0))
-            "east" -> wallRegion.shift(BlockVector3.at(1, 0, 0))
+            Direction.SOUTH -> wallRegion.shift(BlockVector3.at(0, 0, 1))
+            Direction.NORTH -> wallRegion.shift(BlockVector3.at(0, 0, -1))
+            Direction.WEST -> wallRegion.shift(BlockVector3.at(-1, 0, 0))
+            Direction.EAST -> wallRegion.shift(BlockVector3.at(1, 0, 0))
         }
         //endregion
 
@@ -227,10 +228,10 @@ class Wall(
 
             //then we need to update the location of the piston in the list so that it matches the new wall location.
             when (directionWallIsFacing) {
-                "south" -> location.add(0.0, 0.0, 1.0)
-                "north" -> location.add(0.0, 0.0, -1.0)
-                "west" -> location.add(-1.0, 0.0, 0.0)
-                "east" -> location.add(1.0, 0.0, 0.0)
+                Direction.SOUTH -> location.add(0.0, 0.0, 1.0)
+                Direction.NORTH -> location.add(0.0, 0.0, -1.0)
+                Direction.WEST -> location.add(-1.0, 0.0, 0.0)
+                Direction.EAST -> location.add(1.0, 0.0, 0.0)
             }
 
             // If the lifespan is greater than 0, we will move the pistons to their new locations. this is to ensure that no weird scenarios happen - such as pistons being left behind when the wall is being deleted. (recall this method is inside a BukkitRunnable, so it is delayed and independent of the main thread actions).
@@ -240,10 +241,10 @@ class Wall(
                 // Set the piston block data to face the direction the wall is facing.
                 val pistonData = location.block.blockData as org.bukkit.block.data.type.Piston
                 pistonData.facing = when (directionWallIsFacing) {
-                    "south" -> BlockFace.SOUTH
-                    "north" -> BlockFace.NORTH
-                    "west" -> BlockFace.WEST
-                    "east" -> BlockFace.EAST
+                    Direction.SOUTH -> BlockFace.SOUTH
+                    Direction.NORTH -> BlockFace.NORTH
+                    Direction.WEST -> BlockFace.WEST
+                    Direction.EAST -> BlockFace.EAST
                     else -> throw IllegalArgumentException("Invalid wall direction: $directionWallIsFacing")
                 }
 
