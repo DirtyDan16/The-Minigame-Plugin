@@ -14,10 +14,13 @@ object HoleInTheWallConst {
     const val MAP_FOLDER: String = "map"
     const val GAME_FOLDER: String = "holeinthewall"
 
-    const val HARD_CAP_MAX_POSSIBLE_AMOUNT_OF_WALLS: Int = 4
+    // regular value for this is 4.
+    const val HARD_CAP_MAX_POSSIBLE_AMOUNT_OF_WALLS: Int = 1
 
-    const val DEFAULT_WALL_TRAVEL_LIFESPAN: Int = 20 // How many blocks the wall travels before it disappears. This is the default value, but can be overridden by the wall file itself.
-    const val DEFAULT_PSYCH_WALL_TRAVEL_LIFESPAN: Int = 5 // How many blocks the psych wall travels before it stops moving, then it'll be decided if it gets deleted or not and continues to move later on. This is the default value, but can be overridden by the wall file itself.
+    const val DEFAULT_WALL_TRAVEL_LIFESPAN: Int = 25 // How many blocks the wall travels before it disappears. This is the default value, but can be overridden by the wall file itself.
+    const val DEFAULT_PSYCH_WALL_TRAVEL_LIFESPAN: Int = 6 // How many blocks the psych wall travels before it stops moving, then it'll be decided if it gets deleted or not and continues to move later on. This is the default value, but can be overridden by the wall file itself.
+
+    const val PSYCH_WALL_THAT_RETURNS_TO_MOVING_LIFESPAN: Int = DEFAULT_WALL_TRAVEL_LIFESPAN - DEFAULT_PSYCH_WALL_TRAVEL_LIFESPAN
 
     object Locations {
         val WORLD: World = getWorld("world") ?: throw IllegalStateException("World 'world' not found. Please ensure the world is loaded.")
@@ -32,7 +35,8 @@ object HoleInTheWallConst {
 
         val PLATFORM: Location = PIVOT.clone()
 
-        const val DISTANCE_OF_WALL_FROM_CENTER_OF_PLATFORM: Double = 12.0
+        // The max value this can be is 17, since after that the walls will collide with the Letters Signs
+        const val DISTANCE_OF_WALL_FROM_CENTER_OF_PLATFORM: Double = 16.0
 
         val SOUTH_WALL_SPAWN: Location = PIVOT.clone().add(1.0, 1.0, DISTANCE_OF_WALL_FROM_CENTER_OF_PLATFORM)
         val NORTH_WALL_SPAWN: Location = PIVOT.clone().add(0.0, 1.0, -DISTANCE_OF_WALL_FROM_CENTER_OF_PLATFORM - 1.0)
@@ -69,5 +73,8 @@ object HoleInTheWallConst {
 
         val DELAY_BEFORE_SPAWNING_A_WALL_FROM_THE_SAME_DIRECTION: LongRange = 25L..30L // in ticks
         val DELAY_BEFORE_SPAWNING_A_WALL_FROM_A_DIFFERENT_DIRECTION: LongRange = 70L..80L // in ticks
+
+
+        const val STOPPED_WALL_DELAY_BEFORE_ACTION_DEALT: Long = 20 // for walls that haven't entered center
     }
 }

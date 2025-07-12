@@ -18,6 +18,7 @@ import java.io.File
 import java.io.IOException
 import java.util.*
 import me.stavgordeev.plugin.Minigames.HoleInTheWall.HoleInTheWallConst.WallSpawnerState
+import me.stavgordeev.plugin.Utils.runTaskWhen
 import net.kyori.adventure.text.format.NamedTextColor
 
 class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
@@ -49,7 +50,7 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
 
     // A list of walls that are currently alive in the game. This is used to keep track of walls that are currently in play.
     // This list is updated as walls are spawned and deleted, and is tackled in the periodic() method.
-    private val aliveWallsList: MutableList<Wall> = mutableListOf()
+    val existingWallsList: MutableList<Wall> = mutableListOf()
 
     private val wallsToDelete: MutableList<Wall> = mutableListOf() // A list of walls that are to be deleted. This is used to delete walls that are no longer alive
 
@@ -66,7 +67,7 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
         this.mapName = mapName
         start(player)
 
-        //startRepeatingGameLoop()
+        startRepeatingGameLoop()
     }
 
     override fun endGame(player: Player?) {
@@ -79,18 +80,50 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
         gameEvents.cancel()
 
         // Clear the list of alive walls
-        aliveWallsList.clear()
+        existingWallsList.clear()
 
         this.nukeArea(HoleInTheWallConst.Locations.PIVOT, 60) // Clear the area around the spawn point
     }
 
     private fun startRepeatingGameLoop() {
+        fun handlePsychWallsThatRanOutOfLifespan(wall: Wall) {
+            // If the wall is a psych wall, we will keep it existing for a lil, then later decide if it should be removed or not.
+            Bukkit.getScheduler().runTaskLater(MinigamePlugin.plugin, Runnable {
+                val chosenToBeRemoved = Random().nextBoolean() // Randomly decide if the wall should be removed or not. this is to add some randomness to the game.
+
+                Bukkit.getServer().broadcast(Component.text("chosenToBeRemoved = ${chosenToBeRemoved}").color(
+            NamedTextColor.DARK_AQUA))
+
+                // If the wall is chosen to be removed, we'll remove it, otherwise, we will resume its movement after a delay.
+                if (chosenToBeRemoved) {
+                    wall.shouldBeRemoved = true
+                } else {
+                    runTaskWhen({getAliveMovingWalls().isEmpty()} ,1L, {
+                        wall.shouldBeStopped = false
+                        wall.lifespan = HoleInTheWallConst.PSYCH_WALL_THAT_RETURNS_TO_MOVING_LIFESPAN // Reset the lifespan of the wall to a lifespan that is enough for it to reach the same distance as a regular wall.
+                        Bukkit.getServer().broadcast(Component.text("life = ${wall.lifespan}").color(NamedTextColor.DARK_AQUA))
+
+                        // get rid of the identity of the wall - since psych walls should only stop themselves once, and we don't want for them to stop later on when the lifespan is 0 again
+                        wall.isPsych = false
+
+                        wall.isBeingHandled = false
+                    })
+                }
+
+            }, Timers.STOPPED_WALL_DELAY_BEFORE_ACTION_DEALT)
+        }
+
+
         if (!this.isGameRunning || isGamePaused) {
             logger().warn("HITW: Game is not running, cannot start periodic task")
             return
         }
 
         var tickCount: Int = 0 // Used to keep track of the number of ticks that have passed since the game started
+
+
+
+
 
         //Update every second the time left and the time elapsed, and keep track if certain events should trigger based on the time that has elapsed.
         gameEvents = Bukkit.getScheduler().runTaskTimer(plugin, Runnable {
@@ -120,12 +153,25 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
         //endregion
 
 
-        //region --Check if the walls should be moved
+        //region --Check if the walls should be moved, and handle if they should be stopped/deleted/resumed
+
         //If the time elapsed is a multiple of the wall speed (which resembles how often the walls should be moved at in ticks), then move the walls
         if (tickCount % wallSpeed == 0) {
-            for (wall in aliveWallsList) {
+            // Get the walls that have a lifespan that's greater than 0
+            for (wall in getAliveMovingWalls()) {
                 // Move the wall if its lifespan is greater than 0 and it should not be stopped
-                if (!wall.shouldBeStopped) wall.move()
+                wall.move()
+            }
+            for (wall in getWallsThatAreStopped()) {
+                if (!wall.isPsych) {
+                    //TODO: currently, regular walls are removed immediately, but we can make it so that they can be stopped instead of removed for various reasons
+                    wall.shouldBeRemoved = true // If the wall is not a psych wall, we will remove it immediately.
+                } else {
+                    if (!wall.isBeingHandled) {
+                        wall.isBeingHandled = true
+                        handlePsychWallsThatRanOutOfLifespan(wall)
+                    }
+                }
                 // If the wall is no longer alive, delete it via adding it to a new list of walls to delete
                 if (wall.shouldBeRemoved) wallsToDelete.add(wall)
             }
@@ -140,13 +186,15 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
         //region --Add new walls to the game
 
         // Limit the number of walls to HARD_CAP_MAX_POSSIBLE_AMOUNT_OF_WALLS at a time
-        if (aliveWallsList.size < HoleInTheWallConst.HARD_CAP_MAX_POSSIBLE_AMOUNT_OF_WALLS) {
+        if (existingWallsList.size < HoleInTheWallConst.HARD_CAP_MAX_POSSIBLE_AMOUNT_OF_WALLS) {
             // We'll make a state machine. depending on the state of the game, we'll decide to spawn new walls with different behavior and traits.
             manageWallSpawning()
         }
         //endregion
 
         }, Timers.DELAY_BEFORE_STARTING_GAME,1L)
+
+
 
     }
 
@@ -171,13 +219,14 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
 
             WallSpawnerState.SPAWNING -> {
                 // If the spawner is spawning a wall, we can create a new wall
-                createNewWall(DirectionOfUpcomingWall,false)
+                //fixme: the isPsych = random() is temp
+                createNewWall(DirectionOfUpcomingWall, Random().nextBoolean())
                 changeStateTo(WallSpawnerState.IDLE)
             }
 
             WallSpawnerState.INTENDING_TO_CREATE_WALL_IN_A_DIFFERENT_DIRECTION -> {
                 // gather the direction of the last wall that was spawned
-                val directionOfLastWall = aliveWallsList.lastOrNull()?.directionWallComesFrom ?: Direction.NORTH
+                val directionOfLastWall = existingWallsList.lastOrNull()?.directionWallComesFrom ?: Direction.NORTH
 
                 // Randomly select a new direction that is different from the last wall's direction
                 //TODO: atm this will spawn walls in the adjacent directions, but we can make it so that it spawns walls in the opposite direction as well.
@@ -202,7 +251,7 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
 
             WallSpawnerState.INTENDING_TO_CREATE_WALL_IN_THE_SAME_DIRECTION -> {
                 // gather the direction of the last wall that was spawned
-                DirectionOfUpcomingWall = aliveWallsList.lastOrNull()?.directionWallComesFrom ?: Direction.NORTH
+                DirectionOfUpcomingWall = existingWallsList.lastOrNull()?.directionWallComesFrom ?: Direction.NORTH
 
                 // the time to wait before spawning a new wall from the same direction
                 val waitingTime: Long = Timers.DELAY_BEFORE_SPAWNING_A_WALL_FROM_THE_SAME_DIRECTION.random()
@@ -300,7 +349,7 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
     fun deleteWall(wall: Wall) {
         BuildLoader.deleteSchematic(wall.wallRegion.minimumPoint, wall.wallRegion.maximumPoint)
         // delete the wall reference from the AliveWallsList
-        val hasWallBeenDeleted = aliveWallsList.remove(wall)
+        val hasWallBeenDeleted = existingWallsList.remove(wall)
 
         if (!hasWallBeenDeleted) {
             logger().warn("HITW: Wall deletion failed, wall not found in the alive walls list")
@@ -324,7 +373,7 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
         val direction = Direction.entries.toTypedArray().random() // Randomly select a direction for the wall to come from
         val shouldBeFlipped: Boolean = Random().nextBoolean() // Randomly decide if the wall should be flipped
         val newWall = Wall(wallFile, direction,shouldBeFlipped,false) // Create a new wall
-        aliveWallsList.add(newWall) // Add the new wall to the list of alive walls
+        existingWallsList.add(newWall) // Add the new wall to the list of alive walls
 
 
         newWall.showBlocks() // Show the corners of the wall for debugging purposes
@@ -333,9 +382,16 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
     }
 
     fun clearWalls() {
-        while (aliveWallsList.isNotEmpty()) {
-            deleteWall(aliveWallsList[0])
+        while (existingWallsList.isNotEmpty()) {
+            deleteWall(existingWallsList[0])
         }
+    }
+
+    fun getAliveMovingWalls(): List<Wall> {
+        return existingWallsList.filter { !it.shouldBeStopped } // Return only the walls that are currently moving
+    }
+    fun getWallsThatAreStopped(): List<Wall> {
+        return existingWallsList.filter { it.shouldBeStopped } // Return only the walls that are currently stopped
     }
 }
 

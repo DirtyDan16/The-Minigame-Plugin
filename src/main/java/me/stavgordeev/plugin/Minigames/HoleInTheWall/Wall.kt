@@ -15,12 +15,13 @@ import me.stavgordeev.plugin.MinigamePlugin.plugin
 import org.bukkit.Bukkit
 
 import me.stavgordeev.plugin.Direction
+import kotlin.random.Random
 
 class Wall(
     val wallFile: File,
     val directionWallComesFrom: Direction,
     val isFlipped: Boolean,
-    val isPsych: Boolean
+    var isPsych: Boolean
 ) {
 
     //region -- Properties --
@@ -37,19 +38,18 @@ class Wall(
         Direction.NORTH -> HoleInTheWallConst.Locations.NORTH_WALL_SPAWN.clone()
         Direction.WEST -> HoleInTheWallConst.Locations.WEST_WALL_SPAWN.clone()
         Direction.EAST -> HoleInTheWallConst.Locations.EAST_WALL_SPAWN.clone()
-        else -> {throw IllegalArgumentException("HITW: Invalid wall direction: $directionWallComesFrom")}
     }
     val directionWallIsFacing: Direction = when (directionWallComesFrom) {
         Direction.SOUTH -> Direction.NORTH
         Direction.NORTH -> Direction.SOUTH
         Direction.WEST -> Direction.EAST
         Direction.EAST -> Direction.WEST
-        else -> {throw IllegalArgumentException("HITW: Invalid wall direction: $directionWallComesFrom")}
     }
 
     var shouldBeRemoved: Boolean = false // If the wall should be removed from the game.
     var shouldBeStopped: Boolean = false // If the wall should be stopped from moving. It doesn't mean it should be removed from the game, but it has the possibility (for example - Psych walls)
 
+    var isBeingHandled: Boolean = false // a special value that serves to prevent executing logic on the wall if this is flagged. this can be general purpose, however it is heavily discouraged. its actual use is to prevent logic trying to be repeated on psych walls that are stopped.
     //endregion
 
     init {
@@ -142,12 +142,7 @@ class Wall(
         // -------------------------------------------------------------------------------------------- //
 
         if (lifespan <= 0) {
-            this.shouldBeStopped =
-                true // If the wall has reached its lifespan, it should be stopped (it'll be determined by the game logic if it should be removed or continue living on for later).
-
-            //FOR NOW - all walls that have a lifespan of 0 will be removed from the game.
-            //TODO: Implement logic to determine if the wall should be removed or not.
-            this.shouldBeRemoved = true
+            this.shouldBeStopped = true // If the wall has reached its lifespan, it should be stopped (it'll be determined by the game logic if it should be removed or continue living on for later).
 
             // We will not continue with the logic of moving the wall, since it has reached its lifespan.
             return
