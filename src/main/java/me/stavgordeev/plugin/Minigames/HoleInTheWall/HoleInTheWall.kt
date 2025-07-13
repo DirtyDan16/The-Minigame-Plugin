@@ -20,8 +20,12 @@ import java.util.*
 import me.stavgordeev.plugin.Minigames.HoleInTheWall.HoleInTheWallConst.WallSpawnerState
 import me.stavgordeev.plugin.Utils.runTaskWhen
 import net.kyori.adventure.text.format.NamedTextColor
+import me.stavgordeev.plugin.Minigames.HoleInTheWall.HoleInTheWallConst.WallSpawnerMode
+import org.bukkit.scheduler.BukkitRunnable
 
 class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
+    //region vars
+
     private lateinit var selectedMapBaseFile: File
     private lateinit var platformSchematics: Array<File> //the platform stages for a given map
     private lateinit var wallPackSchematics: Array<File> //the wallpack selected from a given map. each element features a group of files of walls, whose grouped via difficulty.
@@ -32,7 +36,7 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
     //the periodic task that runs every second to update the game state
     private lateinit var gameEvents: BukkitTask
 
-    private var stateOfWallSpawner: WallSpawnerState = WallSpawnerState.IDLE // The state of the wall spawner. This is used to determine how the walls are spawned and what behavior they have.
+
 
 
     //region ----Game Modifiers that change as the game progresses
@@ -54,20 +58,65 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
 
     private val wallsToDelete: MutableList<Wall> = mutableListOf() // A list of walls that are to be deleted. This is used to delete walls that are no longer alive
 
+    private var stateOfWallSpawner: WallSpawnerState = WallSpawnerState.IDLE // The state of the wall spawner. This is used to determine what action is being done at any given moment and to ensure that nothing unexpected or unwanted occurs with behaviors to walls.
+
+    // The current mode of spawning walls logic. A mode dictates what possible WallSpawnerStates can be done in the state machine at a given moment.
+    // The moment swaps naturally every so often to increase replayability.
+    private lateinit var wallSpawningMode: WallSpawnerMode
 
     //endregion -----------------------------------------------------------------------------------
+    //endregion
 
     @Throws(InterruptedException::class)
-    fun start(player: Player?, mapName: String) {
+    fun start(player: Player, mapName: String,wallSpawningMode: String) {
         if (isGameRunning) {
             Bukkit.getServer().broadcast(Component.text("Minigame is already running!"))
             return
         }
+        changeWallSpawningMode(wallSpawningMode)
 
         this.mapName = mapName
         start(player)
 
         startRepeatingGameLoop()
+
+
+    }
+
+    fun changeWallSpawningMode(mode: String) {
+        // This func can be called whether the game is alive or not. (for the command that uses it
+
+        fun changeMode(mode: WallSpawnerMode) {
+            wallSpawningMode = mode
+            Bukkit.getServer().broadcast(Component.text("wallSpawnerMode = $wallSpawningMode").color(
+            NamedTextColor.DARK_AQUA))
+        }
+
+        WallSpawnerMode.entries.forEach {
+            if (mode.uppercase() == it.name) {
+                changeMode(it)
+                return
+            }
+        }
+
+        if (mode == "Alternating") {
+            object : BukkitRunnable() {
+                override fun run() {
+                    if (isGamePaused || !isGameRunning) {
+                        cancel()
+                        return
+                    }
+
+                    changeMode(WallSpawnerMode.entries.random())
+                }
+            }.runTaskTimer(plugin,0L,Timers.ALTERNATING_WALL_SPAWNER_MODES_DELAY)
+
+            return
+        }
+
+        // if we got here, it means that the sender hasn't sent a proper mode to play
+        Bukkit.getServer().broadcast(Component.text("the wallSpawnerMode provided is not valid. not starting the game").color(NamedTextColor.DARK_AQUA))
+        throw IllegalArgumentException("HITW: mode provided to play as is illegal")
     }
 
     override fun endGame(player: Player?) {
@@ -82,6 +131,10 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
         // Clear the list of alive walls
         existingWallsList.clear()
 
+        // Clear the directions that were calulated for walls
+        DirectionsOfUpcomingWalls.clear()
+        DirectionOfUpcomingWall = Direction.NORTH
+
         this.nukeArea(HoleInTheWallConst.Locations.PIVOT, 60) // Clear the area around the spawn point
     }
 
@@ -89,9 +142,11 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
         fun handlePsychWallsThatRanOutOfLifespan(wall: Wall) {
             // If the wall is a psych wall, we will keep it existing for a lil, then later decide if it should be removed or not.
             Bukkit.getScheduler().runTaskLater(MinigamePlugin.plugin, Runnable {
-                val chosenToBeRemoved = Random().nextBoolean() // Randomly decide if the wall should be removed or not. this is to add some randomness to the game.
+                // Randomly decide if the wall should be removed or not.
+                // 66% - to get removed, 34% - to stay.
+                val chosenToBeRemoved = (0..100).random() <= 66
 
-                Bukkit.getServer().broadcast(Component.text("chosenToBeRemoved = ${chosenToBeRemoved}").color(
+                Bukkit.getServer().broadcast(Component.text("chosenToBeRemoved = $chosenToBeRemoved").color(
             NamedTextColor.DARK_AQUA))
 
                 // If the wall is chosen to be removed, we'll remove it, otherwise, we will resume its movement after a delay.
@@ -110,7 +165,7 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
                     })
                 }
 
-            }, Timers.STOPPED_WALL_DELAY_BEFORE_ACTION_DEALT)
+            }, Timers.STOPPED_WALL_DELAY_BEFORE_ACTION_DEALT.random())
         }
 
 
@@ -199,32 +254,87 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
     }
 
     lateinit var DirectionOfUpcomingWall: Direction
+    val DirectionsOfUpcomingWalls: MutableList<Direction> = mutableListOf()
+    //fixme goes from spawn to spawn_multiple way to fast...
     private fun manageWallSpawning() {
-        fun changeStateTo(newState: WallSpawnerState) {
-            stateOfWallSpawner = newState
-            Bukkit.getServer().broadcast(Component.text("Wall spawner state changed to: $newState").color(NamedTextColor.GRAY))
+        fun attemptChangingStateTo(wantedState: WallSpawnerState) {
+            val canTransition = when (stateOfWallSpawner) {
+                WallSpawnerState.IDLE -> {
+                    wantedState == WallSpawnerState.INTENDING_TO_CREATE_WALL_IN_A_DIFFERENT_DIRECTION ||
+                    wantedState == WallSpawnerState.INTENDING_TO_CREATE_WALL_IN_THE_SAME_DIRECTION ||
+                    wantedState == WallSpawnerState.INTENDING_TO_CREATE_MULTIPLE_WALLS_AT_ONCE
+                }
+                WallSpawnerState.INTENDING_TO_CREATE_WALL_IN_THE_SAME_DIRECTION -> {
+                    wantedState == WallSpawnerState.WAITING_A_LIL_TILL_WALL_HAS_SPACE_TO_SPAWN
+                }
+                WallSpawnerState.INTENDING_TO_CREATE_WALL_IN_A_DIFFERENT_DIRECTION -> {
+                    wantedState == WallSpawnerState.WAITING_A_LIL_TILL_WALL_HAS_SPACE_TO_SPAWN
+                }
+                WallSpawnerState.INTENDING_TO_CREATE_MULTIPLE_WALLS_AT_ONCE -> {
+                    wantedState == WallSpawnerState.WAITING_A_LIL_TILL_WALL_HAS_SPACE_TO_SPAWN
+                }
+                WallSpawnerState.WAITING_A_LIL_TILL_WALL_HAS_SPACE_TO_SPAWN -> {
+                    wantedState == WallSpawnerState.SPAWNING ||
+                    wantedState == WallSpawnerState.SPAWNING_MULTIPLE_WALLS_AT_ONCE
+                }
+                WallSpawnerState.SPAWNING_MULTIPLE_WALLS_AT_ONCE -> {
+                    wantedState == WallSpawnerState.SWAPPING_TO_IDLE_WHEN_THERE_ARE_NO_EXISTING_WALLS
+                }
+                WallSpawnerState.SPAWNING -> {
+                    wantedState == WallSpawnerState.IDLE
+                }
+                WallSpawnerState.SWAPPING_TO_IDLE_WHEN_THERE_ARE_NO_EXISTING_WALLS -> {
+                    wantedState == WallSpawnerState.IDLE
+                }
+
+                WallSpawnerState.DO_NO_ACTION -> false
+            }
+
+            if (!canTransition) throw IllegalArgumentException("The wanted wall spanwer state to transition was ${wantedState}. The current state however is is ${stateOfWallSpawner}")
+
+            stateOfWallSpawner = wantedState
+
+            Bukkit.getServer().broadcast(Component.text("Wall spawner state changed to: $stateOfWallSpawner").color(NamedTextColor.GRAY))
         }
 
+        // The State Evaluator.
         when (stateOfWallSpawner) {
-            WallSpawnerState.IDLE -> {
-                // If the spawner is idle, we can create a new wall
-                val spawningState = listOf(
-                    WallSpawnerState.INTENDING_TO_CREATE_WALL_IN_A_DIFFERENT_DIRECTION,
-                    WallSpawnerState.INTENDING_TO_CREATE_WALL_IN_THE_SAME_DIRECTION
-                ).random() // Randomly select a state to transition to
+            WallSpawnerState.IDLE -> { //region IDLE
+                val wantedState = when (wallSpawningMode) {
+                    WallSpawnerMode.WALL_CHAINER -> {
+                        // If the spawner is idle, we can create a new wall
+                        listOf(
+                            WallSpawnerState.INTENDING_TO_CREATE_WALL_IN_A_DIFFERENT_DIRECTION,
+                            WallSpawnerState.INTENDING_TO_CREATE_WALL_IN_THE_SAME_DIRECTION
+                        ).random() // Randomly select a state to transition to
+                    }
+                    WallSpawnerMode.WALLS_FROM_ALL_DIRECTIONS -> {
+                        WallSpawnerState.INTENDING_TO_CREATE_MULTIPLE_WALLS_AT_ONCE
+                    }
+//                    WallSpawnerMode.WALLS_ARE_UNPREDICTABLE -> TODO()
+//                    WallSpawnerMode.WALLS_REVERSE -> TODO()
+                }
 
+                attemptChangingStateTo(wantedState)
+            } //endregion
 
-                changeStateTo(spawningState)
-            }
+            WallSpawnerState.SPAWNING -> { //region SPAWNING
+                createNewWall(DirectionOfUpcomingWall, false)
+                attemptChangingStateTo(WallSpawnerState.IDLE)
+            } //endregion
 
-            WallSpawnerState.SPAWNING -> {
-                // If the spawner is spawning a wall, we can create a new wall
-                //fixme: the isPsych = random() is temp
-                createNewWall(DirectionOfUpcomingWall, Random().nextBoolean())
-                changeStateTo(WallSpawnerState.IDLE)
-            }
+            WallSpawnerState.SPAWNING_MULTIPLE_WALLS_AT_ONCE -> { //region SPAWNING_MULTIPLE_WALLS_AT_ONCE
+                // one wall from the wave must not be psych, while the rest will be psych. since the directions are shuffled, we can just take the first element.
+                createNewWall(DirectionsOfUpcomingWalls.removeFirst(),false)
 
-            WallSpawnerState.INTENDING_TO_CREATE_WALL_IN_A_DIFFERENT_DIRECTION -> {
+                while (!DirectionsOfUpcomingWalls.isEmpty()) {
+                    createNewWall(DirectionsOfUpcomingWalls.removeFirst(),true)
+                }
+
+                attemptChangingStateTo(WallSpawnerState.SWAPPING_TO_IDLE_WHEN_THERE_ARE_NO_EXISTING_WALLS)
+            }//endregion
+
+            WallSpawnerState.INTENDING_TO_CREATE_WALL_IN_A_DIFFERENT_DIRECTION -> { //region INTENDING_TO_CREATE_WALL_IN_A_DIFFERENT_DIRECTION
                 // gather the direction of the last wall that was spawned
                 val directionOfLastWall = existingWallsList.lastOrNull()?.directionWallComesFrom ?: Direction.NORTH
 
@@ -242,14 +352,14 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
 
                 // Schedule a task to change the state to SPAWNING after a delay
                 Bukkit.getServer().scheduler.runTaskLater(plugin,
-                    Runnable {changeStateTo(WallSpawnerState.SPAWNING)},
+                    Runnable {attemptChangingStateTo(WallSpawnerState.SPAWNING)},
                     waitingTime)
 
 
-                changeStateTo(WallSpawnerState.WAITING_FOR_NEXT_WALL)
-            }
+                attemptChangingStateTo(WallSpawnerState.WAITING_A_LIL_TILL_WALL_HAS_SPACE_TO_SPAWN)
+            } //endregion
 
-            WallSpawnerState.INTENDING_TO_CREATE_WALL_IN_THE_SAME_DIRECTION -> {
+            WallSpawnerState.INTENDING_TO_CREATE_WALL_IN_THE_SAME_DIRECTION -> {  //region INTENDING_TO_CREATE_WALL_IN_THE_SAME_DIRECTION
                 // gather the direction of the last wall that was spawned
                 DirectionOfUpcomingWall = existingWallsList.lastOrNull()?.directionWallComesFrom ?: Direction.NORTH
 
@@ -258,16 +368,39 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
 
                 // Schedule a task to change the state to SPAWNING after a delay
                 Bukkit.getServer().scheduler.runTaskLater(plugin,
-                    Runnable {changeStateTo(WallSpawnerState.SPAWNING)},
+                    Runnable {attemptChangingStateTo(WallSpawnerState.SPAWNING)},
                     waitingTime)
 
 
-                changeStateTo(WallSpawnerState.WAITING_FOR_NEXT_WALL)
-            }
+                attemptChangingStateTo(WallSpawnerState.WAITING_A_LIL_TILL_WALL_HAS_SPACE_TO_SPAWN)
+            } //endregion
 
-            WallSpawnerState.WAITING_FOR_NEXT_WALL -> {
+            WallSpawnerState.INTENDING_TO_CREATE_MULTIPLE_WALLS_AT_ONCE -> { //region INTENDING_TO_CREATE_MULTIPLE_WALLS_AT_ONCE
+                // take randomly between 2 and 4 directions from the Direction enum to add to the DirectionsOfUpcomingWalls
+                val numOfWallsToSpawn: Int = Random().nextInt(2,4+1)
 
-            }
+                val availableDirections: List<Direction> = Direction.entries.shuffled().take(numOfWallsToSpawn)
+
+                DirectionsOfUpcomingWalls.clear()
+                DirectionsOfUpcomingWalls.addAll(availableDirections)
+
+                runTaskWhen(
+                    {existingWallsList.isEmpty()},1L,{attemptChangingStateTo(WallSpawnerState.SPAWNING_MULTIPLE_WALLS_AT_ONCE)}
+                )
+
+                attemptChangingStateTo(WallSpawnerState.WAITING_A_LIL_TILL_WALL_HAS_SPACE_TO_SPAWN)
+
+            }//endregion
+
+            WallSpawnerState.WAITING_A_LIL_TILL_WALL_HAS_SPACE_TO_SPAWN -> { //region WAITING_FOR_NEXT_WALL
+
+            } //endregion
+
+            WallSpawnerState.SWAPPING_TO_IDLE_WHEN_THERE_ARE_NO_EXISTING_WALLS -> {//region WAITING_TILL_THERE_ARE_NO_EXISTING_WALLS
+                if (existingWallsList.isEmpty()) attemptChangingStateTo(WallSpawnerState.IDLE)
+            }//endregion
+
+            WallSpawnerState.DO_NO_ACTION -> {}
         }
     }
 
@@ -361,9 +494,8 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
         val wallFile = wallPackSchematics.random() // Randomly select a wall from the wall pack
         val shouldBeFlipped: Boolean = Random().nextBoolean() // Randomly decide if the wall should be flipped
 
-
         val newWall = Wall(wallFile, direction, shouldBeFlipped,isPsych) // Create a new wall
-        aliveWallsList.add(newWall) // Add the new wall to the list of alive walls
+        existingWallsList.add(newWall) // Add the new wall to the list of alive walls
 
     }
 
@@ -385,6 +517,7 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
         while (existingWallsList.isNotEmpty()) {
             deleteWall(existingWallsList[0])
         }
+        DirectionsOfUpcomingWalls.clear()
     }
 
     fun getAliveMovingWalls(): List<Wall> {
@@ -393,5 +526,7 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
     fun getWallsThatAreStopped(): List<Wall> {
         return existingWallsList.filter { it.shouldBeStopped } // Return only the walls that are currently stopped
     }
+
+
 }
 

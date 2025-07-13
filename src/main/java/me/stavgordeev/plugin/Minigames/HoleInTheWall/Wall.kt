@@ -24,6 +24,9 @@ class Wall(
     var isPsych: Boolean
 ) {
 
+    constructor(wallFile: File,directionWallComesFrom: Direction) : this(wallFile,directionWallComesFrom,false,false)
+
+
     //region -- Properties --
     var wallRegion: CuboidRegion
     val locationOfPistons: MutableList<Location>

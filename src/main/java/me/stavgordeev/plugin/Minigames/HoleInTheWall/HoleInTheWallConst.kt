@@ -15,7 +15,7 @@ object HoleInTheWallConst {
     const val GAME_FOLDER: String = "holeinthewall"
 
     // regular value for this is 4.
-    const val HARD_CAP_MAX_POSSIBLE_AMOUNT_OF_WALLS: Int = 1
+    const val HARD_CAP_MAX_POSSIBLE_AMOUNT_OF_WALLS: Int = 6
 
     const val DEFAULT_WALL_TRAVEL_LIFESPAN: Int = 25 // How many blocks the wall travels before it disappears. This is the default value, but can be overridden by the wall file itself.
     const val DEFAULT_PSYCH_WALL_TRAVEL_LIFESPAN: Int = 6 // How many blocks the psych wall travels before it stops moving, then it'll be decided if it gets deleted or not and continues to move later on. This is the default value, but can be overridden by the wall file itself.
@@ -52,11 +52,30 @@ object HoleInTheWallConst {
     }
 
     enum class WallSpawnerState {
+        DO_NO_ACTION,
         IDLE, // The spawner is not doing anything
         SPAWNING, // The spawner is currently spawning a wall
         INTENDING_TO_CREATE_WALL_IN_THE_SAME_DIRECTION, // The spawner is intending to create a wall in the same direction as the last wall
         INTENDING_TO_CREATE_WALL_IN_A_DIFFERENT_DIRECTION, // The spawner is intending to create a wall in a different direction than the last wall
-        WAITING_FOR_NEXT_WALL, // The spawner is waiting for the next wall to spawn
+        WAITING_A_LIL_TILL_WALL_HAS_SPACE_TO_SPAWN, // The spawner is waiting for the next wall to spawn
+        SWAPPING_TO_IDLE_WHEN_THERE_ARE_NO_EXISTING_WALLS,
+        INTENDING_TO_CREATE_MULTIPLE_WALLS_AT_ONCE,
+        SPAWNING_MULTIPLE_WALLS_AT_ONCE
+    }
+
+    enum class WallSpawnerMode {
+        WALL_CHAINER,
+        WALLS_FROM_ALL_DIRECTIONS;
+       // WALLS_ARE_UNPREDICTABLE,
+       // WALLS_REVERSE;
+
+        companion object {
+            fun getModesAsAStringList(): List<String> {
+                val modeNames: MutableList<String> = entries.map { it.name }.toMutableList()
+                modeNames.add("Alternating")
+                return modeNames
+            }
+        }
     }
 
     object Timers {
@@ -75,6 +94,9 @@ object HoleInTheWallConst {
         val DELAY_BEFORE_SPAWNING_A_WALL_FROM_A_DIFFERENT_DIRECTION: LongRange = 70L..80L // in ticks
 
 
-        const val STOPPED_WALL_DELAY_BEFORE_ACTION_DEALT: Long = 20 // for walls that haven't entered center
+        val STOPPED_WALL_DELAY_BEFORE_ACTION_DEALT: LongRange = 1L*20..2L*20 // for walls that haven't entered center
+
+
+        const val ALTERNATING_WALL_SPAWNER_MODES_DELAY: Long = 15*20
     }
 }
