@@ -5,7 +5,7 @@ import org.bukkit.Location
 import org.bukkit.World
 
 
-object HoleInTheWallConst {
+object HITWConst {
     const val isInDevelopment: Boolean = false // If the plugin is in development mode, some features may be disabled or behave differently. this is so that the plugin can be tested easily without constantly tempering with the code.
 
 
@@ -20,6 +20,7 @@ object HoleInTheWallConst {
     const val DEFAULT_WALL_TRAVEL_LIFESPAN: Int = 25 // How many blocks the wall travels before it disappears. This is the default value, but can be overridden by the wall file itself.
     const val DEFAULT_PSYCH_WALL_TRAVEL_LIFESPAN: Int = 6 // How many blocks the psych wall travels before it stops moving, then it'll be decided if it gets deleted or not and continues to move later on. This is the default value, but can be overridden by the wall file itself.
 
+    const val MINIMUM_SPACE_BETWEEN_2_WALLS_FROM_THE_SAME_DIRECTION = 6
     const val PSYCH_WALL_THAT_RETURNS_TO_MOVING_LIFESPAN: Int = DEFAULT_WALL_TRAVEL_LIFESPAN - DEFAULT_PSYCH_WALL_TRAVEL_LIFESPAN
 
     object Locations {
@@ -54,12 +55,11 @@ object HoleInTheWallConst {
     enum class WallSpawnerState {
         DO_NO_ACTION,
         IDLE, // The spawner is not doing anything
-        SPAWNING, // The spawner is currently spawning a wall
-        INTENDING_TO_CREATE_WALL_IN_THE_SAME_DIRECTION, // The spawner is intending to create a wall in the same direction as the last wall
-        INTENDING_TO_CREATE_WALL_IN_A_DIFFERENT_DIRECTION, // The spawner is intending to create a wall in a different direction than the last wall
+        INTENDING_TO_CREATE_1_WALL,
         WAITING_A_LIL_TILL_WALL_HAS_SPACE_TO_SPAWN, // The spawner is waiting for the next wall to spawn
         SWAPPING_TO_IDLE_WHEN_THERE_ARE_NO_EXISTING_WALLS,
         INTENDING_TO_CREATE_MULTIPLE_WALLS_AT_ONCE,
+        SPAWNING, // The spawner is currently spawning a wall
         SPAWNING_MULTIPLE_WALLS_AT_ONCE
     }
 
@@ -90,8 +90,9 @@ object HoleInTheWallConst {
         val WALL_SPEED: IntArray = intArrayOf(4) //in ticks
 
 
-        val DELAY_BEFORE_SPAWNING_A_WALL_FROM_THE_SAME_DIRECTION: LongRange = 25L..30L // in ticks
-        val DELAY_BEFORE_SPAWNING_A_WALL_FROM_A_DIFFERENT_DIRECTION: LongRange = 70L..80L // in ticks
+        // *after the game knows that the wall can safely spawn in that direction, we'll make it wait extra for randomness
+        val DELAY_BEFORE_SPAWNING_A_WALL_FROM_THE_SAME_DIRECTION: LongRange = 0L..12L // in ticks
+        val DELAY_BEFORE_SPAWNING_A_WALL_FROM_A_DIFFERENT_DIRECTION: LongRange = 0L..5L // in ticks
 
 
         val STOPPED_WALL_DELAY_BEFORE_ACTION_DEALT: LongRange = 1L*20..2L*20 // for walls that haven't entered center

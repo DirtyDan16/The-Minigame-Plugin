@@ -58,12 +58,12 @@ class HoleInTheWallCommands(private val holeInTheWall: HoleInTheWall) : Minigame
             2 -> {
                 return when (args[0]) {
                     "start" -> availableMaps
-                    "change_wall_spawning_mode_to" -> HoleInTheWallConst.WallSpawnerMode.getModesAsAStringList()
+                    "change_wall_spawning_mode_to" -> HITWConst.WallSpawnerMode.getModesAsAStringList()
                     else -> listOf()
                 }
             }
             3 -> return when (args[0]) {
-                "start" -> HoleInTheWallConst.WallSpawnerMode.getModesAsAStringList()
+                "start" -> HITWConst.WallSpawnerMode.getModesAsAStringList()
                 else -> listOf()
             }
             else -> return listOf()

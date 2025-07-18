@@ -15,7 +15,6 @@ import me.stavgordeev.plugin.MinigamePlugin.plugin
 import org.bukkit.Bukkit
 
 import me.stavgordeev.plugin.Direction
-import kotlin.random.Random
 
 class Wall(
     val wallFile: File,
@@ -32,15 +31,20 @@ class Wall(
     val locationOfPistons: MutableList<Location>
 
     //How many blocks the wall travels before it stops moving.
-    var lifespan: Int =
-        if (!isPsych) HoleInTheWallConst.DEFAULT_WALL_TRAVEL_LIFESPAN 
-        else HoleInTheWallConst.DEFAULT_PSYCH_WALL_TRAVEL_LIFESPAN 
+    val initialLifespan =
+        if (!isPsych) HITWConst.DEFAULT_WALL_TRAVEL_LIFESPAN
+        else HITWConst.DEFAULT_PSYCH_WALL_TRAVEL_LIFESPAN
+
+    var lifespanRemaining = initialLifespan
+    var lifespanTraveled = 0
+
+    val minimumLifespanTraveledWhereWallsCanSpawnBehindIt = HITWConst.MINIMUM_SPACE_BETWEEN_2_WALLS_FROM_THE_SAME_DIRECTION
 
     val spawnLocation: Location = when (directionWallComesFrom) {
-        Direction.SOUTH -> HoleInTheWallConst.Locations.SOUTH_WALL_SPAWN.clone()
-        Direction.NORTH -> HoleInTheWallConst.Locations.NORTH_WALL_SPAWN.clone()
-        Direction.WEST -> HoleInTheWallConst.Locations.WEST_WALL_SPAWN.clone()
-        Direction.EAST -> HoleInTheWallConst.Locations.EAST_WALL_SPAWN.clone()
+        Direction.SOUTH -> HITWConst.Locations.SOUTH_WALL_SPAWN.clone()
+        Direction.NORTH -> HITWConst.Locations.NORTH_WALL_SPAWN.clone()
+        Direction.WEST -> HITWConst.Locations.WEST_WALL_SPAWN.clone()
+        Direction.EAST -> HITWConst.Locations.EAST_WALL_SPAWN.clone()
     }
     val directionWallIsFacing: Direction = when (directionWallComesFrom) {
         Direction.SOUTH -> Direction.NORTH
@@ -98,12 +102,12 @@ class Wall(
         for (x in wallRegion.minimumPoint.x..wallRegion.maximumPoint.x) {
             for (y in wallRegion.minimumPoint.y..wallRegion.maximumPoint.y) {
                 for (z in wallRegion.minimumPoint.z..wallRegion.maximumPoint.z) {
-                    val block = HoleInTheWallConst.Locations.WORLD.getBlockAt(x, y, z)
+                    val block = HITWConst.Locations.WORLD.getBlockAt(x, y, z)
                     // Only check blocks that are pistons
                     if (block.type == Material.PISTON) {
                         locations.add(
                             Location(
-                                HoleInTheWallConst.Locations.WORLD,
+                                HITWConst.Locations.WORLD,
                                 x.toDouble(),
                                 y.toDouble(),
                                 z.toDouble()
@@ -114,6 +118,12 @@ class Wall(
             }
         }
         return locations;
+    }
+
+
+    private fun updateLifespans() {
+        lifespanRemaining--
+        lifespanTraveled++
     }
 
 
@@ -144,7 +154,7 @@ class Wall(
 
         // -------------------------------------------------------------------------------------------- //
 
-        if (lifespan <= 0) {
+        if (lifespanRemaining <= 0) {
             this.shouldBeStopped = true // If the wall has reached its lifespan, it should be stopped (it'll be determined by the game logic if it should be removed or continue living on for later).
 
             // We will not continue with the logic of moving the wall, since it has reached its lifespan.
@@ -233,7 +243,7 @@ class Wall(
             }
 
             // If the lifespan is greater than 0, we will move the pistons to their new locations. this is to ensure that no weird scenarios happen - such as pistons being left behind when the wall is being deleted. (recall this method is inside a BukkitRunnable, so it is delayed and independent of the main thread actions).
-            if (lifespan > 0) {
+            if (lifespanRemaining > 0) {
                 // Now we physically move the pistons to their new locations.
                 location.block.type = Material.PISTON
                 // Set the piston block data to face the direction the wall is facing.
@@ -243,7 +253,6 @@ class Wall(
                     Direction.NORTH -> BlockFace.NORTH
                     Direction.WEST -> BlockFace.WEST
                     Direction.EAST -> BlockFace.EAST
-                    else -> throw IllegalArgumentException("Invalid wall direction: $directionWallIsFacing")
                 }
 
                 location.block.blockData = pistonData
@@ -251,7 +260,7 @@ class Wall(
         }
         //endregion
 
-        lifespan--
+        updateLifespans()
 
         } , 2L)
     }
@@ -262,13 +271,13 @@ class Wall(
         }
 
         val min: Location = Location(
-            HoleInTheWallConst.Locations.WORLD,
+            HITWConst.Locations.WORLD,
             wallRegion.minimumPoint.x.toDouble(),
             wallRegion.minimumPoint.y.toDouble(),
             wallRegion.minimumPoint.z.toDouble()
         )
         val max: Location = Location(
-            HoleInTheWallConst.Locations.WORLD,
+            HITWConst.Locations.WORLD,
             wallRegion.maximumPoint.x.toDouble(),
             wallRegion.maximumPoint.y.toDouble(),
             wallRegion.maximumPoint.z.toDouble()

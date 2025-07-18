@@ -9,20 +9,57 @@ import org.bukkit.scheduler.BukkitRunnable
 
 enum class Direction {
     NORTH, SOUTH, EAST, WEST;
+
+    fun getClockwise(): Direction {
+        return when (this) {
+            Direction.NORTH -> EAST
+            Direction.SOUTH -> WEST
+            Direction.EAST -> SOUTH
+            Direction.WEST -> NORTH
+        }
+    }
+
+    fun getCounterClockwise(): Direction {
+        return when (this) {
+            Direction.NORTH -> WEST
+            Direction.SOUTH -> EAST
+            Direction.EAST -> NORTH
+            Direction.WEST -> SOUTH
+        }
+    }
+
+    fun getOpposite(): Direction {
+        return when (this) {
+            Direction.NORTH -> SOUTH
+            Direction.SOUTH -> NORTH
+            Direction.EAST -> WEST
+            Direction.WEST -> EAST
+        }
+    }
 }
 
 object Utils {
 
-    fun runTaskWhen(
-        condition: () -> Boolean,
-        checkInterval: Long = 1L, //in ticks
-        action: Runnable
-    ) {
+    fun activateTaskAfterConditionIsMet( checkInterval: Long = 1L, condition: () -> Boolean, action: Runnable) {
         object : BukkitRunnable() {
             override fun run() {
                 if (condition()) {
                     action.run()
-                    cancel() // Stop checking once condition is met
+                    // Stop checking once the condition is met
+                    cancel()
+                }
+            }
+        }.runTaskTimer(plugin, 0L, checkInterval)
+    }
+
+    fun activateTaskAfterConditionIsMet(delayToWaitAfterConditionIsMet: Long, checkInterval: Long = 1L,condition: () -> Boolean,action: Runnable) {
+        object : BukkitRunnable() {
+            override fun run() {
+                if (condition()) {
+                    // Delay the action to actually happen after the specified delay from delayToWaitAfterConditionIsMet
+                    Bukkit.getScheduler().runTaskLater(plugin, action,delayToWaitAfterConditionIsMet)
+                    // Stop checking once the condition is met
+                    cancel()
                 }
             }
         }.runTaskTimer(plugin, 0L, checkInterval)
