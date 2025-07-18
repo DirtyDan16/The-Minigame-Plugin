@@ -14,7 +14,7 @@ object HITWConst {
     const val MAP_FOLDER: String = "map"
     const val GAME_FOLDER: String = "holeinthewall"
 
-    // regular value for this is 4.
+    // regular value for this is 6.
     const val HARD_CAP_MAX_POSSIBLE_AMOUNT_OF_WALLS: Int = 6
 
     const val DEFAULT_WALL_TRAVEL_LIFESPAN: Int = 25 // How many blocks the wall travels before it disappears. This is the default value, but can be overridden by the wall file itself.
@@ -66,6 +66,7 @@ object HITWConst {
     enum class WallSpawnerMode {
         WALL_CHAINER,
         WALLS_FROM_ALL_DIRECTIONS;
+        //WALLS_FROM_2_OPPOSITE_DIRECTIONS;
        // WALLS_ARE_UNPREDICTABLE,
        // WALLS_REVERSE;
 

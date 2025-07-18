@@ -28,7 +28,7 @@ class Wall(
 
     //region -- Properties --
     var wallRegion: CuboidRegion
-    val locationOfPistons: MutableList<Location>
+    lateinit var locationOfPistons: MutableList<Location>
 
     //How many blocks the wall travels before it stops moving.
     val initialLifespan =
@@ -59,6 +59,8 @@ class Wall(
     var isBeingHandled: Boolean = false // a special value that serves to prevent executing logic on the wall if this is flagged. this can be general purpose, however it is heavily discouraged. its actual use is to prevent logic trying to be repeated on psych walls that are stopped.
     //endregion
 
+    var holder: ClipboardHolder // This is the ClipboardHolder that will be used to hold the schematic of the wall.
+
     init {
         // Load the wall file and validate its contents if necessary
         if (wallFile.isDirectory) {
@@ -71,7 +73,7 @@ class Wall(
         // We will gather the schematic as a Clipboard from the wall file.
         // This is to easily and conveniently manipulate the schematic based on the characteristics of the wall.
 
-        var holder: ClipboardHolder = BuildLoader.getClipboardHolderFromFile(wallFile,spawnLocation)
+        holder = BuildLoader.getClipboardHolderFromFile(wallFile,spawnLocation)
 
         // Make the schematic face the direction it is supposed to face.
         BuildLoader.applyDirectionToClipboardHolder(holder, directionWallIsFacing)
@@ -84,16 +86,20 @@ class Wall(
         // Create the wall region based on the clipboard's dimensions.
         wallRegion = BuildLoader.getRotatedRegion(holder, spawnLocation, directionWallIsFacing)
 
-        // Now we have the schematic ready to be pasted into the world.
-        // after modifying the schematic, now we can finally paste the schematic into the world at the spawn location.
-
-        BuildLoader.loadSchematic(holder)
-
         // -------------------------------------------------------------------------------------------- //
 
-        // Get the locations of all pistons in the wall region. important that this is done after the wall region is set, since the method relies on the wall region to get the piston locations.
+
+    }
+
+    fun makeWallExist() {
+        // Now we have the schematic ready to be pasted into the world.
+        // after modifying the schematic, now we can finally paste the schematic into the world at the spawn location.
+        BuildLoader.loadSchematic(holder)
+
+        // Get the locations of all pistons in the wall region. important that this is done after the wall region is set (which it is only after loading the schem), since the method relies on the wall region to get the piston locations.
         locationOfPistons = getPistonLocations()
     }
+
 
     private fun getPistonLocations(): MutableList<Location> {
         // Get the locations of all piston blocks within the bounding box of the wall

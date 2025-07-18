@@ -22,6 +22,7 @@ import me.stavgordeev.plugin.Utils.activateTaskAfterConditionIsMet
 import net.kyori.adventure.text.format.NamedTextColor
 import me.stavgordeev.plugin.Minigames.HoleInTheWall.HITWConst.WallSpawnerMode
 import org.bukkit.scheduler.BukkitRunnable
+import kotlin.properties.Delegates
 
 class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
     //region vars
@@ -133,9 +134,8 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
         // Clear the list of alive walls
         existingWallsList.clear()
 
-        // Clear the directions that were calulated for walls
-        directionsOfUpcomingWalls.clear()
-        directionOfUpcomingWall = Direction.NORTH
+        // Clear the walls that were planned to be pasted into existence
+        upcomingWalls.clear()
 
         stateOfWallSpawner = WallSpawnerState.IDLE // Reset the state of the wall spawner to IDLE
 
@@ -256,14 +256,15 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
 
     }
 
-    lateinit var directionOfUpcomingWall: Direction
-    val directionsOfUpcomingWalls: MutableList<Direction> = mutableListOf()
+    val upcomingWalls: MutableList<Wall> = mutableListOf()// A list of walls that are upcoming to be spawned. This is used to keep track of walls that are about to be spawned in the game.
 
     private fun manageWallSpawning() {
         //TODO: the logic currently is very dull and incomplete
         fun isSafeToSpawnWall() : Boolean {
 
             val directionsExistingWallsHave: Set<Direction> = existingWallsList.map { it.directionWallComesFrom }.toSet()
+            val directionOfUpcomingWall: Direction = upcomingWalls[0].directionWallComesFrom
+
             val numOfDirectionsExistingWallsHave = directionsExistingWallsHave.size
 
             return when (numOfDirectionsExistingWallsHave) {
@@ -341,7 +342,9 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
                     WallSpawnerMode.WALL_CHAINER -> {
                         // if we don't have any walls in the arena, we can add one immediately, otherwise we'll decide where and when to add it via the bridger states
                         if (existingWallsList.isEmpty()) {
-                            directionOfUpcomingWall = Direction.entries.random()
+                            // Create a new wall with the a random direction and add it to the upcoming walls list
+                            createNewWall(Direction.entries.random(), false)
+
                             WallSpawnerState.SPAWNING
                         } else {
                             WallSpawnerState.INTENDING_TO_CREATE_1_WALL
@@ -352,31 +355,30 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
                     WallSpawnerMode.WALLS_FROM_ALL_DIRECTIONS -> {
                         WallSpawnerState.INTENDING_TO_CREATE_MULTIPLE_WALLS_AT_ONCE
                     }
+                    //WallSpawnerMode.WALLS_FROM_2_OPPOSITE_DIRECTIONS -> TODO()
 //                    WallSpawnerMode.WALLS_ARE_UNPREDICTABLE -> TODO()
 //                    WallSpawnerMode.WALLS_REVERSE -> TODO()
+
                 }
 
                 attemptChangingStateTo(wantedState)
             } //endregion
 
             WallSpawnerState.SPAWNING -> { //region SPAWNING
-                createNewWall(directionOfUpcomingWall, false)
+                bringWallToLife(upcomingWalls[0]) // Make the wall exist in the world by loading the schematic
+                upcomingWalls.clear()
+
                 attemptChangingStateTo(WallSpawnerState.IDLE)
             } //endregion
 
             WallSpawnerState.SPAWNING_MULTIPLE_WALLS_AT_ONCE -> { //region SPAWNING_MULTIPLE_WALLS_AT_ONCE
-                // one wall from the wave must not be psych, while the rest will be psych. since the directions are shuffled, we can just take the first element.
-                createNewWall(directionsOfUpcomingWalls.removeFirst(),false)
-
-                // now make the remaining walls to be psych
-                directionsOfUpcomingWalls.forEach { createNewWall(it, true) }
-                directionsOfUpcomingWalls.clear()
+                upcomingWalls.forEach { wall -> bringWallToLife(wall) }
+                upcomingWalls.clear()
 
                 attemptChangingStateTo(WallSpawnerState.SWAPPING_TO_IDLE_WHEN_THERE_ARE_NO_EXISTING_WALLS)
             }//endregion
 
             WallSpawnerState.INTENDING_TO_CREATE_1_WALL -> {  //region INTENDING_TO_CREATE_1_WALL
-
                 val weightsOfDirections = mutableMapOf<Direction, Int>() // A map to hold the weights of each direction
 
                 // gather the direction of the last wall that was spawned
@@ -391,12 +393,12 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
                         weightsOfDirections[directionOfLastWall.getOpposite()] = 1
                         weightsOfDirections[directionOfLastWall.getCounterClockwise()] = 1
                     }
-                    else -> throw IllegalArgumentException("HITW: Invalid wall spawning mode to be at for this state: $wallSpawningMode")
+                    else -> throw IllegalArgumentException("HITW: Invalid wall spawning mode: $wallSpawningMode to be at for this state: $stateOfWallSpawner")
                 }
 
 
                 // Select a direction based on the weights
-                directionOfUpcomingWall = run {
+                val directionOfUpcomingWall = run {
                     val totalWeight: Int = weightsOfDirections.values.sum()
 
                     val randomValue: Int = Random().nextInt(totalWeight)
@@ -410,29 +412,51 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
                     throw IllegalStateException("HITW: No direction selected, something went wrong with the weights")
                 }
 
+                createNewWall(directionOfUpcomingWall, false) // Create a new wall with the selected direction and add it to the upcoming walls list
+
                 activateTaskAfterConditionIsMet(
                     1L,
                     {isSafeToSpawnWall()},
                     {attemptChangingStateTo(WallSpawnerState.SPAWNING)}
                 )
 
-
                 attemptChangingStateTo(WallSpawnerState.WAITING_A_LIL_TILL_WALL_HAS_SPACE_TO_SPAWN)
             } //endregion
 
             WallSpawnerState.INTENDING_TO_CREATE_MULTIPLE_WALLS_AT_ONCE -> { //region INTENDING_TO_CREATE_MULTIPLE_WALLS_AT_ONCE
-                // take randomly between 2 and 4 directions from the Direction enum to add to the DirectionsOfUpcomingWalls
-                val numOfWallsToSpawn: Int = Random().nextInt(2,4+1)
+                var numOfWallsToSpawn: Int;
+                lateinit var availableDirections: MutableList<Direction>
 
-                val availableDirections: List<Direction> = Direction.entries.shuffled().take(numOfWallsToSpawn)
+                when (wallSpawningMode) {
+                    WallSpawnerMode.WALLS_FROM_ALL_DIRECTIONS -> {
+                        // take randomly between 2 and 4 directions from the Direction enum to add to the DirectionsOfUpcomingWalls
+                        numOfWallsToSpawn = Random().nextInt(2,4+1)
 
-                directionsOfUpcomingWalls.addAll(availableDirections)
+                        availableDirections = Direction.entries.shuffled().take(numOfWallsToSpawn).toMutableList()
 
-                activateTaskAfterConditionIsMet(
-                    1L,
-                    {existingWallsList.isEmpty()},
-                    {attemptChangingStateTo(WallSpawnerState.SPAWNING_MULTIPLE_WALLS_AT_ONCE)}
-                )
+                        // one wall from the wave must not be psych, while the rest will be psych. we'll take the first direction from the directionsOfUpcomingWalls and spawn it as a regular wall. (states that lead to this state may have shuffled the directions)
+                        createNewWall(availableDirections.removeFirst(),false)
+                        // now make the remaining walls to be psych
+                        availableDirections.forEach { direction ->
+                            // Create a new wall with the selected direction and add it to the upcoming walls list
+                            createNewWall(direction, true)
+                        }
+
+                        activateTaskAfterConditionIsMet(
+                            1L,
+                            {existingWallsList.isEmpty()},
+                            {attemptChangingStateTo(WallSpawnerState.SPAWNING_MULTIPLE_WALLS_AT_ONCE)}
+                        )
+                    }
+//                    WallSpawnerMode.WALLS_FROM_2_OPPOSITE_DIRECTIONS -> {
+//                        numOfWallsToSpawn = 2
+//                        val firstDirection = Direction.entries.random()
+//                        val secondDirection = firstDirection.getOpposite()
+//
+//
+//                    }
+                    else -> throw IllegalArgumentException("HITW: Invalid wall spawning mode: $wallSpawningMode to be at for this state: $stateOfWallSpawner")
+                }
 
                 attemptChangingStateTo(WallSpawnerState.WAITING_A_LIL_TILL_WALL_HAS_SPACE_TO_SPAWN)
 
@@ -534,35 +558,44 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
         }
     }
 
-    // DO NOT MODIFY THIS FOR DEBUGGING PURPOSES
-    fun createNewWall(direction: Direction,isPsych: Boolean) {
-        val wallFile = wallPackSchematics.random() // Randomly select a wall from the wall pack
-        val shouldBeFlipped: Boolean = Random().nextBoolean() // Randomly decide if the wall should be flipped
-
-        val newWall = Wall(wallFile, direction, shouldBeFlipped,isPsych) // Create a new wall
-        existingWallsList.add(newWall) // Add the new wall to the list of alive walls
-
-    }
-
     //MODIFY THIS FOR DEBUGGING PURPOSES
     fun createNewWall() {
         val wallFile = wallPackSchematics.random() // Randomly select a wall from the wall pack
         val direction = Direction.entries.toTypedArray().random() // Randomly select a direction for the wall to come from
         val shouldBeFlipped: Boolean = Random().nextBoolean() // Randomly decide if the wall should be flipped
         val newWall = Wall(wallFile, direction,shouldBeFlipped,false) // Create a new wall
-        existingWallsList.add(newWall) // Add the new wall to the list of alive walls
+
+        bringWallToLife(newWall) // Make the wall exist in the world by loading the schematic
 
 
-        newWall.showBlocks() // Show the corners of the wall for debugging purposes
+        //newWall.showBlocks() // Show the corners of the wall for debugging purposes
         Bukkit.getServer().broadcast(Component.text("flipped: ${newWall.isFlipped}. DirectionWallCome: ${newWall.directionWallComesFrom}").color(
             NamedTextColor.DARK_AQUA))
     }
+
+    // DO NOT MODIFY THIS FOR DEBUGGING PURPOSES
+    fun createNewWall(direction: Direction,isPsych: Boolean) {
+        val wallFile = wallPackSchematics.random() // Randomly select a wall from the wall pack
+        val shouldBeFlipped: Boolean = Random().nextBoolean() // Randomly decide if the wall should be flipped
+
+        val newWall = Wall(wallFile, direction, shouldBeFlipped,isPsych) // Create a new wall
+
+        upcomingWalls.add(newWall) // Add the new wall to the list of upcoming walls
+    }
+
+    fun bringWallToLife(wall: Wall) {
+        // Make the wall exist in the world by loading the schematic
+        wall.makeWallExist()
+        // Add the new wall to the list of existing walls
+        existingWallsList.add(wall)
+    }
+
+
 
     fun clearWalls() {
         while (existingWallsList.isNotEmpty()) {
             deleteWall(existingWallsList[0])
         }
-        directionsOfUpcomingWalls.clear()
     }
 
     fun getAliveMovingWalls(): List<Wall> {
