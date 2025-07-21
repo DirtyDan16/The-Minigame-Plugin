@@ -6,6 +6,7 @@ import org.bukkit.Location
 import org.bukkit.Material
 import org.bukkit.World
 import org.bukkit.scheduler.BukkitRunnable
+import kotlin.random.Random
 
 enum class Direction {
     NORTH, SOUTH, EAST, WEST;
@@ -40,31 +41,71 @@ enum class Direction {
 
 object Utils {
 
-    fun activateTaskAfterConditionIsMet( checkInterval: Long = 1L, condition: () -> Boolean, action: Runnable) {
-        object : BukkitRunnable() {
-            override fun run() {
-                if (condition()) {
-                    action.run()
-                    // Stop checking once the condition is met
-                    cancel()
-                }
+    fun <Type> Random.getNextWeighted(weights: Map<Type, Int>): Type {
+        val totalWeight = weights.values.sum()
+        var randomValue = nextInt(totalWeight)
+
+        for ((item, weight) in weights) {
+            if (randomValue < weight) {
+                return item
             }
-        }.runTaskTimer(plugin, 0L, checkInterval)
+            randomValue -= weight
+        }
+
+        throw IllegalStateException("Should not reach here, weights are not set up correctly.")
     }
 
-    fun activateTaskAfterConditionIsMet(delayToWaitAfterConditionIsMet: Long, checkInterval: Long = 1L,condition: () -> Boolean,action: Runnable) {
-        object : BukkitRunnable() {
+    /**
+     * Activates a task after a condition is met, with an optional delay after the condition is met.
+     * The task will be checked at regular intervals defined by `checkInterval`.
+     * If `conditionToCancel` is provided and returns true, the task will be cancelled.
+     *
+     * @param checkInterval The interval in ticks to check the condition.
+     * @param delayAfterConditionMet The delay in ticks after the condition is met before executing the action.
+     * @param condition The condition to check.
+     * @param conditionToCancel An optional condition to cancel the task.
+     * @param action The action to execute when the condition is met.
+     * @param actionToDoIfCanceled An optional action to execute if the task is cancelled.
+     * @return A BukkitRunnable that can be cancelled if needed.
+     */
+    fun activateTaskAfterConditionIsMet(
+        checkInterval: Long = 1L,
+        delayAfterConditionMet: Long = 0L,
+        condition: () -> Boolean,
+        conditionToCancel: (() -> Boolean)? = null,
+        action: Runnable,
+        actionToDoIfCanceled: (() -> Unit)? = null
+    ): BukkitRunnable {
+        val runnable: BukkitRunnable = object : BukkitRunnable() {
             override fun run() {
+                if (conditionToCancel?.invoke() == true) {
+                    cancel(true)
+                    return
+                }
+
                 if (condition()) {
-                    // Delay the action to actually happen after the specified delay from delayToWaitAfterConditionIsMet
-                    Bukkit.getScheduler().runTaskLater(plugin, action,delayToWaitAfterConditionIsMet)
-                    // Stop checking once the condition is met
-                    cancel()
+                    if (delayAfterConditionMet > 0L) {
+                        Bukkit.getScheduler().runTaskLater(plugin, action, delayAfterConditionMet)
+                    } else {
+                        action.run()
+                    }
+                    cancel(false)
                 }
             }
-        }.runTaskTimer(plugin, 0L, checkInterval)
-    }
 
+            override fun cancel() {
+                cancel(true)
+            }
+
+            fun cancel(doActionWhenCanceled: Boolean){
+                if (doActionWhenCanceled) actionToDoIfCanceled?.invoke()
+                super.cancel()
+            }
+        }
+
+        runnable.runTaskTimer(plugin, 0L, checkInterval)
+        return runnable
+    }
 
 
     @JvmStatic

@@ -65,8 +65,8 @@ object HITWConst {
 
     enum class WallSpawnerMode {
         WALL_CHAINER,
-        WALLS_FROM_ALL_DIRECTIONS;
-        //WALLS_FROM_2_OPPOSITE_DIRECTIONS;
+        WALLS_FROM_ALL_DIRECTIONS,
+        WALLS_FROM_2_OPPOSITE_DIRECTIONS;
        // WALLS_ARE_UNPREDICTABLE,
        // WALLS_REVERSE;
 
@@ -79,6 +79,21 @@ object HITWConst {
         }
     }
 
+    object WallSpawnerModes {
+        object WALL_CHAINER {
+        }
+        object WALLS_FROM_ALL_DIRECTIONS {
+            const val CHANCE_THAT_PSYCH_WALL_WILL_GET_REMOVED: Int = (0.66 * 100).toInt()
+        }
+        object WALLS_FROM_2_OPPOSITE_DIRECTIONS {
+            const val CHANCE_THAT_WALL_WILL_SPAWN_FROM_THE_SAME_DIRECTION: Int = (0.75 * 100).toInt()
+            const val MINIMUM_SPACE_BETWEEN_2_WALLS_FROM_THE_SAME_DIRECTION: Int = HITWConst.MINIMUM_SPACE_BETWEEN_2_WALLS_FROM_THE_SAME_DIRECTION
+        }
+
+
+
+    }
+
     object Timers {
         const val DELAY_BEFORE_STARTING_GAME: Long = 2*20 // in ticks
         const val GAME_DURATION: Int = 300 // in seconds
@@ -87,8 +102,8 @@ object HITWConst {
         val INCREASE_WALL_DIFFICULTY_LANDMARKS: IntArray = intArrayOf(45, 90, 155) // in seconds
         val PLATFORM_SHRINKAGE_LANDMARKS: IntArray = intArrayOf(70, 155)
 
-//        val WALL_SPEED: IntArray = intArrayOf(15, 12, 10, 7, 5, 4, 3, 2) //in ticks
-        val WALL_SPEED: IntArray = intArrayOf(4) //in ticks
+        //val WALL_SPEED: IntArray = intArrayOf(15, 12, 10, 7, 5, 4, 3, 2) //in ticks
+        val WALL_SPEED: IntArray = intArrayOf(5) //in ticks
 
 
         // *after the game knows that the wall can safely spawn in that direction, we'll make it wait extra for randomness

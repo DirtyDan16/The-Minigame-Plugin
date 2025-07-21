@@ -19,8 +19,9 @@ import me.stavgordeev.plugin.Direction
 class Wall(
     val wallFile: File,
     val directionWallComesFrom: Direction,
-    val isFlipped: Boolean,
-    var isPsych: Boolean
+    val isFlipped: Boolean = false,
+    var isPsych: Boolean = false,
+    val shouldRemovePsychThatStopped: Boolean = true // If the psych wall continues to move after it has reached its lifespan and has stopped. This is only relevant for psych walls and is set to true by default for regular walls. (doesn't mean anything)
 ) {
 
     constructor(wallFile: File,directionWallComesFrom: Direction) : this(wallFile,directionWallComesFrom,false,false)
@@ -53,7 +54,7 @@ class Wall(
         Direction.EAST -> Direction.WEST
     }
 
-    var shouldBeRemoved: Boolean = false // If the wall should be removed from the game.
+    var shouldBeRemoved: Boolean = false // If the wall should be removed from the game when it has stopped moving.
     var shouldBeStopped: Boolean = false // If the wall should be stopped from moving. It doesn't mean it should be removed from the game, but it has the possibility (for example - Psych walls)
 
     var isBeingHandled: Boolean = false // a special value that serves to prevent executing logic on the wall if this is flagged. this can be general purpose, however it is heavily discouraged. its actual use is to prevent logic trying to be repeated on psych walls that are stopped.
