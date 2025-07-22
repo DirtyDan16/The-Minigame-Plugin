@@ -4,25 +4,27 @@ import me.stavgordeev.plugin.BuildLoader
 import me.stavgordeev.plugin.Direction
 import me.stavgordeev.plugin.MinigamePlugin
 import me.stavgordeev.plugin.Minigames.HoleInTheWall.HITWConst.Timers
+import me.stavgordeev.plugin.Minigames.HoleInTheWall.HITWConst.WallSpawnerMode
+import me.stavgordeev.plugin.Minigames.HoleInTheWall.HITWConst.WallSpawnerState
 import me.stavgordeev.plugin.Minigames.MinigameSkeleton
+import me.stavgordeev.plugin.Utils.activateTaskAfterConditionIsMet
+import me.stavgordeev.plugin.Utils.getNextWeighted
 import net.kyori.adventure.text.Component
+import net.kyori.adventure.text.format.NamedTextColor
 import net.kyori.adventure.text.logger.slf4j.ComponentLogger.logger
+import net.kyori.adventure.title.Title
 import org.bukkit.Bukkit
 import org.bukkit.GameMode
 import org.bukkit.entity.Player
 import org.bukkit.plugin.Plugin
 import org.bukkit.potion.PotionEffect
 import org.bukkit.potion.PotionEffectType
+import org.bukkit.scheduler.BukkitRunnable
 import org.bukkit.scheduler.BukkitTask
 import java.io.File
 import java.io.IOException
+import java.time.Duration
 import java.util.*
-import me.stavgordeev.plugin.Minigames.HoleInTheWall.HITWConst.WallSpawnerState
-import me.stavgordeev.plugin.Utils.activateTaskAfterConditionIsMet
-import net.kyori.adventure.text.format.NamedTextColor
-import me.stavgordeev.plugin.Minigames.HoleInTheWall.HITWConst.WallSpawnerMode
-import me.stavgordeev.plugin.Utils.getNextWeighted
-import org.bukkit.scheduler.BukkitRunnable
 import kotlin.random.Random
 
 class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
@@ -37,6 +39,8 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
 
     //the periodic task that runs every second to update the game state
     private lateinit var gameEvents: BukkitTask
+
+    private var alternatingWallSpawnerModeRunnable: BukkitRunnable? = null// A runnable that is used to change the wall spawning mode every so often when the mode is set to Alternating.
 
     // A list of runnables that are actively running in the game. we keep track of them so that we can cancel them conveniently...
     // for example, when we switch the mode of the wall spawner, we want to cancel all the runnables that want to switch the state of the wall spawner in the background.
@@ -102,8 +106,16 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
             // Clear the list of walls that were planned to be spawned in the game, since otherwise, when we will spawn in walls, the old walls will spawn along with the new ones. (which will deff make walls collide with each other)
             upcomingWalls.clear()
 
-            Bukkit.getServer().broadcast(Component.text("wallSpawnerMode = $wallSpawningMode").color(
-            NamedTextColor.DARK_AQUA))
+            // send a message to all players that the mode has been changed
+            for (player in Bukkit.getOnlinePlayers()) {
+                val title = Title.title(
+                    Component.empty(),
+                    Component.text("Wall Spawner Mode: ${mode.name.lowercase().replace('_',' ')}").color(NamedTextColor.AQUA),
+                    Title.Times.times(Duration.ofMillis(300), Duration.ofMillis(2000), Duration.ofMillis(300))
+                )
+                player.showTitle(title)
+            }
+            Bukkit.getServer().broadcast(Component.text("Wall Spawner Mode: ${mode.name.lowercase().replace('_',' ')}").color(NamedTextColor.AQUA))
         }
 
         WallSpawnerMode.entries.forEach {
@@ -114,16 +126,17 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
         }
 
         if (mode == "Alternating") {
-            object : BukkitRunnable() {
+
+            alternatingWallSpawnerModeRunnable?.cancel() // Cancel the previous runnable if it exists
+            alternatingWallSpawnerModeRunnable = object : BukkitRunnable() {
                 override fun run() {
-                    if (isGamePaused || !isGameRunning) {
-                        cancel()
-                        return
-                    }
+                    if (isGamePaused) return
 
                     changeMode(WallSpawnerMode.entries.random())
                 }
-            }.runTaskTimer(plugin,0L,Timers.ALTERNATING_WALL_SPAWNER_MODES_DELAY)
+            }
+
+            alternatingWallSpawnerModeRunnable?.runTaskTimer(plugin,0L,Timers.ALTERNATING_WALL_SPAWNER_MODES_DELAY)
 
             return
         }
