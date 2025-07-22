@@ -37,13 +37,13 @@ public class DiscoMayhemCommands extends MinigameCommandsSkeleton {
                 }
                 break;
             case "stop":
-                discoMayhem.pauseGame(player);
+                discoMayhem.pauseGame();
                 break;
             case "resume":
-                discoMayhem.resumeGame(player);
+                discoMayhem.resumeGame();
                 break;
             case "end":
-                discoMayhem.endGame(player);
+                discoMayhem.endGame();
                 break;
             case "nuke_area":
                 discoMayhem.nukeArea(DiscoMayhemConst.GAME_START_LOCATION, 50);

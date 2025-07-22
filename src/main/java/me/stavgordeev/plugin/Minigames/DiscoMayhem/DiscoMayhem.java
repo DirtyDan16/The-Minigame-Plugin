@@ -83,20 +83,18 @@ public class DiscoMayhem extends MinigameSkeleton {
     /**
      * Pauses the minigame. The game is paused and the player is notified.
      * The game being paused saves the current state of the game, so it can be resumed later. however, the game is not running.
-     * @param player The player that pauses the minigame
      */
-    public void pauseGame(Player player) {
-        super.pauseGame(player);
+    public void pauseGame() {
+        super.pauseGame();
         // Add more actions here
     }
 
     /**
      * Resumes the minigame. The game is resumed and the player is notified.
-     * @param player The player that resumes the minigame
      */
     //fixme: some parts of the game are not resumed- the game is not resumed, but the floor is not changed nor old floors aren't removed.
     public void resumeGame(Player player) {
-        super.resumeGame(player);
+        super.resumeGame();
 
         activateGameEvents(); // Resume the game events
         // Add more actions here
@@ -104,10 +102,9 @@ public class DiscoMayhem extends MinigameSkeleton {
 
     /**
      * Ends the minigame. The game is ended and the player is notified. The area is cleared.
-     * @param player The player that ends the minigame
      */
     public void endGame(Player player) {
-        super.endGame(player);
+        super.endGame();
 
         nukeArea(DiscoMayhemConst.GAME_START_LOCATION, 55);
 

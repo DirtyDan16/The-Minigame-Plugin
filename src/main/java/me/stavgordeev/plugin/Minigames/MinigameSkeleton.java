@@ -66,49 +66,46 @@ public abstract class MinigameSkeleton {
 
     /**
      * Pauses the game. Paused games can be resumed, and they keep certain logic and game logic. should be followed with code that pauses the game, like stopping timers, freezing entities...
-     * @param player the player that paused the game
      */
-    public void pauseGame(Player player) {
+    public void pauseGame() {
         if (!isGameRunning) {
-            player.sendMessage("Minigame is not running!");
+            Bukkit.getServer().broadcast(Component.text("Minigame is not running!"));
             return;
         } else if (isGamePaused) {
-            player.sendMessage("Minigame is already paused!");
+            Bukkit.getServer().broadcast(Component.text("Minigame is already paused!"));
             return;
         }
 
         isGamePaused = true;
-        player.sendMessage("Minigame stopped!");
+        Bukkit.getServer().broadcast(Component.text("Minigame paused!"));
     }
 
     /**
      * Resumes the game. Resumed games should be able to continue from where they were paused. should be followed with code that resumes the game, like starting timers, unfreezing entities...
-     * @param player the player that resumed the game
      */
-    public void resumeGame(Player player) {
+    public void resumeGame() {
         if (!isGameRunning) {
-            player.sendMessage("Minigame is not running!");
+            Bukkit.getServer().broadcast(Component.text("Minigame is not running!"));
             return;
         } else if (!isGamePaused) {
-            player.sendMessage("Minigame is not paused!");
+            Bukkit.getServer().broadcast(Component.text("Minigame is not paused!"));
             return;
         }
         isGamePaused = false;
-        player.sendMessage("Minigame resumed!");
+        Bukkit.getServer().broadcast(Component.text("Minigame resumed!"));
     }
 
     /**
      * Ends the game. should be followed with code that cleans up the arena, the gamerules... Should also be called when the game is interrupted.
-     * @param player the player that ended the game
      */
-    public void endGame(Player player) {
+    public void endGame() {
         if (!isGameRunning) {
-            player.sendMessage("Minigame is not running!");
+            Bukkit.getServer().broadcast(Component.text("Minigame is not running!"));
             return;
         }
         Bukkit.getServer().broadcast(Component.text("Minigame ended!").color(NamedTextColor.GREEN));
 
-        pauseGame(player);
+        pauseGame();
         isGameRunning = false;
         isGamePaused = false;
         thePlayer = null;

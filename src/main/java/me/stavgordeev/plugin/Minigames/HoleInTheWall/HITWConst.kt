@@ -103,7 +103,7 @@ object HITWConst {
         val PLATFORM_SHRINKAGE_LANDMARKS: IntArray = intArrayOf(70, 155)
 
         //val WALL_SPEED: IntArray = intArrayOf(15, 12, 10, 7, 5, 4, 3, 2) //in ticks
-        val WALL_SPEED: IntArray = intArrayOf(5) //in ticks
+        val WALL_SPEED: IntArray = intArrayOf(4) //in ticks
 
 
         // *after the game knows that the wall can safely spawn in that direction, we'll make it wait extra for randomness

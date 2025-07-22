@@ -19,10 +19,10 @@ public class PlayerDeathListener implements Listener {
     @EventHandler
     public void onPlayerDeath(PlayerDeathEvent event) {
         if (discoMayhem.isPlayerInGame(event.getEntity())) {
-            discoMayhem.endGame(event.getEntity());
+            discoMayhem.endGame();
         }
         if (holeInTheWall.isPlayerInGame(event.getEntity())) {
-            holeInTheWall.endGame(event.getEntity());
+            holeInTheWall.endGame();
         }
     }
 }

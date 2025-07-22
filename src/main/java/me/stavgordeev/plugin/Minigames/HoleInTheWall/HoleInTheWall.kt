@@ -133,12 +133,12 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
         throw IllegalArgumentException("HITW: mode provided to play as is illegal")
     }
 
-    override fun endGame(player: Player?) {
+    override fun endGame() {
         if (!isGameRunning) {
             Bukkit.getServer().broadcast(Component.text("game is not running!").color(NamedTextColor.RED))
             return
         }
-        super.endGame(player)
+        super.endGame()
         // Cancel the periodic task that updates the game state and handles all game events - such as wall movement, wall spawning, and wall deletion.
         gameEvents.cancel()
 
@@ -156,6 +156,19 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
 
         this.nukeArea(HITWConst.Locations.PIVOT, 60) // Clear the area around the spawn point
     }
+
+    override fun pauseGame() {
+        super.pauseGame()
+        // Cancel the periodic task that updates the game state and handles all game events - such as wall movement, wall spawning, and wall deletion.
+        gameEvents.cancel()
+    }
+
+    override fun resumeGame() {
+        super.resumeGame()
+        // Start the periodic task that updates the game state and handles all game events - such as wall movement, wall spawning, and wall deletion.
+        startRepeatingGameLoop()
+    }
+
 
     private fun startRepeatingGameLoop() {
         fun handlePsychWallsThatRanOutOfLifespan(wall: Wall) {
@@ -182,16 +195,12 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
             }, Timers.STOPPED_WALL_DELAY_BEFORE_ACTION_DEALT.random())
         }
 
-
         if (!this.isGameRunning || isGamePaused) {
             logger().warn("HITW: Game is not running, cannot start periodic task")
             return
         }
 
         var tickCount: Int = 0 // Used to keep track of the number of ticks that have passed since the game started
-
-
-
 
 
         //Update every second the time left and the time elapsed, and keep track if certain events should trigger based on the time that has elapsed.
@@ -201,7 +210,7 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
         timeLeft-= 1/20
         timeElapsed+= 1/20
         if (timeLeft <= 0) {
-            endGame(thePlayer)
+            endGame()
         }
 
         //region ---Check if the wall speed should be increased
@@ -354,7 +363,7 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
 
             if (!canTransition) {
                 Bukkit.getServer().broadcast(Component.text("HITW: Cannot transition from $stateOfWallSpawner to $wantedState").color(NamedTextColor.RED))
-                endGame(thePlayer)
+                pauseGame()
             }
 
             stateOfWallSpawner = wantedState
@@ -589,13 +598,13 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
             processMapComponents()
         } catch (e: IOException) {
             logger().error("HITW: I/O failure while preparing area", e)
-            endGame(thePlayer);
+            endGame();
         } catch (e: IllegalStateException) {
             logger().error("HITW: Invalid state during map preparation", e)
-            endGame(thePlayer);
+            endGame();
         } catch (e: Exception) {
             logger().error("HITW: Unexpected error during game setup", e)
-            endGame(thePlayer);
+            endGame();
         }
 
         // Load the map schematic (the deco arena)

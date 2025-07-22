@@ -35,13 +35,13 @@ public class BlueprintBazaarCommands extends MinigameCommandsSkeleton {
                 }
                 break;
             case "stop":
-                blueprintbazaar.pauseGame(player);
+                blueprintbazaar.pauseGame();
                 break;
             case "resume":
-                blueprintbazaar.resumeGame(player);
+                blueprintbazaar.resumeGame();
                 break;
             case "end":
-                blueprintbazaar.endGame(player);
+                blueprintbazaar.endGame();
                 break;
             case "nuke_area":
                 blueprintbazaar.nukeArea(BlueprintBazaarConst.GAME_START_LOCATION, 50);

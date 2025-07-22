@@ -36,9 +36,9 @@ class HoleInTheWallCommands(private val holeInTheWall: HoleInTheWall) : Minigame
                 throw RuntimeException(e)
             }
 
-            "stop" -> holeInTheWall.pauseGame(player)
-            "resume" -> holeInTheWall.resumeGame(player)
-            "end" -> holeInTheWall.endGame(player)
+            "stop" -> holeInTheWall.pauseGame()
+            "resume" -> holeInTheWall.resumeGame()
+            "end" -> holeInTheWall.endGame()
             "change_wall_spawning_mode_to" -> holeInTheWall.changeWallSpawningMode(args[1])
             "spawn_wall" -> holeInTheWall.createNewWall()
             "clear_walls" -> holeInTheWall.clearWalls()

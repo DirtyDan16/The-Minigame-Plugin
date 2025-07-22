@@ -82,18 +82,18 @@ public class BlueprintBazaar extends MinigameSkeleton {
     }
 
     @Override
-    public void pauseGame(Player player) {
-        super.pauseGame(player);
+    public void pauseGame() {
+        super.pauseGame();
     }
 
     @Override
-    public void resumeGame(Player player) {
-        super.resumeGame(player);
+    public void resumeGame() {
+        super.resumeGame();
     }
 
     @Override
-    public void endGame(Player player) {
-        super.endGame(player);
+    public void endGame() {
+        super.endGame();
     }
 
     @Override
