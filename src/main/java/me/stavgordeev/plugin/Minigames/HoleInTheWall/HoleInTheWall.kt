@@ -38,18 +38,6 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
     private lateinit var mapName: String //the map name that is being played. gets a value on the start() method.
 
 
-    //the periodic task that runs every second to update the game state
-    private lateinit var gameEvents: BukkitRunnable
-
-    private var alternatingWallSpawnerModeRunnable: BukkitRunnable? = null// A runnable that is used to change the wall spawning mode every so often when the mode is set to Alternating.
-
-    // A list of runnables that are actively running in the game. we keep track of them so that we can cancel them conveniently...
-    // for example, when we switch the mode of the wall spawner, we want to cancel all the runnables that want to switch the state of the wall spawner in the background.
-    private val runnables: MutableList<BukkitRunnable> = mutableListOf()
-
-
-
-
     //region ----Game Modifiers that change as the game progresses
     private var timeLeft: Double = Timers.GAME_DURATION.toDouble()
     private var timeElapsed: Double = 0.0 //in seconds
@@ -67,9 +55,8 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
                 Component.text("Wall speed set to $value ticks").color(NamedTextColor.AQUA),
                 Title.Times.times(Duration.ofMillis(300), Duration.ofMillis(2000), Duration.ofMillis(300))
             )
-            for (player in Bukkit.getOnlinePlayers()) {
-                player.showTitle(title)
-            }
+            Bukkit.getOnlinePlayers().forEach { player -> player.showTitle(title)  }
+
             Bukkit.getServer().broadcast(Component.text("Wall speed set to $value ticks").color(NamedTextColor.AQUA))
         }
 
@@ -95,6 +82,21 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
     private lateinit var wallSpawningMode: WallSpawnerMode
 
     //endregion -----------------------------------------------------------------------------------
+
+    var tickCount: Int = 0 // Used to keep track of the number of ticks that have passed since the game started
+
+    //the periodic task that runs every second to update the game state
+    //Update every second the time left and the time elapsed, and keep track if certain events should trigger based on the time that has elapsed.
+    private var gameEvents: BukkitRunnable? = null
+    // A runnable that is used to change the wall spawning mode every so often when the mode is set to Alternating.
+    private var alternatingWallSpawnerModeRunnable: BukkitRunnable? = null
+
+    // A list of runnables that are actively running in the game. we keep track of them so that we can cancel them conveniently...
+    // for example, when we switch the mode of the wall spawner, we want to cancel all the runnables that want to switch the state of the wall spawner in the background.
+    private val runnables: MutableList<BukkitRunnable> = mutableListOf()
+
+
+
     //endregion
 
     @Throws(InterruptedException::class)
@@ -108,6 +110,7 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
             player.sendMessage(Component.text("Wall Spawning Mode is not set! selecting Alternating").color(NamedTextColor.RED))
             changeWallSpawningMode("Alternating")
         }
+        alternatingWallSpawnerModeRunnable?.runTaskTimer(plugin,0L,Timers.ALTERNATING_WALL_SPAWNER_MODES_DELAY)
 
         stateOfWallSpawner = WallSpawnerState.IDLE // Set the initial state of the wall spawner to IDLE
 
@@ -122,12 +125,8 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
         this.start(player, mapName)
     }
 
+    // This func can be called whether the game is alive or not. (for the command that uses it)
     fun changeWallSpawningMode(mode: String) {
-        // This func can be called whether the game is alive or not. (for the command that uses it)
-
-        alternatingWallSpawnerModeRunnable?.cancel() // Cancel the previous runnable if it exists. this is so that we don't have this running in the background when we change the mode to a set mode.
-
-
         fun changeMode(mode: WallSpawnerMode) {
             wallSpawningMode = mode
 
@@ -140,16 +139,25 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
             upcomingWalls.clear()
 
             // send a message to all players that the mode has been changed
-            for (player in Bukkit.getOnlinePlayers()) {
-                val title = Title.title(
-                    Component.empty(),
-                    Component.text("Wall Spawner Mode: ${mode.name.lowercase().replace('_',' ')}").color(NamedTextColor.AQUA),
-                    Title.Times.times(Duration.ofMillis(300), Duration.ofMillis(2000), Duration.ofMillis(300))
-                )
-                player.showTitle(title)
-            }
+            val title = Title.title(
+                Component.empty(),
+                Component.text("Wall Spawner Mode: ${mode.name.lowercase().replace('_',' ')}").color(NamedTextColor.AQUA),
+                Title.Times.times(Duration.ofMillis(300), Duration.ofMillis(2000), Duration.ofMillis(300))
+            )
+            Bukkit.getOnlinePlayers().forEach { player -> player.showTitle(title)  }
+
             Bukkit.getServer().broadcast(Component.text("Wall Spawner Mode: ${mode.name.lowercase().replace('_',' ')}").color(NamedTextColor.AQUA))
         }
+
+        // Cancel the previous runnable if it exists. this is so that we don't have this running in the background when we change the mode to a set mode.
+        try {
+            alternatingWallSpawnerModeRunnable?.cancel()
+        } catch (e: Exception) {
+            //nothing to do here, we just want to make sure that the runnable is cancelled if it was scheduled
+        }
+        alternatingWallSpawnerModeRunnable = null
+
+
 
         WallSpawnerMode.entries.forEach {
             if (mode.uppercase() == it.name) {
@@ -167,7 +175,12 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
                 }
             }
 
-            alternatingWallSpawnerModeRunnable?.runTaskTimer(plugin,0L,Timers.ALTERNATING_WALL_SPAWNER_MODES_DELAY)
+            val title = Title.title(
+                Component.empty(),
+                Component.text("Wall Spawner Mode: Alternating").color(NamedTextColor.AQUA),
+                Title.Times.times(Duration.ofMillis(300), Duration.ofMillis(2000), Duration.ofMillis(300))
+            )
+            Bukkit.getOnlinePlayers().forEach { player -> player.showTitle(title)  }
 
             return
         }
@@ -185,8 +198,11 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
         super.endGame()
 
         // Cancel the periodic task that updates the game state and handles all game events - such as wall movement, wall spawning, and wall deletion. same for the alternating wall spawner mode runnable.
-        gameEvents.cancel()
+        gameEvents!!.cancel()
+        gameEvents = null
+
         alternatingWallSpawnerModeRunnable?.cancel()
+        alternatingWallSpawnerModeRunnable = null
 
         runnables.forEach { it.cancel() }
         runnables.clear()
@@ -207,15 +223,14 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
     override fun pauseGame() {
         super.pauseGame()
         // Cancel the periodic task that updates the game state and handles all game events - such as wall movement, wall spawning, and wall deletion.
-        gameEvents.cancel()
+        gameEvents!!.cancel()
         alternatingWallSpawnerModeRunnable?.cancel()
     }
 
     override fun resumeGame() {
         super.resumeGame()
         // resume the periodic task that updates the game state and handles all game events - such as wall movement, wall spawning, and wall deletion.
-        if (!::gameEvents.isInitialized) startRepeatingGameLoop()
-        else gameEvents.runTaskTimer(plugin, Timers.DELAY_BEFORE_STARTING_GAME, 1L)
+        startRepeatingGameLoop()
 
         // Also, we will resume the alternating wall spawner mode runnable if it was running before
         if (alternatingWallSpawnerModeRunnable != null && !alternatingWallSpawnerModeRunnable!!.isCancelled) {
@@ -223,39 +238,36 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
         }
     }
 
-    var tickCount: Int = 0 // Used to keep track of the number of ticks that have passed since the game started
     private fun startRepeatingGameLoop() {
-        fun handlePsychWallsThatRanOutOfLifespan(wall: Wall) {
-            // If the wall is a psych wall, we will keep it existing for a lil, then later decide if it should be removed or not.
-            Bukkit.getScheduler().runTaskLater(MinigamePlugin.plugin, Runnable {
-                // If the wall is chosen to be removed, we'll remove it, otherwise, we will resume its movement after a delay.
-                if (wall.shouldRemovePsychThatStopped) {
-                    wall.shouldBeRemoved = true
-                } else {
-                    activateTaskAfterConditionIsMet(
-                        condition = {getAliveMovingWalls().isEmpty()} ,
-                        action = {
-                            wall.shouldBeStopped = false
-                            wall.lifespanRemaining = HITWConst.PSYCH_WALL_THAT_RETURNS_TO_MOVING_LIFESPAN // Reset the lifespan of the wall to a lifespan that is enough for it to reach the same distance as a regular wall.
-
-                            // get rid of the identity of the wall - since psych walls should only stop themselves once, and we don't want for them to stop later on when the lifespan is 0 again
-                            wall.isPsych = false
-
-                            wall.isBeingHandled = false
-                        }
-                    )
-                }
-
-            }, Timers.STOPPED_WALL_DELAY_BEFORE_ACTION_DEALT.random())
-        }
-
         if (!this.isGameRunning || isGamePaused) {
             logger().warn("HITW: Game is not running, cannot start periodic task")
             return
         }
 
-        //Update every second the time left and the time elapsed, and keep track if certain events should trigger based on the time that has elapsed.
         gameEvents = object : BukkitRunnable() {
+            fun handlePsychWallsThatRanOutOfLifespan(wall: Wall) {
+                // If the wall is a psych wall, we will keep it existing for a lil, then later decide if it should be removed or not.
+                Bukkit.getScheduler().runTaskLater(MinigamePlugin.plugin, Runnable {
+                    // If the wall is chosen to be removed, we'll remove it, otherwise, we will resume its movement after a delay.
+                    if (wall.shouldRemovePsychThatStopped) {
+                        wall.shouldBeRemoved = true
+                    } else {
+                        activateTaskAfterConditionIsMet(
+                            condition = {getAliveMovingWalls().isEmpty()} ,
+                            action = {
+                                wall.shouldBeStopped = false
+                                wall.lifespanRemaining = HITWConst.PSYCH_WALL_THAT_RETURNS_TO_MOVING_LIFESPAN // Reset the lifespan of the wall to a lifespan that is enough for it to reach the same distance as a regular wall.
+
+                                // get rid of the identity of the wall - since psych walls should only stop themselves once, and we don't want for them to stop later on when the lifespan is 0 again
+                                wall.isPsych = false
+
+                                wall.isBeingHandled = false
+                            }
+                        )
+                    }
+
+                }, Timers.STOPPED_WALL_DELAY_BEFORE_ACTION_DEALT.random())
+            }
             override fun run() {
                 tickCount++
                 timeLeft-= 1/20
@@ -326,15 +338,11 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
                 //endregion
             }
         }
-        gameEvents.runTaskTimer(plugin, Timers.DELAY_BEFORE_STARTING_GAME, 1L)
+        gameEvents!!.runTaskTimer(plugin, Timers.DELAY_BEFORE_STARTING_GAME, 1L)
     }
 
     val upcomingWalls: MutableList<Wall> = mutableListOf()// A list of walls that are upcoming to be spawned. This is used to keep track of walls that are about to be spawned in the game.
 
-    // A flag for the State: INTENDING_TO_CREATE_MULTIPLE_WALLS_AT_ONCE
-    // With mode: WALLS_FROM_2_OPPOSITE_DIRECTIONS
-    // Indicates if the upcoming real wall is coming from the same direction as the last wall that was spawned.
-    private var isUpcomingRealWallComingFromSameDirection: Boolean = Random.nextBoolean()
 
     private fun manageWallSpawning() {
         //TODO: the logic currently is very dull and incomplete
