@@ -21,6 +21,7 @@ import org.bukkit.potion.PotionEffect
 import org.bukkit.potion.PotionEffectType
 import org.bukkit.scheduler.BukkitRunnable
 import org.bukkit.scheduler.BukkitTask
+import org.stringtemplate.v4.compiler.STParser
 import java.io.File
 import java.io.IOException
 import java.time.Duration
@@ -38,7 +39,7 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
 
 
     //the periodic task that runs every second to update the game state
-    private lateinit var gameEvents: BukkitTask
+    private lateinit var gameEvents: BukkitRunnable
 
     private var alternatingWallSpawnerModeRunnable: BukkitRunnable? = null// A runnable that is used to change the wall spawning mode every so often when the mode is set to Alternating.
 
@@ -52,7 +53,26 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
     //region ----Game Modifiers that change as the game progresses
     private var timeLeft: Double = Timers.GAME_DURATION.toDouble()
     private var timeElapsed: Double = 0.0 //in seconds
-    private var wallSpeed = Timers.WALL_SPEED[0] //in ticks
+    var wallSpeed: Int = Timers.WALL_SPEED[0] //in ticks
+        set(value) {
+            if (value !in Timers.WALL_SPEED.last() .. Timers.WALL_SPEED.first()) {
+                Bukkit.getServer().broadcast(Component.text("Wall speed must be between ${Timers.WALL_SPEED[0]} and ${Timers.WALL_SPEED.last()} ticks").color(NamedTextColor.RED))
+                return
+            }
+
+            field = value
+
+            val title = Title.title(
+                Component.empty(),
+                Component.text("Wall speed set to $value ticks").color(NamedTextColor.AQUA),
+                Title.Times.times(Duration.ofMillis(300), Duration.ofMillis(2000), Duration.ofMillis(300))
+            )
+            for (player in Bukkit.getOnlinePlayers()) {
+                player.showTitle(title)
+            }
+            Bukkit.getServer().broadcast(Component.text("Wall speed set to $value ticks").color(NamedTextColor.AQUA))
+        }
+
     private val wallSpeedUpLandmarks: IntArray = Timers.WALL_SPEED_UP_LANDMARKS //in seconds
     private var wallSpeedIndex = 0 //index of the wall speed in the array
 
@@ -78,12 +98,17 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
     //endregion
 
     @Throws(InterruptedException::class)
-    fun start(player: Player, mapName: String,wallSpawningMode: String) {
+    fun start(player: Player, mapName: String) {
         if (isGameRunning) {
             Bukkit.getServer().broadcast(Component.text("Minigame is already running!"))
             return
         }
-        changeWallSpawningMode(wallSpawningMode)
+
+        if (! ::wallSpawningMode.isInitialized) {
+            player.sendMessage(Component.text("Wall Spawning Mode is not set! selecting Alternating").color(NamedTextColor.RED))
+            changeWallSpawningMode("Alternating")
+        }
+
         stateOfWallSpawner = WallSpawnerState.IDLE // Set the initial state of the wall spawner to IDLE
 
         this.mapName = mapName
@@ -92,8 +117,16 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
         startRepeatingGameLoop()
     }
 
+    fun startFastMode(player: Player, mapName: String) {
+        wallSpeed = Timers.WALL_SPEED.last() // Set the wall speed to the maximum speed
+        this.start(player, mapName)
+    }
+
     fun changeWallSpawningMode(mode: String) {
-        // This func can be called whether the game is alive or not. (for the command that uses it
+        // This func can be called whether the game is alive or not. (for the command that uses it)
+
+        alternatingWallSpawnerModeRunnable?.cancel() // Cancel the previous runnable if it exists. this is so that we don't have this running in the background when we change the mode to a set mode.
+
 
         fun changeMode(mode: WallSpawnerMode) {
             wallSpawningMode = mode
@@ -126,8 +159,6 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
         }
 
         if (mode == "Alternating") {
-
-            alternatingWallSpawnerModeRunnable?.cancel() // Cancel the previous runnable if it exists
             alternatingWallSpawnerModeRunnable = object : BukkitRunnable() {
                 override fun run() {
                     if (isGamePaused) return
@@ -152,8 +183,10 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
             return
         }
         super.endGame()
-        // Cancel the periodic task that updates the game state and handles all game events - such as wall movement, wall spawning, and wall deletion.
+
+        // Cancel the periodic task that updates the game state and handles all game events - such as wall movement, wall spawning, and wall deletion. same for the alternating wall spawner mode runnable.
         gameEvents.cancel()
+        alternatingWallSpawnerModeRunnable?.cancel()
 
         runnables.forEach { it.cancel() }
         runnables.clear()
@@ -166,6 +199,7 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
         // Clear the walls that were planned to be pasted into existence
         upcomingWalls.clear()
 
+        tickCount = 0 // Reset the tick count
 
         this.nukeArea(HITWConst.Locations.PIVOT, 60) // Clear the area around the spawn point
     }
@@ -174,15 +208,22 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
         super.pauseGame()
         // Cancel the periodic task that updates the game state and handles all game events - such as wall movement, wall spawning, and wall deletion.
         gameEvents.cancel()
+        alternatingWallSpawnerModeRunnable?.cancel()
     }
 
     override fun resumeGame() {
         super.resumeGame()
-        // Start the periodic task that updates the game state and handles all game events - such as wall movement, wall spawning, and wall deletion.
-        startRepeatingGameLoop()
+        // resume the periodic task that updates the game state and handles all game events - such as wall movement, wall spawning, and wall deletion.
+        if (!::gameEvents.isInitialized) startRepeatingGameLoop()
+        else gameEvents.runTaskTimer(plugin, Timers.DELAY_BEFORE_STARTING_GAME, 1L)
+
+        // Also, we will resume the alternating wall spawner mode runnable if it was running before
+        if (alternatingWallSpawnerModeRunnable != null && !alternatingWallSpawnerModeRunnable!!.isCancelled) {
+            alternatingWallSpawnerModeRunnable!!.runTaskTimer(plugin, 0L, Timers.ALTERNATING_WALL_SPAWNER_MODES_DELAY)
+        }
     }
 
-
+    var tickCount: Int = 0 // Used to keep track of the number of ticks that have passed since the game started
     private fun startRepeatingGameLoop() {
         fun handlePsychWallsThatRanOutOfLifespan(wall: Wall) {
             // If the wall is a psych wall, we will keep it existing for a lil, then later decide if it should be removed or not.
@@ -213,84 +254,79 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
             return
         }
 
-        var tickCount: Int = 0 // Used to keep track of the number of ticks that have passed since the game started
-
-
         //Update every second the time left and the time elapsed, and keep track if certain events should trigger based on the time that has elapsed.
-        gameEvents = Bukkit.getScheduler().runTaskTimer(plugin, Runnable {
-
-        tickCount++
-        timeLeft-= 1/20
-        timeElapsed+= 1/20
-        if (timeLeft <= 0) {
-            endGame()
-        }
-
-        //region ---Check if the wall speed should be increased
-        if (wallSpeedIndex < wallSpeedUpLandmarks.size && timeElapsed >= wallSpeedUpLandmarks[wallSpeedIndex]) {
-            wallSpeed = Timers.WALL_SPEED[++wallSpeedIndex]
-        }
-        //endregion
-
-        //region ---Check if the wall difficulty should be increased
-        //TODO: implement logic
-        if (curWallDifficultyInPack != HITWConst.WallDifficulty.VERY_HARD && timeElapsed >= increaseWallDifficultyLandmarks[curWallDifficultyInPack]) {
-            when (++curWallDifficultyInPack) {
-                HITWConst.WallDifficulty.MEDIUM -> {}
-                HITWConst.WallDifficulty.HARD -> {}
-                HITWConst.WallDifficulty.VERY_HARD -> {}
-            }
-        }
-        //endregion
-
-
-        //region --Check if the walls should be moved, and handle if they should be stopped/deleted/resumed
-
-        //If the time elapsed is a multiple of the wall speed (which resembles how often the walls should be moved at in ticks), then move the walls
-        if (tickCount % wallSpeed == 0) {
-            // Get the walls that have a lifespan that's greater than 0
-            for (wall in getAliveMovingWalls()) {
-                // Move the wall if its lifespan is greater than 0 and it should not be stopped
-                wall.move()
-            }
-            for (wall in getWallsThatAreStopped()) {
-
-                when {
-                    //TODO: currently, regular walls are removed immediately, but we can make it so that they can be stopped instead of removed for various reasons
-                    !wall.isPsych -> wall.shouldBeRemoved = true // If the wall is not a psych wall, we will remove it immediately.
-
-                    wall.isPsych && !wall.shouldBeRemoved -> {
-                        if (!wall.isBeingHandled) {
-                            wall.isBeingHandled = true
-                            handlePsychWallsThatRanOutOfLifespan(wall)
-                        }
-                    }
+        gameEvents = object : BukkitRunnable() {
+            override fun run() {
+                tickCount++
+                timeLeft-= 1/20
+                timeElapsed+= 1/20
+                if (timeLeft <= 0) {
+                    endGame()
                 }
 
-                // If the wall is no longer alive, delete it via adding it to a new list of walls to delete
-                if (wall.shouldBeRemoved) wallsToDelete.add(wall)
+                //region ---Check if the wall speed should be increased
+                if (wallSpeedIndex < wallSpeedUpLandmarks.size && timeElapsed >= wallSpeedUpLandmarks[wallSpeedIndex]) {
+                    wallSpeed = Timers.WALL_SPEED[++wallSpeedIndex]
+                }
+                //endregion
+
+                //region ---Check if the wall difficulty should be increased
+                //TODO: implement logic
+                if (curWallDifficultyInPack != HITWConst.WallDifficulty.VERY_HARD && timeElapsed >= increaseWallDifficultyLandmarks[curWallDifficultyInPack]) {
+                    when (++curWallDifficultyInPack) {
+                        HITWConst.WallDifficulty.MEDIUM -> {}
+                        HITWConst.WallDifficulty.HARD -> {}
+                        HITWConst.WallDifficulty.VERY_HARD -> {}
+                    }
+                }
+                //endregion
+
+
+                //region --Check if the walls should be moved, and handle if they should be stopped/deleted/resumed
+
+                //If the time elapsed is a multiple of the wall speed (which resembles how often the walls should be moved at in ticks), then move the walls
+                if (tickCount % wallSpeed == 0) {
+                    // Get the walls that have a lifespan that's greater than 0
+                    for (wall in getAliveMovingWalls()) {
+                        // Move the wall if its lifespan is greater than 0 and it should not be stopped
+                        wall.move()
+                    }
+                    for (wall in getWallsThatAreStopped()) {
+
+                        when {
+                            //TODO: currently, regular walls are removed immediately, but we can make it so that they can be stopped instead of removed for various reasons
+                            !wall.isPsych -> wall.shouldBeRemoved = true // If the wall is not a psych wall, we will remove it immediately.
+
+                            wall.isPsych && !wall.shouldBeRemoved -> {
+                                if (!wall.isBeingHandled) {
+                                    wall.isBeingHandled = true
+                                    handlePsychWallsThatRanOutOfLifespan(wall)
+                                }
+                            }
+                        }
+
+                        // If the wall is no longer alive, delete it via adding it to a new list of walls to delete
+                        if (wall.shouldBeRemoved) wallsToDelete.add(wall)
+                    }
+
+                    // Delete the walls that are no longer alive
+                    wallsToDelete.forEach { deleteWall(it) }
+                    // Clear the list of walls to delete after deleting them so that we don't delete the same walls again
+                    wallsToDelete.clear()
+                }
+                //endregion
+
+                //region --Add new walls to the game
+
+                // Limit the number of walls to HARD_CAP_MAX_POSSIBLE_AMOUNT_OF_WALLS at a time
+                if (existingWallsList.size < HITWConst.HARD_CAP_MAX_POSSIBLE_AMOUNT_OF_WALLS) {
+                    // We'll make a state machine. depending on the state of the game, we'll decide to spawn new walls with different behavior and traits.
+                    manageWallSpawning()
+                }
+                //endregion
             }
-
-            // Delete the walls that are no longer alive
-            wallsToDelete.forEach { deleteWall(it) }
-             // Clear the list of walls to delete after deleting them so that we don't delete the same walls again
-            wallsToDelete.clear()
         }
-        //endregion
-
-        //region --Add new walls to the game
-
-        // Limit the number of walls to HARD_CAP_MAX_POSSIBLE_AMOUNT_OF_WALLS at a time
-        if (existingWallsList.size < HITWConst.HARD_CAP_MAX_POSSIBLE_AMOUNT_OF_WALLS) {
-            // We'll make a state machine. depending on the state of the game, we'll decide to spawn new walls with different behavior and traits.
-            manageWallSpawning()
-        }
-        //endregion
-
-        }, Timers.DELAY_BEFORE_STARTING_GAME,1L)
-
-
-
+        gameEvents.runTaskTimer(plugin, Timers.DELAY_BEFORE_STARTING_GAME, 1L)
     }
 
     val upcomingWalls: MutableList<Wall> = mutableListOf()// A list of walls that are upcoming to be spawned. This is used to keep track of walls that are about to be spawned in the game.
@@ -342,11 +378,13 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
                 )
 
                 WallSpawnerState.INTENDING_TO_CREATE_1_WALL -> wantedState in setOf(
-                            WallSpawnerState.WAITING_A_LIL_TILL_WALL_HAS_SPACE_TO_SPAWN
+                            WallSpawnerState.WAITING_A_LIL_TILL_WALL_HAS_SPACE_TO_SPAWN,
+                            WallSpawnerState.SWAPPING_TO_IDLE_WHEN_THERE_ARE_NO_EXISTING_WALLS
                 )
 
                 WallSpawnerState.INTENDING_TO_CREATE_MULTIPLE_WALLS_AT_ONCE -> wantedState in setOf(
-                            WallSpawnerState.WAITING_A_LIL_TILL_WALL_HAS_SPACE_TO_SPAWN
+                            WallSpawnerState.WAITING_A_LIL_TILL_WALL_HAS_SPACE_TO_SPAWN,
+                            WallSpawnerState.SWAPPING_TO_IDLE_WHEN_THERE_ARE_NO_EXISTING_WALLS
                 )
 
 

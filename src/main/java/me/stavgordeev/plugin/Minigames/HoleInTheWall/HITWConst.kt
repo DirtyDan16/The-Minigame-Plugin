@@ -14,6 +14,9 @@ object HITWConst {
     const val MAP_FOLDER: String = "map"
     const val GAME_FOLDER: String = "holeinthewall"
 
+
+    //region wall constants that aren't tied to a specific wall spawner mode
+
     // regular value for this is 6.
     const val HARD_CAP_MAX_POSSIBLE_AMOUNT_OF_WALLS: Int = 6
 
@@ -22,6 +25,12 @@ object HITWConst {
 
     const val MINIMUM_SPACE_BETWEEN_2_WALLS_FROM_THE_SAME_DIRECTION = 6
     const val PSYCH_WALL_THAT_RETURNS_TO_MOVING_LIFESPAN: Int = DEFAULT_WALL_TRAVEL_LIFESPAN - DEFAULT_PSYCH_WALL_TRAVEL_LIFESPAN
+
+    const val LIFESPAN_REMAINING_OF_WALL_THAT_LETS_YOU_SPAWN_A_WALL_FROM_AN_ADJACENT_DIRECTION: Int = DEFAULT_WALL_TRAVEL_LIFESPAN - 7
+    const val LIFESPAN_REMAINING_OF_WALL_THAT_LETS_YOU_SPAWN_A_WALL_FROM_THE_DIRECTION_THIS_WALL_IS_FACING: Int = DEFAULT_WALL_TRAVEL_LIFESPAN - 4
+
+    //endregion
+
 
     object Locations {
         val WORLD: World = getWorld("world") ?: throw IllegalStateException("World 'world' not found. Please ensure the world is loaded.")
@@ -86,7 +95,8 @@ object HITWConst {
             const val CHANCE_THAT_PSYCH_WALL_WILL_GET_REMOVED: Int = (0.66 * 100).toInt()
         }
         object WALLS_FROM_2_OPPOSITE_DIRECTIONS {
-            const val CHANCE_THAT_WALL_WILL_SPAWN_FROM_THE_SAME_DIRECTION: Int = (0.75 * 100).toInt()
+            const val CHANCE_OF_CHANGING_DIRECTIONS: Int = (0.2 * 100).toInt()
+            const val CHANCE_OF_CONSIDERING_TO_SWAP_REAL_WALL_DIRECTION: Int = (0.2 * 100).toInt()
             const val MINIMUM_SPACE_BETWEEN_2_WALLS_FROM_THE_SAME_DIRECTION: Int = HITWConst.MINIMUM_SPACE_BETWEEN_2_WALLS_FROM_THE_SAME_DIRECTION
         }
 
@@ -102,9 +112,7 @@ object HITWConst {
         val INCREASE_WALL_DIFFICULTY_LANDMARKS: IntArray = intArrayOf(45, 90, 155) // in seconds
         val PLATFORM_SHRINKAGE_LANDMARKS: IntArray = intArrayOf(70, 155)
 
-        //val WALL_SPEED: IntArray = intArrayOf(15, 12, 10, 7, 5, 4, 3, 2) //in ticks
-        val WALL_SPEED: IntArray = intArrayOf(4) //in ticks
-
+        val WALL_SPEED: IntArray = intArrayOf(15, 12, 10, 7, 6, 5, 4) //in ticks
 
         // *after the game knows that the wall can safely spawn in that direction, we'll make it wait extra for randomness
         val DELAY_BEFORE_SPAWNING_A_WALL_FROM_THE_SAME_DIRECTION: LongRange = 0L..12L // in ticks

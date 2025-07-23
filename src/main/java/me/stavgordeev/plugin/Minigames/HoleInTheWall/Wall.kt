@@ -18,7 +18,7 @@ import me.stavgordeev.plugin.Direction
 
 class Wall(
     val wallFile: File,
-    val directionWallComesFrom: Direction,
+    var directionWallComesFrom: Direction,
     val isFlipped: Boolean = false,
     var isPsych: Boolean = false,
     val shouldRemovePsychThatStopped: Boolean = true // If the psych wall continues to move after it has reached its lifespan and has stopped. This is only relevant for psych walls and is set to true by default for regular walls. (doesn't mean anything)

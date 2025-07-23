@@ -1,17 +1,15 @@
-package me.stavgordeev.plugin.commands;
+package me.stavgordeev.plugin.commands
 
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandExecutor;
-import org.bukkit.command.CommandSender;
-import org.bukkit.command.TabExecutor;
-import org.bukkit.entity.Player;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import com.google.errorprone.annotations.CheckReturnValue
+import net.kyori.adventure.text.Component
+import net.kyori.adventure.text.format.NamedTextColor
+import org.bukkit.command.Command
+import org.bukkit.command.CommandExecutor
+import org.bukkit.command.CommandSender
+import org.bukkit.command.TabExecutor
+import org.bukkit.entity.Player
 
-import java.util.List;
-
-public abstract class MinigameCommandsSkeleton implements CommandExecutor, TabExecutor {
-
+abstract class MinigameCommandsSkeleton : CommandExecutor, TabExecutor {
     /**
      * Executes the given command, returning its success
      * @param sender Source of the command
@@ -20,34 +18,43 @@ public abstract class MinigameCommandsSkeleton implements CommandExecutor, TabEx
      * @param args Passed command arguments
      * @return true if a valid command, otherwise false
      */
-    @Override
-    public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
-        if (!(sender instanceof Player player)) {
-            sender.sendMessage("This command can only be run by a player.");
-            return false;
+    override fun onCommand(sender: CommandSender, command: Command, label: String, args: Array<String>): Boolean {
+        if (sender !is Player) {
+            sender.sendMessage("This command can only be run by a player.")
+            return false
         }
 
-        if (args.length == 0) {
-            return true;
+        if (args.size == 0) {
+            return true
         }
 
-        return handleCommand(player, command, label, args);
+        return handleCommand(sender, command, label, args)
     }
 
     /**
      * Requests a list of possible completions for a command argument.
      * @param sender Source of the command.  For players tab-completing a
-     *     command inside of a command block, this will be the player, not
-     *     the command block.
+     * command inside of a command block, this will be the player, not
+     * the command block.
      * @param command Command which was executed
      * @param label Alias of the command which was used
      * @param args The arguments passed to the command, including final
-     *     partial argument to be completed
+     * partial argument to be completed
      * @return A List of possible completions for the final argument, or null
      */
-    @Override
-    public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
-        return handleTabComplete(sender, command, label, args);
+    override fun onTabComplete(
+        sender: CommandSender,
+        command: Command,
+        label: String,
+        args: Array<String>
+    ): List<String> {
+        return handleTabComplete(sender, command, label, args)
+    }
+
+    @CheckReturnValue
+    protected fun error(player: Player, msg: String): Boolean {
+        player.sendMessage(Component.text(msg).color(NamedTextColor.RED))
+        return false
     }
 
     /**
@@ -58,7 +65,12 @@ public abstract class MinigameCommandsSkeleton implements CommandExecutor, TabEx
      * @param args The arguments passed to the command
      * @return true if the command was handled, otherwise false
      */
-    protected abstract boolean handleCommand(Player player, Command command, String label, String[] args);
+    protected abstract fun handleCommand(
+        player: Player,
+        command: Command,
+        label: String,
+        args: Array<String>
+    ): Boolean
 
     /**
      * Handles the tab completion
@@ -68,5 +80,10 @@ public abstract class MinigameCommandsSkeleton implements CommandExecutor, TabEx
      * @param args The arguments passed to the command
      * @return A List of possible completions for the final argument, or null
      */
-    protected abstract @Nullable List<String> handleTabComplete(CommandSender sender, Command command, String label, String[] args);
+    protected abstract fun handleTabComplete(
+        sender: CommandSender,
+        command: Command,
+        label: String,
+        args: Array<String>
+    ): List<String>
 }
