@@ -1,6 +1,6 @@
 package me.stavgordeev.plugin
 
-import me.stavgordeev.plugin.MinigamePlugin.plugin
+import me.stavgordeev.plugin.MinigamePlugin.Companion.plugin
 import org.bukkit.Bukkit
 import org.bukkit.Location
 import org.bukkit.Material
@@ -13,28 +13,28 @@ enum class Direction {
 
     fun getClockwise(): Direction {
         return when (this) {
-            Direction.NORTH -> EAST
-            Direction.SOUTH -> WEST
-            Direction.EAST -> SOUTH
-            Direction.WEST -> NORTH
+            NORTH -> EAST
+            SOUTH -> WEST
+            EAST -> SOUTH
+            WEST -> NORTH
         }
     }
 
     fun getCounterClockwise(): Direction {
         return when (this) {
-            Direction.NORTH -> WEST
-            Direction.SOUTH -> EAST
-            Direction.EAST -> NORTH
-            Direction.WEST -> SOUTH
+            NORTH -> WEST
+            SOUTH -> EAST
+            EAST -> NORTH
+            WEST -> SOUTH
         }
     }
 
     fun getOpposite(): Direction {
         return when (this) {
-            Direction.NORTH -> SOUTH
-            Direction.SOUTH -> NORTH
-            Direction.EAST -> WEST
-            Direction.WEST -> EAST
+            NORTH -> SOUTH
+            SOUTH -> NORTH
+            EAST -> WEST
+            WEST -> EAST
         }
     }
 }
@@ -66,6 +66,8 @@ object Utils {
      * @param conditionToCancel An optional condition to cancel the task.
      * @param action The action to execute when the condition is met.
      * @param actionToDoIfCanceled An optional action to execute if the task is cancelled.
+     * @param actionToDoWhileWaitingForAConditionToOccur An optional action to execute while waiting for the condition to occur.
+     * @param listOfRunnablesToAddTo An optional list to add the runnable to, for later cancellation.
      * @return A BukkitRunnable that can be cancelled if needed.
      */
     fun activateTaskAfterConditionIsMet(
@@ -74,23 +76,25 @@ object Utils {
         condition: () -> Boolean,
         conditionToCancel: (() -> Boolean)? = null,
         action: Runnable,
-        actionToDoIfCanceled: (() -> Unit)? = null
+        actionToDoIfCanceled: (() -> Unit)? = null,
+        actionToDoWhileWaitingForAConditionToOccur: Runnable? = null,
+        listOfRunnablesToAddTo: MutableList<BukkitRunnable>? = null
     ): BukkitRunnable {
         val runnable: BukkitRunnable = object : BukkitRunnable() {
             override fun run() {
-                if (conditionToCancel?.invoke() == true) {
-                    cancel(true)
-                    return
-                }
-
-                if (condition()) {
-                    if (delayAfterConditionMet > 0L) {
-                        Bukkit.getScheduler().runTaskLater(plugin, action, delayAfterConditionMet)
-                    } else {
-                        action.run()
+                when {
+                    conditionToCancel?.invoke() == true -> cancel()
+                    condition.invoke() -> {
+                        if (delayAfterConditionMet > 0L) {
+                            Bukkit.getScheduler().runTaskLater(plugin, action, delayAfterConditionMet)
+                        } else {
+                            action.run()
+                        }
+                        cancel(false)
                     }
-                    cancel(false)
+                    else -> actionToDoWhileWaitingForAConditionToOccur?.run()
                 }
+                return
             }
 
             override fun cancel() {
@@ -100,10 +104,15 @@ object Utils {
             fun cancel(doActionWhenCanceled: Boolean){
                 if (doActionWhenCanceled) actionToDoIfCanceled?.invoke()
                 super.cancel()
+
+                listOfRunnablesToAddTo?.remove(this)
             }
         }
 
         runnable.runTaskTimer(plugin, 0L, checkInterval)
+
+        listOfRunnablesToAddTo?.add(runnable)
+
         return runnable
     }
 

@@ -1,78 +1,100 @@
-package me.stavgordeev.plugin;
+package me.stavgordeev.plugin
 
-import me.stavgordeev.plugin.Listeners.PlayerDeathListener;
-import me.stavgordeev.plugin.Minigames.BlueprintBazaar.BlueprintBazaar;
-import me.stavgordeev.plugin.Minigames.DiscoMayhem.DiscoMayhem;
-import me.stavgordeev.plugin.Minigames.HoleInTheWall.HoleInTheWall;
-import me.stavgordeev.plugin.Minigames.BlueprintBazaar.BlueprintBazaarCommands;
-import me.stavgordeev.plugin.Minigames.DiscoMayhem.DiscoMayhemCommands;
-import me.stavgordeev.plugin.Minigames.HoleInTheWall.HoleInTheWallCommands;
-import me.stavgordeev.plugin.commands.MiscCommands;
-import org.bukkit.World;
-import org.bukkit.plugin.Plugin;
-import org.bukkit.plugin.java.JavaPlugin;
+import me.stavgordeev.plugin.Listeners.PlayerDeathListener
+import me.stavgordeev.plugin.Minigames.BlueprintBazaar.BlueprintBazaar
+import me.stavgordeev.plugin.Minigames.BlueprintBazaar.BlueprintBazaarCommands
+import me.stavgordeev.plugin.Minigames.DiscoMayhem.DiscoMayhem
+import me.stavgordeev.plugin.Minigames.DiscoMayhem.DiscoMayhemCommands
+import me.stavgordeev.plugin.Minigames.HoleInTheWall.HoleInTheWall
+import me.stavgordeev.plugin.Minigames.HoleInTheWall.HoleInTheWallCommands
+import me.stavgordeev.plugin.Minigames.MinigameSkeleton
+import me.stavgordeev.plugin.commands.MiscCommands
+import net.royawesome.jlibnoise.module.combiner.Min
+import org.bukkit.World
+import org.bukkit.plugin.Plugin
+import org.bukkit.plugin.java.JavaPlugin
+import java.io.File
 
-import java.io.File;
-import java.util.Objects;
+class MinigamePlugin : JavaPlugin() {
+    lateinit var discoMayhem: DiscoMayhem
+    lateinit var blueprintBazaar: BlueprintBazaar
+    lateinit var holeInTheWall: HoleInTheWall
 
-public class MinigamePlugin extends JavaPlugin {
+    override fun onEnable() {
+        plugin = this // Initialize the plugin reference
+        world = server.getWorld("world")!! // Initialize the world object
 
-    public static Plugin plugin;
-    public static World world;
+        initSchematicsFolders()
 
-    @Override
-    public void onEnable() {
-        plugin = this; // Initialize the plugin reference
-        world = getServer().getWorld("world"); // Initialize the world object
-
-        initSchematicsFolders();
-
-        DiscoMayhem discoMayhem = new DiscoMayhem(this);
-        BlueprintBazaar blueprintBazaar = new BlueprintBazaar(this);
-        HoleInTheWall holeInTheWall = new HoleInTheWall(this);
+        discoMayhem = DiscoMayhem(this)
+        blueprintBazaar = BlueprintBazaar(this)
+        holeInTheWall = HoleInTheWall(this)
 
         // Register the event listeners
-        getServer().getPluginManager().registerEvents(new PlayerDeathListener(discoMayhem,holeInTheWall), this);
+        server.pluginManager.registerEvents(PlayerDeathListener(discoMayhem, holeInTheWall), this)
 
-        Objects.requireNonNull(getCommand("mg_disco_mayhem")).setExecutor(new DiscoMayhemCommands(discoMayhem)); // Register the command relating to the minigame DiscoMayhem.
-        Objects.requireNonNull(getCommand("mg_blueprint_bazaar")).setExecutor(new BlueprintBazaarCommands(blueprintBazaar)); // Register the command relating to the minigame BlueprintBazaar.
-        Objects.requireNonNull(getCommand("mg_hole_in_the_wall")).setExecutor(new HoleInTheWallCommands(holeInTheWall));
-        Objects.requireNonNull(getCommand("misc")).setExecutor(new MiscCommands(this));
+        getCommand("mg_disco_mayhem")?.setExecutor(
+            DiscoMayhemCommands(discoMayhem)
+        )
+        getCommand("mg_blueprint_bazaar")?.setExecutor(
+            BlueprintBazaarCommands(blueprintBazaar)
+        )
+        getCommand("mg_hole_in_the_wall")?.setExecutor(
+            HoleInTheWallCommands(holeInTheWall)
+        )
+        getCommand("misc")?.setExecutor(MiscCommands(this))
     }
 
-        @Override
-    public void onDisable() {
+    override fun onDisable() {
         // Plugin shutdown logic
     }
 
-    private File blueprintBazaarSchematicsFolder,holeInTheWallSchematicsFolder;
-    private void initSchematicsFolders() {
+    private lateinit var blueprintBazaarSchematicsFolder: File
+    private lateinit var holeInTheWallSchematicsFolder: File
+    private fun initSchematicsFolders() {
         // Create the BlueprintBazaarBuilds folder if it doesn't exist
-        blueprintBazaarSchematicsFolder = new File(getDataFolder(), "BlueprintBazaarBuilds");
+        blueprintBazaarSchematicsFolder = File(dataFolder, "BlueprintBazaarBuilds")
         if (!blueprintBazaarSchematicsFolder.exists()) {
-            blueprintBazaarSchematicsFolder.mkdirs();  // Creates the folder if it doesn't exist
-            getLogger().info("Created BlueprintBazaarBuilds folder.");
+            blueprintBazaarSchematicsFolder.mkdirs() // Creates the folder if it doesn't exist
+            logger.info("Created BlueprintBazaarBuilds folder.")
         } else {
-            getLogger().info("BlueprintBazaarBuilds folder already exists.");
+            logger.info("BlueprintBazaarBuilds folder already exists.")
         }
 
-        holeInTheWallSchematicsFolder = new File(getDataFolder(), "HoleInTheWall");
+        holeInTheWallSchematicsFolder = File(dataFolder, "HoleInTheWall")
         if (!blueprintBazaarSchematicsFolder.exists()) {
             // Creates the folder if it doesn't exist
-            if (blueprintBazaarSchematicsFolder.mkdirs()) getLogger().info("Created HoleInTheWall folder.");
-            else getLogger().warning("Failed to create HoleInTheWall folder.");
+            if (blueprintBazaarSchematicsFolder.mkdirs()) logger.info("Created HoleInTheWall folder.")
+            else logger.warning("Failed to create HoleInTheWall folder.")
         } else {
-            getLogger().info("HoleInTheWall folder already exists.");
+            logger.info("HoleInTheWall folder already exists.")
         }
     }
 
-    public File getSchematicsFolder(String minigame) {
-        return switch (minigame) {
-            case "blueprintbazaar" -> blueprintBazaarSchematicsFolder;
-            case "holeinthewall" -> holeInTheWallSchematicsFolder;
-            default -> throw new IllegalStateException("Unexpected value: " + minigame);
-        };
+    fun getSchematicsFolder(minigame: String): File {
+        return when (minigame) {
+            "blueprintbazaar" -> blueprintBazaarSchematicsFolder
+            "holeinthewall" -> holeInTheWallSchematicsFolder
+            else -> throw IllegalStateException("Unexpected value: " + minigame)
+        }
     }
 
+    fun getInstanceOfMinigame(minigame: MinigameType): MinigameSkeleton {
+        return when (minigame) {
+            MinigameType.HOLE_IN_THE_WALL -> this.holeInTheWall
+            MinigameType.DISCO_MAYHEM -> this.discoMayhem
+            MinigameType.BLUEPRINT_BAZAAR -> this.blueprintBazaar
+        }
+    }
 
+    companion object {
+        lateinit var plugin: MinigamePlugin
+        lateinit var world: World
+
+        enum class MinigameType {
+            HOLE_IN_THE_WALL,
+            DISCO_MAYHEM,
+            BLUEPRINT_BAZAAR
+        }
+    }
 }

@@ -15,7 +15,7 @@ import com.sk89q.worldedit.regions.CuboidRegion
 import com.sk89q.worldedit.regions.Region
 import com.sk89q.worldedit.session.ClipboardHolder
 import com.sk89q.worldedit.world.block.BlockState
-import me.stavgordeev.plugin.MinigamePlugin.world
+import me.stavgordeev.plugin.MinigamePlugin.Companion.world
 import org.bukkit.Bukkit
 import org.bukkit.Location
 import org.bukkit.Material
@@ -171,14 +171,15 @@ object BuildLoader {
 
     //endregion -------------------------------------------------------------
 
-
-    fun loadSchematicByFile(file: File) {
-        val clipboardHolder = getClipboardHolderFromFile(file, null)
-        loadSchematic(clipboardHolder)
-    }
-
-    fun loadSchematicByFileAndLocation(file: File, location: Location) {
+    fun loadSchematicByFileAndLocation(
+        file: File,
+        location: Location? = null,
+        direction: Direction? = null
+    ) {
         val clipboardHolder = getClipboardHolderFromFile(file,location)
+        if (direction != null) {
+            applyDirectionToClipboardHolder(clipboardHolder, direction)
+        }
         loadSchematic(clipboardHolder)
     }
 
@@ -186,13 +187,6 @@ object BuildLoader {
         val location = Location(world, x.toDouble(), y.toDouble(), z.toDouble())
         loadSchematicByFileAndLocation(file, location)
     }
-
-    fun loadSchematicByFileAndLocationAndDirection(schematic: File, location: Location, direction: Direction) {
-        val clipboardHolder = getClipboardHolderFromFile(schematic,location)
-        applyDirectionToClipboardHolder(clipboardHolder, direction)
-        loadSchematic(clipboardHolder)
-    }
-
 
 
     /**
@@ -226,42 +220,36 @@ object BuildLoader {
         }
     }
 
-    /**
-     * Gets the borders of the existing build at the specified location.
-     *
-     * @param file     The schematic file to load.
-     * @param location The location to get the borders of the existing build.
-     * @return An array containing the minimum and maximum coordinates of the build.
-     */
-    @JvmStatic
-    fun getBuildBorders(file: File, location: Location): IntArray? {
-        // Get the format of the schematic file.
-        val format = ClipboardFormats.findByFile(file)
-
-        if (format == null) {
-            Bukkit.getLogger().warning("Unsupported schematic format: " + file.getName())
-            return null
+    fun deleteSchematic(region: Region) {
+        // Loop through the region and set all blocks to air.
+        for (x in region.minimumPoint.blockX..region.maximumPoint.blockX) {
+            for (y in region.minimumPoint.blockY..region.maximumPoint.blockY) {
+                for (z in region.minimumPoint.blockZ..region.maximumPoint.blockZ) {
+                    world.getBlockAt(x, y, z).type = Material.AIR
+                }
+            }
         }
-        //
+    }
+
+
+    fun getRegionFromFile(file: File, location: Location): Region? {
+        val format = ClipboardFormats.findByFile(file) ?: return null
+
         try {
             FileInputStream(file).use { fis ->
                 format.getReader(fis).use { reader ->
                     val clipboard = reader.read()
-                    // Get the dimensions of the clipboard.
-                    val dimensions = clipboard.dimensions
-                    val minX = location.blockX
-                    val minY = location.blockY
-                    val minZ = location.blockZ
-                    val maxX = minX + dimensions.x
-                    val maxY = minY + dimensions.y
-                    val maxZ = minZ + dimensions.z
-
-                    // Store the borders in an array.
-                    return intArrayOf(minX, maxX, minY, maxY, minZ, maxZ)
+                    // the offset is the difference between the clipboard's origin and the location's block coordinates.
+                    val offset = BlockVector3.at(location.blockX, location.blockY, location.blockZ).subtract(clipboard.origin)
+                    val region = CuboidRegion(clipboard.region.world,
+                        clipboard.region.minimumPoint.add(offset),
+                        clipboard.region.maximumPoint.add(offset)
+                    )
+                    return region
                 }
             }
         } catch (e: IOException) {
-            Bukkit.getLogger().severe("Failed to load schematic: " + e.message)
+            Bukkit.getLogger().severe("Failed to load schematic: ${e.message}")
             return null
         }
     }

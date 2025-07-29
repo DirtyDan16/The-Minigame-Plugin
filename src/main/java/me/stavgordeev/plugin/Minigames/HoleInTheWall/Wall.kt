@@ -11,23 +11,62 @@ import org.bukkit.block.BlockFace
 import org.bukkit.block.BlockState
 import org.bukkit.block.data.Powerable
 import java.io.File
-import me.stavgordeev.plugin.MinigamePlugin.plugin
 import org.bukkit.Bukkit
 
 import me.stavgordeev.plugin.Direction
+import me.stavgordeev.plugin.MinigamePlugin
+import me.stavgordeev.plugin.MinigamePlugin.Companion.plugin
+import net.kyori.adventure.text.Component
+import net.kyori.adventure.text.format.NamedTextColor
 
 class Wall(
     val wallFile: File,
-    var directionWallComesFrom: Direction,
+    directionWallComesFrom: Direction, // The direction the wall is coming from. This is used to determine the direction the wall is facing and how it should be moved.
     val isFlipped: Boolean = false,
     var isPsych: Boolean = false,
     val shouldRemovePsychThatStopped: Boolean = true // If the psych wall continues to move after it has reached its lifespan and has stopped. This is only relevant for psych walls and is set to true by default for regular walls. (doesn't mean anything)
 ) {
-
     constructor(wallFile: File,directionWallComesFrom: Direction) : this(wallFile,directionWallComesFrom,false,false)
 
 
     //region -- Properties --
+
+    var directionWallComesFrom: Direction = directionWallComesFrom
+        set(direction) {
+            field = direction
+
+            // Update the direction the wall is facing based on the direction it comes from.
+            directionWallIsFacing = when (direction) {
+                Direction.SOUTH -> Direction.NORTH
+                Direction.NORTH -> Direction.SOUTH
+                Direction.WEST -> Direction.EAST
+                Direction.EAST -> Direction.WEST
+            }
+
+            // Update the spawn location based on the new direction.
+            spawnLocation = when (direction) {
+                Direction.SOUTH -> HITWConst.Locations.SOUTH_WALL_SPAWN.clone()
+                Direction.NORTH -> HITWConst.Locations.NORTH_WALL_SPAWN.clone()
+                Direction.WEST -> HITWConst.Locations.WEST_WALL_SPAWN.clone()
+                Direction.EAST -> HITWConst.Locations.EAST_WALL_SPAWN.clone()
+            }
+            holder = BuildLoader.getClipboardHolderFromFile(wallFile, spawnLocation)
+
+            // update the holder to reflect the new direction the wall is facing.
+            BuildLoader.applyDirectionToClipboardHolder(holder, directionWallIsFacing)
+
+            // Create the wall region based on the clipboard's dimensions.
+            wallRegion = BuildLoader.getRotatedRegion(holder, spawnLocation, directionWallIsFacing)
+        }
+    private lateinit var directionWallIsFacing: Direction
+    private var spawnLocation: Location = when (directionWallComesFrom) {
+        Direction.SOUTH -> HITWConst.Locations.SOUTH_WALL_SPAWN.clone()
+        Direction.NORTH -> HITWConst.Locations.NORTH_WALL_SPAWN.clone()
+        Direction.WEST -> HITWConst.Locations.WEST_WALL_SPAWN.clone()
+        Direction.EAST -> HITWConst.Locations.EAST_WALL_SPAWN.clone()
+    }
+
+
     var wallRegion: CuboidRegion
     lateinit var locationOfPistons: MutableList<Location>
 
@@ -41,18 +80,6 @@ class Wall(
 
     val minimumLifespanTraveledWhereWallsCanSpawnBehindIt = HITWConst.MINIMUM_SPACE_BETWEEN_2_WALLS_FROM_THE_SAME_DIRECTION
 
-    val spawnLocation: Location = when (directionWallComesFrom) {
-        Direction.SOUTH -> HITWConst.Locations.SOUTH_WALL_SPAWN.clone()
-        Direction.NORTH -> HITWConst.Locations.NORTH_WALL_SPAWN.clone()
-        Direction.WEST -> HITWConst.Locations.WEST_WALL_SPAWN.clone()
-        Direction.EAST -> HITWConst.Locations.EAST_WALL_SPAWN.clone()
-    }
-    val directionWallIsFacing: Direction = when (directionWallComesFrom) {
-        Direction.SOUTH -> Direction.NORTH
-        Direction.NORTH -> Direction.SOUTH
-        Direction.WEST -> Direction.EAST
-        Direction.EAST -> Direction.WEST
-    }
 
     var shouldBeRemoved: Boolean = false // If the wall should be removed from the game when it has stopped moving.
     var shouldBeStopped: Boolean = false // If the wall should be stopped from moving. It doesn't mean it should be removed from the game, but it has the possibility (for example - Psych walls)
@@ -71,13 +98,14 @@ class Wall(
             throw IllegalArgumentException("Wall file does not exist: ${wallFile.path}")
         }
 
+
+
         // We will gather the schematic as a Clipboard from the wall file.
         // This is to easily and conveniently manipulate the schematic based on the characteristics of the wall.
-
         holder = BuildLoader.getClipboardHolderFromFile(wallFile,spawnLocation)
 
-        // Make the schematic face the direction it is supposed to face.
-        BuildLoader.applyDirectionToClipboardHolder(holder, directionWallIsFacing)
+        // we will set the direction of the wall, and update the holder to reflect the direction the wall is facing.
+        this.directionWallComesFrom = directionWallComesFrom
 
         // mirror the schematic if the wall is flipped.
         if (isFlipped) {
@@ -140,7 +168,6 @@ class Wall(
      * Each time the wall moves, its lifespan is decremented by 1.
      * If the wall has a lifespan of 0, it will be stopped, but not necessarily removed from the game. The game logic handles the logic for removing the wall.
      */
-    //fixme: If you end game while the wall is moving, it will secretely still be remembered by the game logic, and its pistons will reappear if the game is started again
     fun move() {
         fun powerOnAndOffButton(block: Block) {
             val state: BlockState = block.state
@@ -185,8 +212,14 @@ class Wall(
             }
 
             // Check if the block behind the piston is air, if it is not, then we can't place a button there.
+            // this will typically happen if two walls have collided with each other.
             if (buttonLocation.block.type != Material.AIR) {
-                throw IllegalStateException("HITW: expected air behind the piston, but found ${buttonLocation.block.type} at ${buttonLocation.block.location}")
+                val game = plugin.getInstanceOfMinigame(MinigamePlugin.Companion.MinigameType.HOLE_IN_THE_WALL) as HoleInTheWall
+
+                //game.clearWalls()
+                game.pauseGame()
+
+                Bukkit.getServer().broadcast(Component.text("Two walls have seemed to collide. Cleaning the arena and pausing.").color(NamedTextColor.YELLOW))
             }
 
             // Update the button location to the list of button locations.

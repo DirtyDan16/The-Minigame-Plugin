@@ -1,5 +1,6 @@
 package me.stavgordeev.plugin.Minigames.HoleInTheWall
 
+import com.sk89q.worldedit.regions.Region
 import me.stavgordeev.plugin.BuildLoader
 import me.stavgordeev.plugin.Direction
 import me.stavgordeev.plugin.MinigamePlugin
@@ -20,12 +21,12 @@ import org.bukkit.plugin.Plugin
 import org.bukkit.potion.PotionEffect
 import org.bukkit.potion.PotionEffectType
 import org.bukkit.scheduler.BukkitRunnable
-import org.bukkit.scheduler.BukkitTask
-import org.stringtemplate.v4.compiler.STParser
 import java.io.File
 import java.io.IOException
 import java.time.Duration
 import java.util.*
+import kotlin.compareTo
+import kotlin.invoke
 import kotlin.random.Random
 
 class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
@@ -35,6 +36,7 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
     private lateinit var platformSchematics: Array<File> //the platform stages for a given map
     private lateinit var wallPackSchematics: Array<File> //the wallpack selected from a given map. each element features a group of files of walls, whose grouped via difficulty.
     private lateinit var mapSchematic: File //the map schematic that is being played.
+    private lateinit var mapSchematicRegion : Region //the region of the map schematic that is being played. used to nuke the area gracefully.
     private lateinit var mapName: String //the map name that is being played. gets a value on the start() method.
 
 
@@ -79,7 +81,7 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
 
     // The current mode of spawning walls logic. A mode dictates what possible WallSpawnerStates can be done in the state machine at a given moment.
     // The moment swaps naturally every so often to increase replayability.
-    private lateinit var wallSpawningMode: WallSpawnerMode
+    private var wallSpawningMode: WallSpawnerMode? = null
 
     //endregion -----------------------------------------------------------------------------------
 
@@ -100,17 +102,21 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
     //endregion
 
     @Throws(InterruptedException::class)
-    fun start(player: Player, mapName: String) {
+    fun start(player: Player, mapName: String, wantedWallSpawnerMode: String? = null) {
         if (isGameRunning) {
             Bukkit.getServer().broadcast(Component.text("Minigame is already running!"))
             return
         }
 
-        if (! ::wallSpawningMode.isInitialized) {
+        // if the player has specified a wanted game mode *in the /start command*, we will use it, otherwise, we will check if the player has specified a wall spawning mode via using the /set command.
+        if (wantedWallSpawnerMode != null) {
+            changeWallSpawningMode(wantedWallSpawnerMode)
+        // if the player has not specified via /set a mode, we will check if the mode alternator is built, and if not, we will force the mode to be Alternating.
+        } else if (wallSpawningMode == null && alternatingWallSpawnerModeRunnable == null) {
             player.sendMessage(Component.text("Wall Spawning Mode is not set! selecting Alternating").color(NamedTextColor.RED))
             changeWallSpawningMode("Alternating")
         }
-        alternatingWallSpawnerModeRunnable?.runTaskTimer(plugin,0L,Timers.ALTERNATING_WALL_SPAWNER_MODES_DELAY)
+
 
         stateOfWallSpawner = WallSpawnerState.IDLE // Set the initial state of the wall spawner to IDLE
 
@@ -120,9 +126,9 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
         startRepeatingGameLoop()
     }
 
-    fun startFastMode(player: Player, mapName: String) {
+    fun startFastMode(player: Player, mapName: String, wallSpawningMode: String? = null) {
         wallSpeed = Timers.WALL_SPEED.last() // Set the wall speed to the maximum speed
-        this.start(player, mapName)
+        this.start(player, mapName, wallSpawningMode)
     }
 
     // This func can be called whether the game is alive or not. (for the command that uses it)
@@ -152,7 +158,7 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
         // Cancel the previous runnable if it exists. this is so that we don't have this running in the background when we change the mode to a set mode.
         try {
             alternatingWallSpawnerModeRunnable?.cancel()
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             //nothing to do here, we just want to make sure that the runnable is cancelled if it was scheduled
         }
         alternatingWallSpawnerModeRunnable = null
@@ -175,6 +181,13 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
                 }
             }
 
+            // only start alternating wall spawner mode when the game is running
+            activateTaskAfterConditionIsMet(
+                condition = { isGameRunning && !isGamePaused },
+                action = {alternatingWallSpawnerModeRunnable?.runTaskTimer(plugin,0L,Timers.ALTERNATING_WALL_SPAWNER_MODES_DELAY)}
+            )
+
+
             val title = Title.title(
                 Component.empty(),
                 Component.text("Wall Spawner Mode: Alternating").color(NamedTextColor.AQUA),
@@ -191,40 +204,54 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
     }
 
     override fun endGame() {
-        if (!isGameRunning) {
-            Bukkit.getServer().broadcast(Component.text("game is not running!").color(NamedTextColor.RED))
-            return
-        }
         super.endGame()
 
-        // Cancel the periodic task that updates the game state and handles all game events - such as wall movement, wall spawning, and wall deletion. same for the alternating wall spawner mode runnable.
-        gameEvents!!.cancel()
+        // -------------------------- INITIALIZATION --------------------------
+
+        gameEvents?.cancel()
         gameEvents = null
 
         alternatingWallSpawnerModeRunnable?.cancel()
         alternatingWallSpawnerModeRunnable = null
 
-        runnables.forEach { it.cancel() }
-        runnables.clear()
+        // copy the list so that we don't get ConcurrentModificationException via adding new runnables to the list while iterating over it
+        runnables.toList().forEach { it.cancel()}
 
         stateOfWallSpawner = WallSpawnerState.DO_NO_ACTION // Reset the state of the wall spawner
+        wallSpawningMode = null // Reset the wall spawning mode
 
         // Clear the list of alive walls
         existingWallsList.clear()
-
         // Clear the walls that were planned to be pasted into existence
         upcomingWalls.clear()
 
+        atTheProcessOfConsideringSwappingRealWallDirection = false // Reset the flag that is used to prevent multiple direction changes in a row
+
+        amountOfSpawnsSinceSwitchedTheRealDirection = 0
+        amountOfSpawnsSinceDirectionChange = 0
+
         tickCount = 0 // Reset the tick count
 
-        this.nukeArea(HITWConst.Locations.PIVOT, 60) // Clear the area around the spawn point
+        // -------------------------- END INITIALIZATION --------------------------
+
+        // Clear the area around the spawn point
+        nukeArea()
+    }
+
+    fun nukeArea() {
+        BuildLoader.deleteSchematic(mapSchematicRegion)
     }
 
     override fun pauseGame() {
         super.pauseGame()
         // Cancel the periodic task that updates the game state and handles all game events - such as wall movement, wall spawning, and wall deletion.
-        gameEvents!!.cancel()
-        alternatingWallSpawnerModeRunnable?.cancel()
+        gameEvents?.cancel()
+
+        try {
+            alternatingWallSpawnerModeRunnable?.cancel()
+        } catch (_: Exception) {
+            // nothing to do here, we just want to make sure that the runnable is cancelled if it was scheduled
+        }
     }
 
     override fun resumeGame() {
@@ -338,11 +365,23 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
                 //endregion
             }
         }
-        gameEvents!!.runTaskTimer(plugin, Timers.DELAY_BEFORE_STARTING_GAME, 1L)
+        gameEvents?.runTaskTimer(plugin, Timers.DELAY_BEFORE_STARTING_GAME, 1L)
     }
 
     val upcomingWalls: MutableList<Wall> = mutableListOf()// A list of walls that are upcoming to be spawned. This is used to keep track of walls that are about to be spawned in the game.
 
+    // these is a flag that is used for
+    // Mode: WALLS_FROM_2_OPPOSITE_DIRECTIONS,
+    // at the state: WallSpawnerState.INTENDING_TO_CREATE_MULTIPLE_WALLS_AT_ONCE
+    // purpose: to stop the wall spawner to swapping the real wall direction multiple times in a row from the method isConsideringSwappingRealWallDirection()
+    var atTheProcessOfConsideringSwappingRealWallDirection: Boolean = false
+
+    // these 2 are flags that are used for
+    // Mode: WALLS_FROM_2_OPPOSITE_DIRECTIONS,
+    // at the state: WallSpawnerState.INTENDING_TO_CREATE_MULTIPLE_WALLS_AT_ONCE
+    // purpose: to gatekeep and limit changing the directions of the real wall from the duo / directions of the walls..
+    var amountOfSpawnsSinceDirectionChange = 0;
+    var amountOfSpawnsSinceSwitchedTheRealDirection = 0
 
     private fun manageWallSpawning() {
         //TODO: the logic currently is very dull and incomplete
@@ -350,7 +389,7 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
         fun isSafeToSpawnWall() : Boolean {
 
             val directionsExistingWallsHave: Set<Direction> = existingWallsList.map { it.directionWallComesFrom }.toSet()
-            val directionOfUpcomingWall: Direction = upcomingWalls[0].directionWallComesFrom
+            val directionOfUpcomingWall: Direction = upcomingWalls.last().directionWallComesFrom
 
             val numOfDirectionsExistingWallsHave = directionsExistingWallsHave.size
 
@@ -365,10 +404,10 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
 
                         directionOfUpcomingWall.getClockwise() in directionsExistingWallsHave ||
                         directionOfUpcomingWall.getCounterClockwise() in directionsExistingWallsHave ->
-                            lastWall.lifespanTraveled >= HITWConst.DEFAULT_WALL_TRAVEL_LIFESPAN - 7
+                            lastWall.lifespanTraveled >= HITWConst.LIFESPAN_TRAVELED_OF_WALL_THAT_LETS_YOU_SPAWN_A_WALL_FROM_AN_ADJACENT_DIRECTION
 
                         directionOfUpcomingWall.getOpposite() in directionsExistingWallsHave ->
-                            lastWall.lifespanTraveled >= HITWConst.DEFAULT_WALL_TRAVEL_LIFESPAN - 4
+                            lastWall.lifespanTraveled >= HITWConst.LIFESPAN_TRAVELED_OF_WALL_THAT_LETS_YOU_SPAWN_A_WALL_FROM_THE_DIRECTION_THIS_WALL_IS_FACING
 
                         else -> false
                     }
@@ -382,7 +421,7 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
                 WallSpawnerState.IDLE -> wantedState in setOf(
                             WallSpawnerState.INTENDING_TO_CREATE_1_WALL,
                             WallSpawnerState.INTENDING_TO_CREATE_MULTIPLE_WALLS_AT_ONCE,
-                            WallSpawnerState.SPAWNING
+                            WallSpawnerState.SPAWNING_1_WALL
                 )
 
                 WallSpawnerState.INTENDING_TO_CREATE_1_WALL -> wantedState in setOf(
@@ -398,7 +437,7 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
 
                 WallSpawnerState.WAITING_A_LIL_TILL_WALL_HAS_SPACE_TO_SPAWN -> wantedState in setOf(
                             WallSpawnerState.SWAPPING_TO_IDLE_WHEN_THERE_ARE_NO_EXISTING_WALLS, //used only when we change the mode of the wall spawner, when we cancel runnables that are sending you to a desired state..
-                            WallSpawnerState.SPAWNING,
+                            WallSpawnerState.SPAWNING_1_WALL,
                             WallSpawnerState.SPAWNING_MULTIPLE_WALLS_AT_ONCE
                 )
 
@@ -406,7 +445,7 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
                             WallSpawnerState.IDLE
                 )
 
-                WallSpawnerState.SPAWNING -> wantedState in setOf(
+                WallSpawnerState.SPAWNING_1_WALL -> wantedState in setOf(
                             WallSpawnerState.IDLE
                 )
 
@@ -436,14 +475,14 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
             WallSpawnerState.IDLE -> { //region IDLE
                 if (!isGameRunning) return
 
-                val wantedState = when (wallSpawningMode) {
+                val wantedState = when (wallSpawningMode!!) {
                     WallSpawnerMode.WALL_CHAINER -> {
                         // if we don't have any walls in the arena, we can add one immediately, otherwise we'll decide where and when to add it via the bridger states
                         if (existingWallsList.isEmpty()) {
                             // Create a new wall with the a random direction and add it to the upcoming walls list
                             createNewWall(Direction.entries.random(), false)
 
-                            WallSpawnerState.SPAWNING
+                            WallSpawnerState.SPAWNING_1_WALL
                         } else {
                             WallSpawnerState.INTENDING_TO_CREATE_1_WALL
                         }
@@ -462,7 +501,7 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
                 attemptChangingStateTo(wantedState)
             } //endregion
 
-            WallSpawnerState.SPAWNING -> { //region SPAWNING
+            WallSpawnerState.SPAWNING_1_WALL -> { //region SPAWNING
                 bringWallToLife(upcomingWalls[0]) // Make the wall exist in the world by loading the schematic
                 upcomingWalls.clear()
 
@@ -472,6 +511,14 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
             WallSpawnerState.SPAWNING_MULTIPLE_WALLS_AT_ONCE -> { //region SPAWNING_MULTIPLE_WALLS_AT_ONCE
                 upcomingWalls.forEach { wall -> bringWallToLife(wall) }
                 upcomingWalls.clear()
+
+                // Do extra logic depending on the mode we're at
+                if (wallSpawningMode == WallSpawnerMode.WALLS_FROM_2_OPPOSITE_DIRECTIONS) {
+                    // Increment the counters that keep track of how many walls have been spawned since the vars' states were checked
+                    amountOfSpawnsSinceSwitchedTheRealDirection++
+                    amountOfSpawnsSinceDirectionChange++
+                }
+
 
                 attemptChangingStateTo(WallSpawnerState.IDLE)
             }//endregion
@@ -499,21 +546,22 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
 
                 createNewWall(directionOfUpcomingWall, false) // Create a new wall with the selected direction and add it to the upcoming walls list
 
-                val runnable = activateTaskAfterConditionIsMet(
+                activateTaskAfterConditionIsMet(
                     condition = {isSafeToSpawnWall()},
-                    action =  {attemptChangingStateTo(WallSpawnerState.SPAWNING)},
-                    actionToDoIfCanceled =  {attemptChangingStateTo(WallSpawnerState.SWAPPING_TO_IDLE_WHEN_THERE_ARE_NO_EXISTING_WALLS)}
+                    action =  {attemptChangingStateTo(WallSpawnerState.SPAWNING_1_WALL)},
+                    actionToDoIfCanceled =  {attemptChangingStateTo(WallSpawnerState.SWAPPING_TO_IDLE_WHEN_THERE_ARE_NO_EXISTING_WALLS)},
+                    listOfRunnablesToAddTo = runnables
                 )
-                runnables.add(runnable)
 
                 attemptChangingStateTo(WallSpawnerState.WAITING_A_LIL_TILL_WALL_HAS_SPACE_TO_SPAWN)
             } //endregion
 
             WallSpawnerState.INTENDING_TO_CREATE_MULTIPLE_WALLS_AT_ONCE -> { //region INTENDING_TO_CREATE_MULTIPLE_WALLS_AT_ONCE
-                var conditionToSwapState: () -> Boolean = { true } // Default condition to swap state, will be set later based on the mode
+                // Default condition to swap state, will be set later based on the mode
+                var conditionToSwapState: () -> Boolean = { true }
 
                 when (wallSpawningMode) {
-                    WallSpawnerMode.WALLS_FROM_ALL_DIRECTIONS -> {
+                    WallSpawnerMode.WALLS_FROM_ALL_DIRECTIONS -> { //region WALLS_FROM_ALL_DIRECTIONS
                         // take randomly between 2 and 4 directions from the Direction enum to add to the DirectionsOfUpcomingWalls
                         val numOfWallsToSpawn = Random.nextInt(2, 4 + 1)
 
@@ -534,68 +582,124 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
 
                         // If we are spawning walls from all directions, we will wait until there are no existing walls
                         conditionToSwapState = { existingWallsList.isEmpty() }
-                    }
+                    } //endregion
 
-                    WallSpawnerMode.WALLS_FROM_2_OPPOSITE_DIRECTIONS -> {
+                    WallSpawnerMode.WALLS_FROM_2_OPPOSITE_DIRECTIONS -> { //region WALLS_FROM_2_OPPOSITE_DIRECTIONS
+                        val const = HITWConst.WallSpawnerModes.WALLS_FROM_2_OPPOSITE_DIRECTIONS
+
+                        val rndShouldSwapDirections = amountOfSpawnsSinceDirectionChange > const.MIN_AMOUNT_OF_SPAWNS_TILL_CHANGING_DIRECTIONS_FOR_DUO &&
+                                (0..100).random() < const.CHANCE_OF_CHANGING_DIRECTIONS
+                        val rndConsideringSwappingRealWallDirection = when {
+                            amountOfSpawnsSinceSwitchedTheRealDirection > const.MAX_AMOUNT_OF_SPAWNS_TILL_THERE_MUST_BE_CHANGE ->
+                                true
+                            amountOfSpawnsSinceSwitchedTheRealDirection > const.MIN_AMOUNT_OF_SPAWNS_TILL_THERE_CAN_BE_CONSIDERATION_TO_SWAP_REAL_WALL_DIRECTION ->
+                                (0..100).random() < const.CHANCE_OF_CONSIDERING_TO_SWAP_REAL_WALL_DIRECTION
+                            else -> false
+                        }
+
+                        fun createDuo(direction: Direction,isPsychA: Boolean, isPsychB: Boolean) {
+                            createNewWall(direction, isPsychA)
+                            createNewWall(direction.getOpposite(), isPsychB)
+                        }
+
+                        // ---------------------starting the logic of spawning walls from 2 opposite directions
+
                         if (existingWallsList.isEmpty()) {
                             Direction.entries.random().let { direction ->
-                                createNewWall(direction, false)
-                                createNewWall(direction.getOpposite(), true)
+                                createDuo(direction, isPsychA = false, isPsychB = true)
                             }
                         } else {
                             // Get the wall that is not a psych wall out of the walls
-                            val realWall: Wall = existingWallsList.last { wall -> !wall.isPsych }
-                            val directionOfRealWall = realWall.directionWallComesFrom
-
-                            fun createDuo(isPsychA: Boolean, isPsychB: Boolean) {
-                                createNewWall(directionOfRealWall, isPsychA)
-                                createNewWall(directionOfRealWall.getOpposite(), isPsychB)
+                            val realWall: Wall = existingWallsList.lastOrNull { wall -> !wall.isPsych } ?: run {
+                                thePlayer.sendMessage(
+                                    Component.text("HITW: No real wall found in the existing walls list.")
+                                )
+                                return
                             }
 
+                            val directionOfRealWall = realWall.directionWallComesFrom
 
-                            // If the upcoming real wall is being planned to come from the same direction as the last wall, we will create a duo of walls where the first wall is a real wall and the second wall is a psych wall.
-                            if (isUpcomingRealWallComingFromSameDirection) {
-                                createDuo(false, true)
+                            //-------------------------------------------------------------------------------------------
+                            // we are going to spawn 2 walls at once from 2 opposite directions. we are gonna determine which walls should be psych and which should not.
 
-                                // Randomly decide if the next real wall will come from the same direction as the last wall.
-                                isUpcomingRealWallComingFromSameDirection =
-                                    (0..100).random() <= HITWConst.WallSpawnerModes.WALLS_FROM_2_OPPOSITE_DIRECTIONS.CHANCE_THAT_WALL_WILL_SPAWN_FROM_THE_SAME_DIRECTION
+                            if (!atTheProcessOfConsideringSwappingRealWallDirection) {
+                                createDuo(directionOfRealWall, false, true)
+
+                                atTheProcessOfConsideringSwappingRealWallDirection = rndConsideringSwappingRealWallDirection
                             } else {
-                                // Now, to create a real wall that comes from the opposite direction of the last real wall, we need to first wait until the last real wall from the opposite direction has traveled enough distance. Until then, we will stall by making both walls psych walls.
-
-                                if (realWall.lifespanRemaining < 10) {
-                                    createDuo(true, false)
-
-                                    isUpcomingRealWallComingFromSameDirection = true
+                                if (realWall.lifespanRemaining >= 10) {
+                                    createDuo(directionOfRealWall, true, true)
                                 } else {
-                                    createDuo(true, true)
+                                    atTheProcessOfConsideringSwappingRealWallDirection = false
+
+                                    listOf(
+                                        { createDuo(directionOfRealWall, false, true) },
+                                        { createDuo(directionOfRealWall, true, false) }
+                                    ).random().invoke()
+
+                                    activateTaskAfterConditionIsMet(
+                                        condition = { upcomingWalls.isEmpty() },
+                                        action = {
+                                            amountOfSpawnsSinceSwitchedTheRealDirection = 0
+                                        },
+                                        listOfRunnablesToAddTo = runnables
+                                    )
                                 }
                             }
 
 
-                            conditionToSwapState =
-                            {
-                                if (getAliveMovingWalls().isEmpty()) true
-                                else {
-                                    // If the last wall that was spawned has traveled enough distance, we can swap state.
-                                    getAliveMovingWalls().last().lifespanTraveled >= HITWConst.WallSpawnerModes.WALLS_FROM_2_OPPOSITE_DIRECTIONS.MINIMUM_SPACE_BETWEEN_2_WALLS_FROM_THE_SAME_DIRECTION
+                            // logic for swapping the directions of the walls if we randomly decided to do so
+                            if (rndShouldSwapDirections) {
+                                if (upcomingWalls.size != 2) {
+                                    thePlayer.sendMessage(
+                                        Component.text("HITW: for mode WALLS_FROM_2_OPPOSITE_DIRECTIONS, we must have exactly 2 walls in the upcoming walls list, but we have ${upcomingWalls.size} walls.").color(NamedTextColor.YELLOW)
+                                    )
+                                }
+                                for (wall in upcomingWalls) {
+                                    wall.directionWallComesFrom = wall.directionWallComesFrom.getClockwise()
+                                }
+
+
+                                // Reset the counter so that we don't swap the directions of the walls too often. we will reset it only when we know for sure that the walls that are planned to be spawned have been spawned.
+                                activateTaskAfterConditionIsMet(
+                                    condition = {upcomingWalls.isEmpty()},
+                                    action = { amountOfSpawnsSinceDirectionChange = 0},
+                                    listOfRunnablesToAddTo = runnables
+                                )
+                            }
+
+                            //---------------------------------------------------------------------------------------------
+
+                            conditionToSwapState = r@{
+                                // If we have decided to swap directions of the walls, we will need to wait more time compared to the case when we aren't swapping directions. So let's divide the cases so that as soon as we can spawn the wall without collision, we will spawn it.
+                                if ({rndShouldSwapDirections}.invoke()) {
+
+                                    val lastReal = getLastRealWall()
+                                    // If there are no real walls, we can spawn the walls immediately
+                                    if (lastReal == null) {
+                                        return@r true
+                                    } else {
+                                        return@r lastReal.lifespanTraveled >= HITWConst.LIFESPAN_TRAVELED_OF_WALL_THAT_LETS_YOU_SPAWN_A_WALL_FROM_AN_ADJACENT_DIRECTION
+                                    }
+                                } else {
+                                    return@r existingWallsList.last().lifespanTraveled >= const.MINIMUM_SPACE_BETWEEN_2_WALLS_FROM_THE_SAME_DIRECTION
                                 }
                             }
                         }
                         // Make it so that when the lifespan of any of those walls has reached 0, they'll immediately be removed, instead of just stopping in place.
                         upcomingWalls.forEach { it -> it.shouldBeRemoved = true}
-                    }
+
+                    } //endregion
 
                     else -> throw IllegalArgumentException("HITW: Invalid wall spawning mode: $wallSpawningMode to be at for this state: $stateOfWallSpawner")
                 }
 
-                val runnable = activateTaskAfterConditionIsMet(
+                activateTaskAfterConditionIsMet(
                     condition =  conditionToSwapState ,
                     action =  {attemptChangingStateTo(WallSpawnerState.SPAWNING_MULTIPLE_WALLS_AT_ONCE)},
-                    actionToDoIfCanceled =  {attemptChangingStateTo(WallSpawnerState.SWAPPING_TO_IDLE_WHEN_THERE_ARE_NO_EXISTING_WALLS)}
+                    actionToDoIfCanceled =  {attemptChangingStateTo(WallSpawnerState.SWAPPING_TO_IDLE_WHEN_THERE_ARE_NO_EXISTING_WALLS)},
+                    listOfRunnablesToAddTo = runnables
                 )
-                runnables.add(runnable) // Add the runnable to the list of runnables so that we can cancel it later if needed (like when the mode is changed)
-
                 attemptChangingStateTo(WallSpawnerState.WAITING_A_LIL_TILL_WALL_HAS_SPACE_TO_SPAWN)
 
             }//endregion
@@ -607,7 +711,10 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
                 if (existingWallsList.isEmpty()) attemptChangingStateTo(WallSpawnerState.IDLE)
             }//endregion
 
-            WallSpawnerState.DO_NO_ACTION -> {}
+
+            WallSpawnerState.DO_NO_ACTION -> {
+
+            }
         }
     }
 
@@ -642,14 +749,11 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
                     HITWConst.MAP_FOLDER -> {
                         mapSchematic = component.listFiles()?.firstOrNull()
                             ?: throw IOException("No map schematic found in ${component.name}")
+                        mapSchematicRegion = BuildLoader.getRegionFromFile(mapSchematic, HITWConst.Locations.CENTER_OF_MAP) ?: throw IOException("No region found in map schematic ${mapSchematic.name}")
                     }
                 }
             }
         }
-
-
-        // Clear the area around the spawn point
-        this.nukeArea(HITWConst.Locations.PIVOT, 40)
 
         try {
             val baseFolder = getGameBaseFolder()
@@ -657,14 +761,17 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
             processMapComponents()
         } catch (e: IOException) {
             logger().error("HITW: I/O failure while preparing area", e)
-            endGame();
+            endGame()
         } catch (e: IllegalStateException) {
             logger().error("HITW: Invalid state during map preparation", e)
-            endGame();
+            endGame()
         } catch (e: Exception) {
             logger().error("HITW: Unexpected error during game setup", e)
-            endGame();
+            endGame()
         }
+
+        // Clear the area around the spawn point
+        this.nukeArea()
 
         // Load the map schematic (the deco arena)
         BuildLoader.loadSchematicByFileAndLocation(mapSchematic, HITWConst.Locations.CENTER_OF_MAP)
@@ -732,8 +839,6 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
         existingWallsList.add(wall)
     }
 
-
-
     fun clearWalls() {
         while (existingWallsList.isNotEmpty()) {
             deleteWall(existingWallsList[0])
@@ -747,6 +852,9 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
         return existingWallsList.filter { it.shouldBeStopped } // Return only the walls that are currently stopped
     }
 
+    fun getLastRealWall(): Wall? {
+        return existingWallsList.lastOrNull { !it.isPsych } // Return the last non-psych wall
+    }
 
 }
 

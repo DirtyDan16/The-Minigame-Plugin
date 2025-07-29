@@ -27,6 +27,17 @@ class HoleInTheWallCommands(private val holeInTheWall: HoleInTheWall) : Minigame
                             throw RuntimeException(e)
                         }
                     }
+                    3 -> {
+                        try {
+                            if (args[0] == "start_hard_mode") {
+                                holeInTheWall.startFastMode(player, args[1], args[2])
+                            } else {
+                                holeInTheWall.start(player, args[1], args[2])
+                            }
+                        } catch (e: InterruptedException) {
+                            throw RuntimeException(e)
+                        }
+                    }
                     else -> return error(player, "Too many arguments")
                 }
             }
@@ -87,6 +98,7 @@ class HoleInTheWallCommands(private val holeInTheWall: HoleInTheWall) : Minigame
                         "wall_speed" -> HITWConst.Timers.WALL_SPEED.map { it.toString() }
                         else -> listOf()
                     }
+                    "start" -> HITWConst.WallSpawnerMode.getModesAsAStringList()
                     else -> listOf()
                 }
             }

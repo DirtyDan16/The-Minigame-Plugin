@@ -4,7 +4,6 @@ import me.stavgordeev.plugin.Utils;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
-import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
@@ -51,7 +50,7 @@ public abstract class MinigameSkeleton {
     /**
      * Starts the minigame in fast mode. This is essentially the same as start(), but it is the hard mode of the minigame.
      * The increased difficulty should be handled in the minigame itself.
-     * should call start() as well.
+     * Should call start() as well.
      * @param player the player that started the minigame
      * @throws InterruptedException if the game is interrupted
      */
@@ -65,7 +64,7 @@ public abstract class MinigameSkeleton {
     }
 
     /**
-     * Pauses the game. Paused games can be resumed, and they keep certain logic and game logic. should be followed with code that pauses the game, like stopping timers, freezing entities...
+     * Pauses the game. Paused games can be resumed, and they keep certain logic and game logic. Should be followed with code that pauses the game, like stopping timers, freezing entities...
      */
     public void pauseGame() {
         if (!isGameRunning) {
@@ -96,7 +95,7 @@ public abstract class MinigameSkeleton {
     }
 
     /**
-     * Ends the game. should be followed with code that cleans up the arena, the gamerules... Should also be called when the game is interrupted.
+     * Ends the game. Should be followed with code that cleans up the arena, the gamerules... Should also be called when the game is interrupted.
      */
     public void endGame() {
         if (!isGameRunning) {
@@ -121,7 +120,7 @@ public abstract class MinigameSkeleton {
     }
 
     /**
-     * Nukes an area. should be overridden and followed with code that clears the physical area. typically should be called in endGame().
+     * Nukes an area. Should be overridden and followed with code that clears the physical area. Typically should be called in endGame().
      * @param center the center of the nuke
      * @param radius the radius of the nuke
      */
