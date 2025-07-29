@@ -92,6 +92,7 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
     private var gameEvents: BukkitRunnable? = null
     // A runnable that is used to change the wall spawning mode every so often when the mode is set to Alternating.
     private var alternatingWallSpawnerModeRunnable: BukkitRunnable? = null
+    private var currentAvailableListOfModesToAlternateTo: MutableList<WallSpawnerMode> = mutableListOf() // A list of modes that the wall spawner can alternate to when the mode is set to Alternating. When a mode is set, it will be taken out of the list, and when the list is empty, it will be refilled with all the modes that are available to play.
 
     // A list of runnables that are actively running in the game. we keep track of them so that we can cancel them conveniently...
     // for example, when we switch the mode of the wall spawner, we want to cancel all the runnables that want to switch the state of the wall spawner in the background.
@@ -116,7 +117,6 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
             player.sendMessage(Component.text("Wall Spawning Mode is not set! selecting Alternating").color(NamedTextColor.RED))
             changeWallSpawningMode("Alternating")
         }
-
 
         stateOfWallSpawner = WallSpawnerState.IDLE // Set the initial state of the wall spawner to IDLE
 
@@ -177,7 +177,13 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
                 override fun run() {
                     if (isGamePaused) return
 
-                    changeMode(WallSpawnerMode.entries.random())
+                    // refill the list of modes to alternate to with all the modes that are available to play
+                    if (currentAvailableListOfModesToAlternateTo.isEmpty()) {
+                        currentAvailableListOfModesToAlternateTo = WallSpawnerMode.entries.shuffled().toMutableList()
+                    }
+
+                    // take the first mode from the list of available modes to alternate to, and change the mode of the wall spawner to it.
+                    changeMode(currentAvailableListOfModesToAlternateTo.removeFirst())
                 }
             }
 
@@ -219,6 +225,7 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
 
         stateOfWallSpawner = WallSpawnerState.DO_NO_ACTION // Reset the state of the wall spawner
         wallSpawningMode = null // Reset the wall spawning mode
+        currentAvailableListOfModesToAlternateTo.clear() // Clear the list of modes that are available to alternate to
 
         // Clear the list of alive walls
         existingWallsList.clear()
