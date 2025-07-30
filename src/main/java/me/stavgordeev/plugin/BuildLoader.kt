@@ -108,6 +108,7 @@ object BuildLoader {
                 Direction.WEST -> AffineTransform().translate(0.0, 0.0, -1.0)
             }
 
+
             clipboardHolder.transform = mirrorTransform.combine(offsetCorrection).combine(clipboardHolder.transform)
         } else {
             clipboardHolder.transform = mirrorTransform.combine(clipboardHolder.transform)
