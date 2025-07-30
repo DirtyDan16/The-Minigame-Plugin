@@ -90,6 +90,7 @@ object HITWConst {
 
     object WallSpawnerModes {
         object WALL_CHAINER {
+            const val MIN_AMOUNT_OF_SPAWNS_TILL_CHANGING_DIRECTIONS: Int = 5 // How many walls must be spawned before the direction is allowed to change
         }
         object WALLS_FROM_ALL_DIRECTIONS {
             const val CHANCE_THAT_PSYCH_WALL_WILL_GET_REMOVED: Int = (0.66 * 100).toInt()
@@ -104,9 +105,6 @@ object HITWConst {
 
             const val MAX_AMOUNT_OF_SPAWNS_TILL_THERE_MUST_BE_CHANGE: Int = 10
         }
-
-
-
     }
 
     object Timers {

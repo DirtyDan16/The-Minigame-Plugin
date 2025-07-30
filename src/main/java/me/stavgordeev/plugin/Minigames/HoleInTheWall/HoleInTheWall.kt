@@ -83,6 +83,12 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
     // The moment swaps naturally every so often to increase replayability.
     private var wallSpawningMode: WallSpawnerMode? = null
 
+    // a tracker for how many *real* walls have been spawned in a row. used for control flow - so one direction will be chosen for a healthy amount of times.
+    var amountOfSpawnsSinceDirectionChange: MutableMap<WallSpawnerMode, Int> = mutableMapOf(
+        WallSpawnerMode.WALL_CHAINER to 0,
+        WallSpawnerMode.WALLS_FROM_2_OPPOSITE_DIRECTIONS to 0
+    )
+
     //endregion -----------------------------------------------------------------------------------
 
     var tickCount: Int = 0 // Used to keep track of the number of ticks that have passed since the game started
@@ -143,6 +149,11 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
 
             // Clear the list of walls that were planned to be spawned in the game, since otherwise, when we will spawn in walls, the old walls will spawn along with the new ones. (which will deff make walls collide with each other)
             upcomingWalls.clear()
+
+            // clear the trackers of the amount of spawns since direction change
+            for (wallSpawnerMode in amountOfSpawnsSinceDirectionChange.entries) {
+                wallSpawnerMode.setValue(0)
+            }
 
             // send a message to all players that the mode has been changed
             val title = Title.title(
@@ -233,9 +244,12 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
         upcomingWalls.clear()
 
         atTheProcessOfConsideringSwappingRealWallDirection = false // Reset the flag that is used to prevent multiple direction changes in a row
-
         amountOfSpawnsSinceSwitchedTheRealDirection = 0
-        amountOfSpawnsSinceDirectionChange = 0
+
+
+        for (entry in amountOfSpawnsSinceDirectionChange.entries) {
+            entry.setValue(0)
+        }
 
         tickCount = 0 // Reset the tick count
 
@@ -377,17 +391,16 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
 
     val upcomingWalls: MutableList<Wall> = mutableListOf()// A list of walls that are upcoming to be spawned. This is used to keep track of walls that are about to be spawned in the game.
 
-    // these is a flag that is used for
+    // this is a flag that is used for
     // Mode: WALLS_FROM_2_OPPOSITE_DIRECTIONS,
     // at the state: WallSpawnerState.INTENDING_TO_CREATE_MULTIPLE_WALLS_AT_ONCE
     // purpose: to stop the wall spawner to swapping the real wall direction multiple times in a row from the method isConsideringSwappingRealWallDirection()
     var atTheProcessOfConsideringSwappingRealWallDirection: Boolean = false
 
-    // these 2 are flags that are used for
+    // this is a flag that is used for
     // Mode: WALLS_FROM_2_OPPOSITE_DIRECTIONS,
     // at the state: WallSpawnerState.INTENDING_TO_CREATE_MULTIPLE_WALLS_AT_ONCE
     // purpose: to gatekeep and limit changing the directions of the real wall from the duo / directions of the walls..
-    var amountOfSpawnsSinceDirectionChange = 0;
     var amountOfSpawnsSinceSwitchedTheRealDirection = 0
 
     private fun manageWallSpawning() {
@@ -512,6 +525,18 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
                 bringWallToLife(upcomingWalls[0]) // Make the wall exist in the world by loading the schematic
                 upcomingWalls.clear()
 
+                val mode = wallSpawningMode!!
+                when (mode) {
+                    WallSpawnerMode.WALL_CHAINER -> {
+                        // increment the amount of spawns since direction change for the current mode
+                        amountOfSpawnsSinceDirectionChange.let {
+                            it[mode] = it[mode]!! + 1
+                        }
+                    }
+                    else -> {}
+                }
+
+
                 attemptChangingStateTo(WallSpawnerState.IDLE)
             } //endregion
 
@@ -520,10 +545,18 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
                 upcomingWalls.clear()
 
                 // Do extra logic depending on the mode we're at
-                if (wallSpawningMode == WallSpawnerMode.WALLS_FROM_2_OPPOSITE_DIRECTIONS) {
-                    // Increment the counters that keep track of how many walls have been spawned since the vars' states were checked
-                    amountOfSpawnsSinceSwitchedTheRealDirection++
-                    amountOfSpawnsSinceDirectionChange++
+                val mode = wallSpawningMode!!
+                when (mode) {
+                    WallSpawnerMode.WALLS_FROM_2_OPPOSITE_DIRECTIONS -> {
+                        // Increment the counters that keep track of how many walls have been spawned since the vars' states were checked
+                        amountOfSpawnsSinceSwitchedTheRealDirection++
+
+                        // increment the amount of spawns since direction change for the current mode
+                        amountOfSpawnsSinceDirectionChange.let {
+                            it[mode] = it[mode]!! + 1
+                        }
+                    }
+                    else -> {}
                 }
 
 
@@ -539,11 +572,19 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
                 // Assign weights to each direction based on the mode we're at
                 when (wallSpawningMode) {
                     WallSpawnerMode.WALL_CHAINER -> {
-                        // If the last wall was spawned in a different direction, we can spawn a wall in the same direction
-                        weightsOfDirections[directionOfLastWall] = 5
-                        weightsOfDirections[directionOfLastWall.getClockwise()] = 1
-                        weightsOfDirections[directionOfLastWall.getOpposite()] = 1
-                        weightsOfDirections[directionOfLastWall.getCounterClockwise()] = 1
+                        if (amountOfSpawnsSinceDirectionChange[WallSpawnerMode.WALL_CHAINER]!! >= HITWConst.WallSpawnerModes.WALL_CHAINER.MIN_AMOUNT_OF_SPAWNS_TILL_CHANGING_DIRECTIONS) {
+                            // If we have spawned enough walls, we can change the direction of the wall
+                            weightsOfDirections[directionOfLastWall] = 3
+                            weightsOfDirections[directionOfLastWall.getClockwise()] = 1
+                            weightsOfDirections[directionOfLastWall.getOpposite()] = 1
+                            weightsOfDirections[directionOfLastWall.getCounterClockwise()] = 1
+
+                            // Reset the counter of spawns since direction change
+                            amountOfSpawnsSinceDirectionChange[WallSpawnerMode.WALL_CHAINER] = 0
+                        } else {
+                            // If we haven't spawned enough walls, we can only spawn a wall in the same direction as the last wall
+                            weightsOfDirections[directionOfLastWall] = 1
+                        }
                     }
                     else -> throw IllegalArgumentException("HITW: Invalid wall spawning mode: $wallSpawningMode to be at for this state: $stateOfWallSpawner")
                 }
@@ -594,7 +635,8 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
                     WallSpawnerMode.WALLS_FROM_2_OPPOSITE_DIRECTIONS -> { //region WALLS_FROM_2_OPPOSITE_DIRECTIONS
                         val const = HITWConst.WallSpawnerModes.WALLS_FROM_2_OPPOSITE_DIRECTIONS
 
-                        val rndShouldSwapDirections = amountOfSpawnsSinceDirectionChange > const.MIN_AMOUNT_OF_SPAWNS_TILL_CHANGING_DIRECTIONS_FOR_DUO &&
+                        val rndShouldSwapDirections =
+                                amountOfSpawnsSinceDirectionChange[WallSpawnerMode.WALLS_FROM_2_OPPOSITE_DIRECTIONS]!! > const.MIN_AMOUNT_OF_SPAWNS_TILL_CHANGING_DIRECTIONS_FOR_DUO &&
                                 (0..100).random() < const.CHANCE_OF_CHANGING_DIRECTIONS
                         val rndConsideringSwappingRealWallDirection = when {
                             amountOfSpawnsSinceSwitchedTheRealDirection > const.MAX_AMOUNT_OF_SPAWNS_TILL_THERE_MUST_BE_CHANGE ->
@@ -670,7 +712,7 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
                                 // Reset the counter so that we don't swap the directions of the walls too often. we will reset it only when we know for sure that the walls that are planned to be spawned have been spawned.
                                 activateTaskAfterConditionIsMet(
                                     condition = {upcomingWalls.isEmpty()},
-                                    action = { amountOfSpawnsSinceDirectionChange = 0},
+                                    action = { amountOfSpawnsSinceDirectionChange[WallSpawnerMode.WALLS_FROM_2_OPPOSITE_DIRECTIONS] = 0},
                                     listOfRunnablesToAddTo = runnables
                                 )
                             }
