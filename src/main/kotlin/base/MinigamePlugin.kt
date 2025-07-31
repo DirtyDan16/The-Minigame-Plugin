@@ -1,17 +1,15 @@
-package me.stavgordeev.plugin
+package base
 
-import me.stavgordeev.plugin.Listeners.PlayerDeathListener
-import me.stavgordeev.plugin.Minigames.BlueprintBazaar.BlueprintBazaar
-import me.stavgordeev.plugin.Minigames.BlueprintBazaar.BlueprintBazaarCommands
-import me.stavgordeev.plugin.Minigames.DiscoMayhem.DiscoMayhem
-import me.stavgordeev.plugin.Minigames.DiscoMayhem.DiscoMayhemCommands
-import me.stavgordeev.plugin.Minigames.HoleInTheWall.HoleInTheWall
-import me.stavgordeev.plugin.Minigames.HoleInTheWall.HoleInTheWallCommands
-import me.stavgordeev.plugin.Minigames.MinigameSkeleton
-import me.stavgordeev.plugin.commands.MiscCommands
-import net.royawesome.jlibnoise.module.combiner.Min
+import base.Listeners.PlayerDeathListener
+import base.Minigames.BlueprintBazaar.BlueprintBazaar
+import base.Minigames.BlueprintBazaar.BlueprintBazaarCommands
+import base.Minigames.DiscoMayhem.DiscoMayhem
+import base.Minigames.DiscoMayhem.DiscoMayhemCommands
+import base.Minigames.HoleInTheWall.HoleInTheWall
+import base.Minigames.HoleInTheWall.HoleInTheWallCommands
+import base.Minigames.MinigameSkeleton
+import base.commands.MiscCommands
 import org.bukkit.World
-import org.bukkit.plugin.Plugin
 import org.bukkit.plugin.java.JavaPlugin
 import java.io.File
 

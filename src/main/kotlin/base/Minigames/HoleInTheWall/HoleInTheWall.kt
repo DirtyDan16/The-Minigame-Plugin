@@ -1,15 +1,15 @@
-package me.stavgordeev.plugin.Minigames.HoleInTheWall
+package base.Minigames.HoleInTheWall
 
 import com.sk89q.worldedit.regions.Region
-import me.stavgordeev.plugin.BuildLoader
-import me.stavgordeev.plugin.Direction
-import me.stavgordeev.plugin.MinigamePlugin
-import me.stavgordeev.plugin.Minigames.HoleInTheWall.HITWConst.Timers
-import me.stavgordeev.plugin.Minigames.HoleInTheWall.HITWConst.WallSpawnerMode
-import me.stavgordeev.plugin.Minigames.HoleInTheWall.HITWConst.WallSpawnerState
-import me.stavgordeev.plugin.Minigames.MinigameSkeleton
-import me.stavgordeev.plugin.Utils.activateTaskAfterConditionIsMet
-import me.stavgordeev.plugin.Utils.getNextWeighted
+import base.Other.BuildLoader
+import base.Other.Direction
+import base.MinigamePlugin
+import base.Minigames.HoleInTheWall.HITWConst.Timers
+import base.Minigames.HoleInTheWall.HITWConst.WallSpawnerMode
+import base.Minigames.HoleInTheWall.HITWConst.WallSpawnerState
+import base.Minigames.MinigameSkeleton
+import base.Other.Utils.activateTaskAfterConditionIsMet
+import base.Other.Utils.getNextWeighted
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 import net.kyori.adventure.text.logger.slf4j.ComponentLogger.logger
@@ -25,8 +25,6 @@ import java.io.File
 import java.io.IOException
 import java.time.Duration
 import java.util.*
-import kotlin.compareTo
-import kotlin.invoke
 import kotlin.random.Random
 
 class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {

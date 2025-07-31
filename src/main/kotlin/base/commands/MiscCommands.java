@@ -1,7 +1,7 @@
-package me.stavgordeev.plugin.commands;
+package base.commands;
 
-import me.stavgordeev.plugin.MinigamePlugin;
-import me.stavgordeev.plugin.Utils;
+import base.MinigamePlugin;
+import base.Other.Utils;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;

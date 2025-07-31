@@ -1,6 +1,6 @@
-package me.stavgordeev.plugin.Minigames;
+package base.Minigames;
 // src/main/java/me/stavgordeev/plugin/Minigames/MinigameSkeleton.java
-import me.stavgordeev.plugin.Utils;
+import base.Other.Utils;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;

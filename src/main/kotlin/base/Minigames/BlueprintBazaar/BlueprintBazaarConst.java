@@ -1,4 +1,4 @@
-package me.stavgordeev.plugin.Minigames.BlueprintBazaar;
+package base.Minigames.BlueprintBazaar;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Location;

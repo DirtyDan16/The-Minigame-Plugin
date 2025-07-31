@@ -1,4 +1,4 @@
-package me.stavgordeev.plugin
+package base.Other
 
 import com.sk89q.worldedit.WorldEdit
 import com.sk89q.worldedit.WorldEditException
@@ -15,7 +15,7 @@ import com.sk89q.worldedit.regions.CuboidRegion
 import com.sk89q.worldedit.regions.Region
 import com.sk89q.worldedit.session.ClipboardHolder
 import com.sk89q.worldedit.world.block.BlockState
-import me.stavgordeev.plugin.MinigamePlugin.Companion.world
+import base.MinigamePlugin.Companion.world
 import org.bukkit.Bukkit
 import org.bukkit.Location
 import org.bukkit.Material

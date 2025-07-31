@@ -1,12 +1,12 @@
-package me.stavgordeev.plugin.Minigames.BlueprintBazaar
+package base.Minigames.BlueprintBazaar
 
 import com.sk89q.worldedit.regions.Region
-import me.stavgordeev.plugin.BuildLoader
-import me.stavgordeev.plugin.BuildLoader.loadSchematicByFileAndCoordinates
-import me.stavgordeev.plugin.BuildLoader.loadSchematicByFileAndLocation
-import me.stavgordeev.plugin.MinigamePlugin
-import me.stavgordeev.plugin.Minigames.MinigameSkeleton
-import me.stavgordeev.plugin.Utils.initFloor
+import base.Other.BuildLoader
+import base.Other.BuildLoader.loadSchematicByFileAndCoordinates
+import base.Other.BuildLoader.loadSchematicByFileAndLocation
+import base.MinigamePlugin
+import base.Minigames.MinigameSkeleton
+import base.Other.Utils.initFloor
 import net.kyori.adventure.text.Component
 import org.bukkit.Bukkit
 import org.bukkit.Location

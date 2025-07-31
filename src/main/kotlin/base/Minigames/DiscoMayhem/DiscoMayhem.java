@@ -1,8 +1,8 @@
 // src/main/java/me/stavgordeev/plugin/Minigame.java
-package me.stavgordeev.plugin.Minigames.DiscoMayhem;
+package base.Minigames.DiscoMayhem;
 
-import me.stavgordeev.plugin.Minigames.MinigameSkeleton;
-import me.stavgordeev.plugin.Utils;
+import base.Minigames.MinigameSkeleton;
+import base.Other.Utils;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.title.Title;
 import org.bukkit.*;

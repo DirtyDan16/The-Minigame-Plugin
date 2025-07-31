@@ -1,4 +1,4 @@
-package me.stavgordeev.plugin.Minigames.HoleInTheWall
+package base.Minigames.HoleInTheWall
 
 import org.bukkit.Bukkit.getWorld
 import org.bukkit.Location

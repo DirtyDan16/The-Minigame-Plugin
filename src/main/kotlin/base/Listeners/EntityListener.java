@@ -1,6 +1,6 @@
-package me.stavgordeev.plugin.Listeners;
+package base.Listeners;
 
-import me.stavgordeev.plugin.MinigamePlugin;
+import base.MinigamePlugin;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Cow;
 import org.bukkit.entity.Entity;

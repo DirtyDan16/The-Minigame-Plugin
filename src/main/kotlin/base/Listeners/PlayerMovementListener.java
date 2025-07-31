@@ -1,4 +1,4 @@
-package me.stavgordeev.plugin.Listeners;
+package base.Listeners;
 
 import org.bukkit.Location;
 import org.bukkit.entity.Player;

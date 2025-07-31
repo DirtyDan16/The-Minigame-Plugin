@@ -1,72 +1,60 @@
-package me.stavgordeev.plugin.Minigames.BlueprintBazaar;
+package base.Minigames.BlueprintBazaar
 
-import me.stavgordeev.plugin.commands.MinigameCommandsSkeleton;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
-import org.bukkit.Bukkit;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandSender;
-import org.bukkit.entity.Player;
-import org.jetbrains.annotations.Nullable;
+import base.commands.MinigameCommandsSkeleton
+import net.kyori.adventure.text.Component
+import net.kyori.adventure.text.format.NamedTextColor
+import org.bukkit.Bukkit
+import org.bukkit.command.Command
+import org.bukkit.command.CommandSender
+import org.bukkit.entity.Player
+import java.util.*
 
-import java.util.List;
+class BlueprintBazaarCommands(private val blueprintbazaar: BlueprintBazaar) : MinigameCommandsSkeleton() {
+    override fun handleCommand(player: Player, command: Command, label: String, args: Array<String>): Boolean {
+        when (args[0].lowercase(Locale.getDefault())) {
+            "start" -> try {
+                blueprintbazaar.start(player)
+            } catch (e: InterruptedException) {
+                throw RuntimeException(e)
+            }
 
-public class BlueprintBazaarCommands extends MinigameCommandsSkeleton {
-    private final BlueprintBazaar blueprintbazaar;
-    public BlueprintBazaarCommands(BlueprintBazaar blueprintbazaar) {
-        this.blueprintbazaar = blueprintbazaar;
+            "start_hard_mode" -> try {
+                blueprintbazaar.startFastMode(player)
+            } catch (e: InterruptedException) {
+                throw RuntimeException(e)
+            }
+
+            "stop" -> blueprintbazaar.pauseGame()
+            "resume" -> blueprintbazaar.resumeGame()
+            "end" -> blueprintbazaar.endGame()
+            "nuke_area" -> blueprintbazaar.nukeArea(BlueprintBazaarConst.GAME_START_LOCATION, 50)
+            "spawn_build" -> blueprintbazaar.prepareNewBuild()
+            "showcase_all_builds" -> blueprintbazaar.loadAllSchematics()
+            "init_schematics" -> blueprintbazaar.initSchematics()
+            else -> Bukkit.getServer().broadcast(Component.text("Unknown command.").color(NamedTextColor.RED))
+        }
+        return true
     }
 
-    @Override
-    protected boolean handleCommand(Player player, Command command, String label, String[] args) {
-        switch (args[0].toLowerCase()) {
-            case "start":
-                try {
-                    blueprintbazaar.start(player);
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
-                }
-                break;
-            case "start_hard_mode":
-                try {
-                    blueprintbazaar.startFastMode(player);
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
-                }
-                break;
-            case "stop":
-                blueprintbazaar.pauseGame();
-                break;
-            case "resume":
-                blueprintbazaar.resumeGame();
-                break;
-            case "end":
-                blueprintbazaar.endGame();
-                break;
-            case "nuke_area":
-                blueprintbazaar.nukeArea(BlueprintBazaarConst.GAME_START_LOCATION, 50);
-                break;
-            case "spawn_build":
-                blueprintbazaar.prepareNewBuild();
-                break;
-            case "showcase_all_builds":
-                blueprintbazaar.loadAllSchematics();
-                break;
-            case "init_schematics":
-                blueprintbazaar.initSchematics();
-                break;
-            default:
-                Bukkit.getServer().broadcast(Component.text("Unknown command.").color(NamedTextColor.RED));
-                break;
+    override fun handleTabComplete(
+        sender: CommandSender,
+        command: Command,
+        label: String,
+        args: Array<String>
+    ): MutableList<String> {
+        if (args.size == 1) {
+            return mutableListOf<String>(
+                "start",
+                "stop",
+                "start_hard_mode",
+                "resume",
+                "end",
+                "nuke_area",
+                "spawn_build",
+                "showcase_all_builds",
+                "init_schematics"
+            )
         }
-        return true;
-    }
-
-    @Override
-    protected @Nullable List<String> handleTabComplete(CommandSender sender, Command command, String label, String[] args) {
-        if (args.length == 1) {
-            return List.of("start", "stop", "start_hard_mode", "resume", "end", "nuke_area", "spawn_build", "showcase_all_builds", "init_schematics");
-        }
-        return List.of();
+        return mutableListOf<String>()
     }
 }

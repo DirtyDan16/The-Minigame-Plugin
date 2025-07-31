@@ -1,9 +1,9 @@
-package me.stavgordeev.plugin.Minigames.HoleInTheWall
+package base.Minigames.HoleInTheWall
 
 import com.sk89q.worldedit.math.BlockVector3
 import com.sk89q.worldedit.regions.CuboidRegion
 import com.sk89q.worldedit.session.ClipboardHolder
-import me.stavgordeev.plugin.BuildLoader
+import base.Other.BuildLoader
 import org.bukkit.Location
 import org.bukkit.Material
 import org.bukkit.block.Block
@@ -13,11 +13,13 @@ import org.bukkit.block.data.Powerable
 import java.io.File
 import org.bukkit.Bukkit
 
-import me.stavgordeev.plugin.Direction
-import me.stavgordeev.plugin.MinigamePlugin
-import me.stavgordeev.plugin.MinigamePlugin.Companion.plugin
+import base.Other.Direction
+import base.MinigamePlugin
+import base.MinigamePlugin.Companion.plugin
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
+import org.bukkit.block.data.type.Piston
+import org.bukkit.block.data.type.Switch
 
 class Wall(
     val wallFile: File,
@@ -230,7 +232,7 @@ class Wall(
             buttonBlock.type = Material.STONE_BUTTON
 
             // now we need the button to lay flat against the piston, so we need to set the block data of the button to face *against* the piston.
-            val data = buttonBlock.blockData as org.bukkit.block.data.type.Switch
+            val data = buttonBlock.blockData as Switch
 
             data.facing = when (directionWallIsFacing) {
                 Direction.SOUTH -> BlockFace.NORTH
@@ -287,7 +289,7 @@ class Wall(
                 // Now we physically move the pistons to their new locations.
                 location.block.type = Material.PISTON
                 // Set the piston block data to face the direction the wall is facing.
-                val pistonData = location.block.blockData as org.bukkit.block.data.type.Piston
+                val pistonData = location.block.blockData as Piston
                 pistonData.facing = when (directionWallIsFacing) {
                     Direction.SOUTH -> BlockFace.SOUTH
                     Direction.NORTH -> BlockFace.NORTH

@@ -1,11 +1,12 @@
-package me.stavgordeev.plugin
+package base.Other
 
-import me.stavgordeev.plugin.MinigamePlugin.Companion.plugin
+import base.MinigamePlugin.Companion.plugin
 import org.bukkit.Bukkit
 import org.bukkit.Location
 import org.bukkit.Material
 import org.bukkit.World
 import org.bukkit.scheduler.BukkitRunnable
+import kotlin.collections.iterator
 import kotlin.random.Random
 
 enum class Direction {

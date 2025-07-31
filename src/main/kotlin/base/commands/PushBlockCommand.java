@@ -1,4 +1,4 @@
-package me.stavgordeev.plugin.commands;
+package base.commands;
 
 import org.bukkit.Location;
 import org.bukkit.Material;

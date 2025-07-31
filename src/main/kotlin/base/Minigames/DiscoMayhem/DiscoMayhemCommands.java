@@ -1,7 +1,7 @@
 // src/main/java/me/stavgordeev/plugin/commands/MinigameCommand.java
-package me.stavgordeev.plugin.Minigames.DiscoMayhem;
+package base.Minigames.DiscoMayhem;
 
-import me.stavgordeev.plugin.commands.MinigameCommandsSkeleton;
+import base.commands.MinigameCommandsSkeleton;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;

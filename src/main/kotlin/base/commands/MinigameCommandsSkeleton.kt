@@ -1,4 +1,4 @@
-package me.stavgordeev.plugin.commands
+package base.commands
 
 import com.google.errorprone.annotations.CheckReturnValue
 import net.kyori.adventure.text.Component

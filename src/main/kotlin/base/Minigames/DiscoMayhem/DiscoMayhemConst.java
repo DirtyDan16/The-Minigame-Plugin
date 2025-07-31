@@ -1,5 +1,5 @@
 // src/main/java/me/stavgordeev/plugin/MinigameConstants.java
-package me.stavgordeev.plugin.Minigames.DiscoMayhem;
+package base.Minigames.DiscoMayhem;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
