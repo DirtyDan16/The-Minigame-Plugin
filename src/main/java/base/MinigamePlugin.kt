@@ -14,19 +14,23 @@ import org.bukkit.plugin.java.JavaPlugin
 import java.io.File
 
 class MinigamePlugin : JavaPlugin() {
+
     lateinit var discoMayhem: DiscoMayhem
     lateinit var blueprintBazaar: BlueprintBazaar
     lateinit var holeInTheWall: HoleInTheWall
 
     override fun onEnable() {
-        plugin = this // Initialize the plugin reference
-        world = server.getWorld("world")!! // Initialize the world object
-
+        plugin = this
         initSchematicsFolders()
 
+
         discoMayhem = DiscoMayhem(this)
-        blueprintBazaar = BlueprintBazaar(this)
+        blueprintBazaar= BlueprintBazaar(this)
         holeInTheWall = HoleInTheWall(this)
+
+
+        world = server.getWorld("world")!! // Initialize the world object
+
 
         // Register the event listeners
         server.pluginManager.registerEvents(PlayerDeathListener(discoMayhem, holeInTheWall), this)

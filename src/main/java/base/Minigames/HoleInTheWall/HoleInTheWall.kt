@@ -27,7 +27,7 @@ import java.time.Duration
 import java.util.*
 import kotlin.random.Random
 
-class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
+class HoleInTheWall (plugin: Plugin) : MinigameSkeleton(plugin) {
     //region vars
 
     private lateinit var selectedMapBaseFile: File
@@ -97,10 +97,6 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
     // A runnable that is used to change the wall spawning mode every so often when the mode is set to Alternating.
     private var alternatingWallSpawnerModeRunnable: BukkitRunnable? = null
     private var currentAvailableListOfModesToAlternateTo: MutableList<WallSpawnerMode> = mutableListOf() // A list of modes that the wall spawner can alternate to when the mode is set to Alternating. When a mode is set, it will be taken out of the list, and when the list is empty, it will be refilled with all the modes that are available to play.
-
-    // A list of runnables that are actively running in the game. we keep track of them so that we can cancel them conveniently...
-    // for example, when we switch the mode of the wall spawner, we want to cancel all the runnables that want to switch the state of the wall spawner in the background.
-    private val runnables: MutableList<BukkitRunnable> = mutableListOf()
 
 
 
@@ -228,9 +224,6 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
 
         alternatingWallSpawnerModeRunnable?.cancel()
         alternatingWallSpawnerModeRunnable = null
-
-        // copy the list so that we don't get ConcurrentModificationException via adding new runnables to the list while iterating over it
-        runnables.toList().forEach { it.cancel()}
 
         stateOfWallSpawner = WallSpawnerState.DO_NO_ACTION // Reset the state of the wall spawner
         wallSpawningMode = null // Reset the wall spawning mode
@@ -658,7 +651,7 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
                         } else {
                             // Get the wall that is not a psych wall out of the walls
                             val realWall: Wall = existingWallsList.lastOrNull { wall -> !wall.isPsych } ?: run {
-                                thePlayer.sendMessage(
+                                sender!!.sendMessage(
                                     Component.text("HITW: No real wall found in the existing walls list.")
                                 )
                                 return
@@ -698,7 +691,7 @@ class HoleInTheWall (plugin: Plugin?) : MinigameSkeleton(plugin) {
                             // logic for swapping the directions of the walls if we randomly decided to do so
                             if (rndShouldSwapDirections) {
                                 if (upcomingWalls.size != 2) {
-                                    thePlayer.sendMessage(
+                                    sender!!.sendMessage(
                                         Component.text("HITW: for mode WALLS_FROM_2_OPPOSITE_DIRECTIONS, we must have exactly 2 walls in the upcoming walls list, but we have ${upcomingWalls.size} walls.").color(NamedTextColor.YELLOW)
                                     )
                                 }

@@ -27,10 +27,11 @@ class BlueprintBazaarCommands(private val blueprintbazaar: BlueprintBazaar) : Mi
             "stop" -> blueprintbazaar.pauseGame()
             "resume" -> blueprintbazaar.resumeGame()
             "end" -> blueprintbazaar.endGame()
-            "nuke_area" -> blueprintbazaar.nukeArea(BlueprintBazaarConst.Locations.GAME_START_LOCATION, 50)
+            "nuke_area" -> blueprintbazaar.nukeArea(BPBConst.Locations.GAME_START_LOCATION, BPBConst.GAME_AREA_RADIUS)
             "spawn_build" -> blueprintbazaar.prepareNewBuild()
             "showcase_all_builds" -> blueprintbazaar.loadAllSchematics()
             "init_schematics" -> blueprintbazaar.initSchematics()
+            "cycle_through_schematics" -> blueprintbazaar.cycleThroughSchematics()
             else -> Bukkit.getServer().broadcast(Component.text("Unknown command.").color(NamedTextColor.RED))
         }
         return true
@@ -52,6 +53,7 @@ class BlueprintBazaarCommands(private val blueprintbazaar: BlueprintBazaar) : Mi
                 "nuke_area",
                 "spawn_build",
                 "showcase_all_builds",
+                "cycle_through_schematics",
                 "init_schematics"
             )
         }

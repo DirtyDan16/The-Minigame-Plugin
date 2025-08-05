@@ -1,7 +1,6 @@
 package base.Minigames.BlueprintBazaar
 
-import com.sk89q.worldedit.regions.Region
-import base.Other.BuildLoader
+import com.sk89q.worldedit.regions.CuboidRegion
 import base.Other.BuildLoader.loadSchematicByFileAndCoordinates
 import base.Other.BuildLoader.loadSchematicByFileAndLocation
 import base.MinigamePlugin
@@ -16,11 +15,20 @@ import org.bukkit.plugin.Plugin
 import org.bukkit.scheduler.BukkitRunnable
 import java.io.File
 import java.util.*
-import base.Minigames.BlueprintBazaar.BlueprintBazaarConst.Locations
+import base.Minigames.BlueprintBazaar.BPBConst.Locations
+import org.bukkit.GameRule
+import base.Minigames.MinigameSkeleton.WorldSettingsToTrack.*
+import com.sk89q.worldedit.math.BlockVector3
 
-class BlueprintBazaar(plugin: Plugin?) : MinigameSkeleton(plugin) {
-    private val allSchematics: Array<File> // The builds.
-    private val availableSchematics: MutableList<File?> = mutableListOf<File?>() // The builds. when a build is chosen, it is removed from this list
+class BlueprintBazaar(plugin: Plugin) : MinigameSkeleton(plugin) {
+    //region vars
+    /** The builds.*/
+    private val allSchematics: Array<File>
+    /** The list of available builds. when a build is chosen, it is removed from this list*/
+    private val availableSchematics: MutableList<File?> = mutableListOf<File?>()
+
+    private var curBuild: BuildBlueprint? = null
+    //endregion
 
     init {
         if (plugin !is MinigamePlugin) throw IllegalArgumentException("Plugin must be an instance of MinigamePlugin")
@@ -31,20 +39,36 @@ class BlueprintBazaar(plugin: Plugin?) : MinigameSkeleton(plugin) {
     }
 
     @Throws(InterruptedException::class)
-    override fun start(player: Player?) {
+    override fun start(player: Player) {
         super.start(player)
 
         initSchematics() // Initializes the availableSchematics list
+
+        //prepareNewBuild()
     }
 
     @Throws(InterruptedException::class)
-    override fun startFastMode(player: Player?) {
+    override fun startFastMode(player: Player) {
         super.startFastMode(player)
     }
 
+    override fun endGame() {
+        super.endGame()
+
+
+        // set the settings of the world to how they were prior for the start of the minigame.
+        BPBConst.WORLD.setGameRule(
+            GameRule.RANDOM_TICK_SPEED,
+            trackerOfWorldSettingsBeforeStartingGame[RANDOM_TICK_SPEED] as Int
+        )
+
+
+        nukeArea(Locations.GAME_START_LOCATION,25)
+    }
+
     override fun prepareArea() {
-        nukeArea(Locations.GAME_START_LOCATION, BlueprintBazaarConst.GAME_AREA_RADIUS)
-        initFloor(20, 20, Material.RED_WOOL, Locations.GAME_START_LOCATION, BlueprintBazaarConst.WORLD)
+        nukeArea(Locations.GAME_START_LOCATION, BPBConst.GAME_AREA_RADIUS)
+        initFloor(20, 20, Material.RED_WOOL, Locations.GAME_START_LOCATION, BPBConst.WORLD)
     }
 
     override fun prepareGameSetting(player: Player) {
@@ -52,6 +76,10 @@ class BlueprintBazaar(plugin: Plugin?) : MinigameSkeleton(plugin) {
         player.teleport(
             Locations.GAME_START_LOCATION.clone().add(0.0, 8.0, 0.0)
         ) // Teleport the player to the start location
+
+        trackerOfWorldSettingsBeforeStartingGame[RANDOM_TICK_SPEED] = BPBConst.WORLD.getGameRuleValue(GameRule.RANDOM_TICK_SPEED)
+
+        BPBConst.WORLD.setGameRule(GameRule.RANDOM_TICK_SPEED,0)
     }
 
     /**
@@ -82,27 +110,69 @@ class BlueprintBazaar(plugin: Plugin?) : MinigameSkeleton(plugin) {
 
     fun prepareNewBuild() {
         val chosenBuild = chooseNewBuild()
+
+
+        if (chosenBuild == null) {
+            Bukkit.getServer().broadcast(Component.text("No more builds available!").color(net.kyori.adventure.text.format.NamedTextColor.AQUA))
+            endGame()
+            return
+        }
+
+        // Randomly decide if the build should be mirrored //fixme: false for now
+        val shouldBeMirrored = false//Random().nextBoolean()
         // Create the new build
-        createNewBuild(chosenBuild!!, Locations.CENTER_BUILD_PLOT)
+        curBuild = createNewBuild(chosenBuild, Locations.CENTER_BUILD_SHOWCASE_PLOT, shouldBeMirrored)
+
+        val message = "List of ingridients for build:\n ${curBuild?.materialList.toString()} "
+        Bukkit.getServer().broadcast(Component.text(message).color(net.kyori.adventure.text.format.NamedTextColor.AQUA))
     }
 
-    private fun deleteBuild(region: Region) {
+    private fun createNewBuild(chosenBuild: File, location: Location, shouldBeMirrored: Boolean = false): BuildBlueprint {
+        Bukkit.getServer().broadcast(Component.text("New building created!"))
+
+        // physically load the schematic at the given location
+
+        // store the region of the loaded schematic in this
+        val region: CuboidRegion = loadSchematicByFileAndLocation(
+            chosenBuild,
+            location,
+            BPBConst.Build.buildFacingDirection,
+            shouldBeMirrored,
+        ) as CuboidRegion
+
+        val minP = region.minimumPoint
+        val maxP = region.maximumPoint
+
+        val buildRegion = CuboidRegion(
+            BlockVector3.at(minP.x,minP.y+1,minP.z),
+            maxP
+        )
+
+        //TODO: will be used later to create the floor of the build that is being built
+        val floorRegion = CuboidRegion(
+            minP,
+            BlockVector3.at(maxP.x,minP.y,maxP.z)
+        )
+
+        //now that the schematic is loaded, we can create a new Build object
+
+        // Create a new Build object with the loaded schematic
+        return BuildBlueprint(
+            buildRegion
+        )
+    }
+
+    private fun deleteBuild(region: CuboidRegion) {
         // Set all blocks within the boundaries to air
         for (block in region.boundingBox) {
             val blockLocation = Location(
-                BlueprintBazaarConst.WORLD,
+                BPBConst.WORLD,
                 block.x.toDouble(),
                 block.y.toDouble(),
                 block.z.toDouble()
             )
             blockLocation.block.type = Material.AIR
         }
-    }
-
-
-    private fun createNewBuild(chosenBuild: File, location: Location?) {
-        Bukkit.getServer().broadcast(Component.text("New building created!"))
-        loadSchematicByFileAndLocation(chosenBuild, location)
     }
 
     /**
@@ -123,8 +193,8 @@ class BlueprintBazaar(plugin: Plugin?) : MinigameSkeleton(plugin) {
                 6,
                 6,
                 Material.RED_WOOL,
-                Location(BlueprintBazaarConst.WORLD, (curX - 3).toDouble(), (curY - 2).toDouble(), curZ.toDouble()),
-                BlueprintBazaarConst.WORLD
+                Location(BPBConst.WORLD, (curX - 3).toDouble(), (curY - 2).toDouble(), curZ.toDouble()),
+                BPBConst.WORLD
             )
             // Load the schematic
             loadSchematicByFileAndCoordinates(schematic, curX, curY, curZ)
@@ -135,15 +205,18 @@ class BlueprintBazaar(plugin: Plugin?) : MinigameSkeleton(plugin) {
     }
 
     //fixme: doesn't get rid of the top of given schematics when we remove an old schematic. didn't manage to solve it.
-    private fun cycleThroughSchematics() {
-        object : BukkitRunnable() {
+    fun cycleThroughSchematics() {
+        if (!isGameRunning || isGamePaused) {
+            sender!!.sendMessage("Game is not currently alive to do this.")
+            return
+        }
+
+        val runnable = object : BukkitRunnable() {
             var index: Int = 0
-            var region: Region? = null
-            var schematic: File? = null
 
             override fun run() {
                 // Delete previous build if it exists
-                if (schematic != null) { deleteBuild(region!!) }
+                curBuild?.let { deleteBuild(it.region) }
 
                 // Check if we've gone through all schematics
                 if (index >= allSchematics.size) {
@@ -152,15 +225,13 @@ class BlueprintBazaar(plugin: Plugin?) : MinigameSkeleton(plugin) {
                 }
 
                 // Display new schematic
-                schematic = chooseNewBuild()
-                if (schematic?.exists() == true) {
-                    loadSchematicByFileAndLocation(schematic!!, Locations.CENTER_BUILD_PLOT)
-                    region = BuildLoader.getRegionFromFile(schematic!!, Locations.CENTER_BUILD_PLOT)
-                }
+                prepareNewBuild()
 
                 // Move to next schematic
                 index++
             }
-        }.runTaskTimer(plugin, 0L, 100L)
+        }
+        runnable.runTaskTimer(plugin, 0L, BPBConst.Timers.DELAY_BETWEEN_SHOWCASING_BUILDS)
+        runnables.add(runnable)
     }
 }

@@ -137,7 +137,12 @@ object BuildLoader {
         Bukkit.getLogger().info("Successfully pasted schematic at Location: ${clipboardHolder.clipboard.origin}. Minimum Point: ${clipboardHolder.clipboard.region.minimumPoint}, Maximum Point: ${clipboardHolder.clipboard.region.maximumPoint}")
     }
 
-    fun getRotatedRegion(clipboardHolder: ClipboardHolder, pasteLocation: Location, direction: Direction): CuboidRegion {
+    fun getRotatedRegion(clipboardHolder: ClipboardHolder, pasteLocation: Location?, direction: Direction): CuboidRegion {
+        if (pasteLocation == null) {
+            return clipboardHolder.clipboard.region as CuboidRegion
+        }
+
+
         val clipboard = clipboardHolder.clipboard
         val rotation = getRotationForDirection(direction).toDouble()
         val transform = AffineTransform().rotateY(rotation)
@@ -172,16 +177,30 @@ object BuildLoader {
 
     //endregion -------------------------------------------------------------
 
+    /**
+     * Modify and load a schematic via this method.
+     * @param file the schematic file you want to paste it
+     * @param location an optional parameter to specify where this shcem should be pasted. if nto specified, it will be pasted in the world pos in was saved at.
+     *
+     */
     fun loadSchematicByFileAndLocation(
         file: File,
         location: Location? = null,
-        direction: Direction? = null
-    ) {
+        direction: Direction = Direction.NORTH,
+        shouldBeMirrored: Boolean = false,
+    ) : Region {
         val clipboardHolder = getClipboardHolderFromFile(file,location)
-        if (direction != null) {
-            applyDirectionToClipboardHolder(clipboardHolder, direction)
+
+        applyDirectionToClipboardHolder(clipboardHolder, direction)
+
+        if (shouldBeMirrored) {
+            mirrorClipboardHolder(clipboardHolder, direction)
         }
+
+        // Load the schematic into the world.
         loadSchematic(clipboardHolder)
+
+        return getRotatedRegion(clipboardHolder,location,direction)
     }
 
     fun loadSchematicByFileAndCoordinates(file: File, x: Int, y: Int, z: Int) {
@@ -233,6 +252,9 @@ object BuildLoader {
     }
 
 
+    @Deprecated(
+        "Should not be used when also using loadSchematicByFileAndLocation(). instead, if u use loadSchematicByFileAndLocation(), prefer using its region parameter in order to get the region of the schematic. "
+    )
     fun getRegionFromFile(file: File, location: Location): Region? {
         val format = ClipboardFormats.findByFile(file) ?: return null
 
