@@ -1,7 +1,7 @@
 package base.commands;
 
 import base.MinigamePlugin;
-import base.Other.Utils;
+import base.utils.Utils;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;

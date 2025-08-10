@@ -1,69 +1,66 @@
 // src/main/java/me/stavgordeev/plugin/MinigameConstants.java
-package base.Minigames.DiscoMayhem;
+package base.Minigames.DiscoMayhem
 
-import org.bukkit.Bukkit;
-import org.bukkit.Location;
-import org.bukkit.Material;
-import org.bukkit.World;
+import org.bukkit.Bukkit
+import org.bukkit.Location
+import org.bukkit.Material
+import org.bukkit.World
+import java.lang.reflect.Modifier
 
-import java.lang.reflect.Field;
+public object DiscoMayhemConst {
+    val WORLD: World = Bukkit.getWorld("world")!!
 
+    val NUKE_AREA_RADIUS = 50
 
-public class DiscoMayhemConst {
+    val GAME_START_LOCATION: Location = Location(WORLD, 0.0, 150.0, 0.0)
+    val INIT_FLOOR_LOCATION: Location = GAME_START_LOCATION.clone().add(0.0, 8.0, 0.0)
+    val PLAYER_TP_LOCATION: Location = GAME_START_LOCATION.clone().add(0.0, 11.0, 0.0)
+    const val MIN_INTERVAL: Int = 1
+
     // Constants that define boundaries for random values for changing floor logic.
-    public static class FloorLogic {
+    object FloorLogic {
+        const val DELAY_TO_SELECT_A_FLOOR_MATERIAL: Int = 25
+        const val DURATION_OF_STAYING_IN_A_FLOOR_WITH_ONLY_CHOSEN_MATERIAL: Int = 60
+
+        val LIST_OF_FLOOR_MATERIALS: Array<Material> = arrayOf<Material>(
+            Material.RED_WOOL,
+            Material.BLUE_WOOL,
+            Material.GREEN_WOOL,
+            Material.PURPLE_WOOL,
+            Material.ORANGE_WOOL,
+            Material.YELLOW_WOOL,
+            Material.LIME_WOOL,
+            Material.CYAN_WOOL,
+            Material.LIGHT_BLUE_WOOL
+        )
+        val DEFAULT_FLOOR_BLOCK_TYPES: Array<Material> =
+            arrayOf<Material>(Material.RED_WOOL, Material.BLUE_WOOL, Material.GREEN_WOOL, Material.PURPLE_WOOL)
+
         // Constants that define boundaries for where a new floor can spawn.
-        public static class NewFloorSpawnBoundaries {
-            public static final int UPPER_BOUND_X_CENTER = 10;
-            public static final int LOWER_BOUND_X_CENTER = 5;
-            public static final int UPPER_BOUND_Z_CENTER = 10;
-            public static final int LOWER_BOUND_Z_CENTER = 5;
-            public static final int UPPER_BOUND_Y_CENTER = 1;
-            public static final int LOWER_BOUND_Y_CENTER = -3;
+        object NewFloorSpawnBoundaries {
+            const val UPPER_BOUND_X_CENTER: Int = 10
+            const val LOWER_BOUND_X_CENTER: Int = 5
+            const val UPPER_BOUND_Z_CENTER: Int = 10
+            const val LOWER_BOUND_Z_CENTER: Int = 5
+            const val UPPER_BOUND_Y_CENTER: Int = 1
+            val LOWER_BOUND_Y_CENTER: Int = -3
         }
-        public static class FloorSize {
-            public static final int UPPER_BOUND_X_RADIUS = 7;
-            public static final int LOWER_BOUND_X_RADIUS = 3;
-            public static final int UPPER_BOUND_Z_RADIUS = 7;
-            public static final int LOWER_BOUND_Z_RADIUS = 3;
+
+        object FloorSize {
+            const val UPPER_BOUND_X_RADIUS: Int = 7
+            const val LOWER_BOUND_X_RADIUS: Int = 3
+            const val UPPER_BOUND_Z_RADIUS: Int = 7
+            const val LOWER_BOUND_Z_RADIUS: Int = 3
         }
 
         // Constants that define boundaries for how often a certain floor changes its materials.
-        public static class ChangingFloor {
-            public static final int UPPER_BOUND_START_INTERVAL = 25;
-            public static final int LOWER_BOUND_START_INTERVAL = 20;
-            public static final int UPPER_BOUND_STOP_INTERVAL = 15;
-            public static final int LOWER_BOUND_STOP_INTERVAL = 10;
+        object ChangingFloor {
+            const val UPPER_BOUND_START_INTERVAL: Int = 25
+            const val LOWER_BOUND_START_INTERVAL: Int = 20
+            const val UPPER_BOUND_STOP_INTERVAL: Int = 15
+            const val LOWER_BOUND_STOP_INTERVAL: Int = 10
 
-            public static final int DELAY_TO_DECREASE_INTERVAL = 20*15;
-
-            public static final int AMOUNT_OF_CONST = countConstantsInClass(ChangingFloor.class)-1;
+            val DELAY_TO_DECREASE_INTERVAL: Int = 20 * 15
         }
-
-
-        public static final int DELAY_TO_SELECT_A_FLOOR_MATERIAL = 25;
-        public static final int DURATION_OF_STAYING_IN_A_FLOOR_WITH_ONLY_CHOSEN_MATERIAL = 60;
-
-        public static final Material[] LIST_OF_FLOOR_MATERIALS = new Material[]{Material.RED_WOOL, Material.BLUE_WOOL, Material.GREEN_WOOL,Material.PURPLE_WOOL,Material.ORANGE_WOOL,Material.YELLOW_WOOL,Material.LIME_WOOL,Material.CYAN_WOOL,Material.LIGHT_BLUE_WOOL};
-        public static final Material[] DEFAULT_FLOOR_BLOCK_TYPES = new Material[]{Material.RED_WOOL, Material.BLUE_WOOL, Material.GREEN_WOOL,Material.PURPLE_WOOL};
-    }
-
-    public static final World WORLD = Bukkit.getWorld("world");
-    public static final Location GAME_START_LOCATION = new Location(WORLD, 0, 150, 0);
-    public static final Location INIT_FLOOR_LOCATION = DiscoMayhemConst.GAME_START_LOCATION.clone().add(0, 8, 0);
-    public static final Location PLAYER_TP_LOCATION = DiscoMayhemConst.GAME_START_LOCATION.clone().add(0, 11, 0);
-    public static final int MIN_INTERVAL = 1;
-
-
-
-    public static int countConstantsInClass(Class<?> clazz) {
-        Field[] fields = clazz.getDeclaredFields();
-        int count = 0;
-        for (Field field : fields) {
-            if (java.lang.reflect.Modifier.isStatic(field.getModifiers()) && java.lang.reflect.Modifier.isFinal(field.getModifiers())) {
-                count++;
-            }
-        }
-        return count;
     }
 }

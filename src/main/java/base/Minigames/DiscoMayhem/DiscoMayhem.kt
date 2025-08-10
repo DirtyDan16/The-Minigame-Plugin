@@ -1,59 +1,56 @@
 // src/main/java/me/stavgordeev/plugin/Minigame.java
-package base.Minigames.DiscoMayhem;
+package base.Minigames.DiscoMayhem
 
-import base.Minigames.MinigameSkeleton;
-import base.Other.Utils;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.title.Title;
-import org.bukkit.*;
-import org.bukkit.entity.Player;
-import org.bukkit.inventory.ItemStack;
-import org.bukkit.plugin.Plugin;
-import org.bukkit.scheduler.BukkitRunnable;
-import org.bukkit.scheduler.BukkitTask;
-import org.jetbrains.annotations.NotNull;
-import net.kyori.adventure.text.format.NamedTextColor;
-import net.kyori.adventure.text.format.TextColor;
+import base.Minigames.MinigameSkeleton
+import base.utils.extensions_for_classes.getBlockAt
+import base.utils.Utils.initFloor
+import com.sk89q.worldedit.math.BlockVector3
+import com.sk89q.worldedit.regions.CuboidRegion
+import net.kyori.adventure.text.Component
+import net.kyori.adventure.text.format.NamedTextColor
+import net.kyori.adventure.text.format.TextColor
+import net.kyori.adventure.title.Title
+import org.bukkit.*
+import org.bukkit.entity.Player
+import org.bukkit.inventory.ItemStack
+import org.bukkit.plugin.Plugin
+import org.bukkit.scheduler.BukkitRunnable
+import org.bukkit.scheduler.BukkitTask
+import java.time.Duration
+import java.util.*
+import kotlin.math.max
 
-import java.time.Duration;
-import java.util.Random;
-
-public class DiscoMayhem extends MinigameSkeleton {
+class DiscoMayhem  //----------------------------------------------------------------------//
+/**
+ * Constructor for the DiscoMayhem class.
+ *
+ * @param plugin The plugin that the minigame is a part of
+ */
+    (plugin: Plugin) : MinigameSkeleton(plugin) {
     //-Game Modifiers that change as the game progresses to scale difficulty-//
-    private int upperBound__startingIntervalForChangingFloor;
-    private int lowerBound__startingIntervalForChangingFloor;
-    private int upperBound__stopChangingFloorInterval;
-    private int lowerBound__stopChangingFloorInterval;
-    //----------------------------------------------------------------------//
-
-    /**
-     * Constructor for the DiscoMayhem class.
-     *
-     * @param plugin The plugin that the minigame is a part of
-     */
-    public DiscoMayhem(Plugin plugin) {
-        super(plugin);
-    }
+    private var upperBound__startingIntervalForChangingFloor = 0
+    private var lowerBound__startingIntervalForChangingFloor = 0
+    private var upperBound__stopChangingFloorInterval = 0
+    private var lowerBound__stopChangingFloorInterval = 0
 
     /**
      * Starts the minigame. The player is teleported to the starting location and the game is initialized.
-     * @param player The player that starts the minigame
+     * @param sender The player that starts the minigame
      * @throws InterruptedException
      */
+    @Throws(InterruptedException::class)
+    public override fun start(sender: Player) {
+        super.start(sender)
 
-    public void start(Player player) throws InterruptedException {
-        super.start(player);
-
-        initModifiers(); // Initialize the modifiers for the game
+        initModifiers() // Initialize the modifiers for the game
 
         // Wait a lil before starting game events.
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                activateGameEvents();
-                cancel();
+        object : BukkitRunnable() {
+            override fun run() {
+                activateGameEvents()
+                cancel()
             }
-        }.runTaskLater(plugin, 40);
+        }.runTaskLater(plugin, 40)
     }
 
     /**
@@ -61,31 +58,31 @@ public class DiscoMayhem extends MinigameSkeleton {
      * @param player The player that starts the minigame
      * @throws InterruptedException
      */
-    @Override
-    public void startFastMode(Player player) throws InterruptedException {
-        super.startFastMode(player);
+    @Throws(InterruptedException::class)
+    public override fun startFastMode(player: Player) {
+        super.startFastMode(player)
 
-        upperBound__startingIntervalForChangingFloor = 10;
-        lowerBound__startingIntervalForChangingFloor = 10;
-        upperBound__stopChangingFloorInterval = 1;
-        lowerBound__stopChangingFloorInterval = 1;
+        upperBound__startingIntervalForChangingFloor = 10
+        lowerBound__startingIntervalForChangingFloor = 10
+        upperBound__stopChangingFloorInterval = 1
+        lowerBound__stopChangingFloorInterval = 1
     }
 
     /**
      * Activates the game events.
      * Game events range from taking care of changing floor logic to decreasing the interval for changing the floor.
      */
-    public void activateGameEvents() {
-        preppingForAFloorCycle(DiscoMayhemConst.GAME_START_LOCATION);
-        decreaseStartingIntervalForChangingFloorTimer();
+    fun activateGameEvents() {
+        preppingForAFloorCycle(DiscoMayhemConst.GAME_START_LOCATION)
+        decreaseStartingIntervalForChangingFloorTimer()
     }
 
     /**
      * Pauses the minigame. The game is paused and the player is notified.
      * The game being paused saves the current state of the game, so it can be resumed later. however, the game is not running.
      */
-    public void pauseGame() {
-        super.pauseGame();
+    public override fun pauseGame() {
+        super.pauseGame()
         // Add more actions here
     }
 
@@ -93,24 +90,25 @@ public class DiscoMayhem extends MinigameSkeleton {
      * Resumes the minigame. The game is resumed and the player is notified.
      */
     //fixme: some parts of the game are not resumed- the game is not resumed, but the floor is not changed nor old floors aren't removed.
-    public void resumeGame(Player player) {
-        super.resumeGame();
+    fun resumeGame(player: Player?) {
+        super.resumeGame()
 
-        activateGameEvents(); // Resume the game events
+        activateGameEvents() // Resume the game events
         // Add more actions here
     }
 
     /**
      * Ends the minigame. The game is ended and the player is notified. The area is cleared.
      */
-    public void endGame(Player player) {
-        super.endGame();
+    fun endGame(player: Player?) {
+        super.endGame()
 
-        nukeArea(DiscoMayhemConst.GAME_START_LOCATION, 55);
+        nukeArea(DiscoMayhemConst.GAME_START_LOCATION, DiscoMayhemConst.NUKE_AREA_RADIUS)
 
-        initModifiers(); // Reset the modifiers for the game
+        initModifiers() // Reset the modifiers for the game
 
-        if (intervalTask != null && !intervalTask.isCancelled()) intervalTask.cancel(); // Cancel the task that decreases the interval for changing the floor as time goes on
+        if (intervalTask != null && !intervalTask!!.isCancelled()) intervalTask!!.cancel() // Cancel the task that decreases the interval for changing the floor as time goes on
+
 
         //player.teleport(MinigameConstants.GAME_START_LOCATION.clone().add(0, -70, 0));
     }
@@ -120,50 +118,69 @@ public class DiscoMayhem extends MinigameSkeleton {
      * Modifiers change throughout the game to scale difficulty.
      * This method is called when the game starts and when the game ends.
      */
-    public void initModifiers() {
-        upperBound__startingIntervalForChangingFloor = DiscoMayhemConst.FloorLogic.ChangingFloor.UPPER_BOUND_START_INTERVAL;
-        lowerBound__startingIntervalForChangingFloor = DiscoMayhemConst.FloorLogic.ChangingFloor.LOWER_BOUND_START_INTERVAL;
-        upperBound__stopChangingFloorInterval = DiscoMayhemConst.FloorLogic.ChangingFloor.UPPER_BOUND_STOP_INTERVAL;
-        lowerBound__stopChangingFloorInterval = DiscoMayhemConst.FloorLogic.ChangingFloor.LOWER_BOUND_STOP_INTERVAL;
+    fun initModifiers() {
+        upperBound__startingIntervalForChangingFloor =
+            DiscoMayhemConst.FloorLogic.ChangingFloor.UPPER_BOUND_START_INTERVAL
+        lowerBound__startingIntervalForChangingFloor =
+            DiscoMayhemConst.FloorLogic.ChangingFloor.LOWER_BOUND_START_INTERVAL
+        upperBound__stopChangingFloorInterval = DiscoMayhemConst.FloorLogic.ChangingFloor.UPPER_BOUND_STOP_INTERVAL
+        lowerBound__stopChangingFloorInterval = DiscoMayhemConst.FloorLogic.ChangingFloor.LOWER_BOUND_STOP_INTERVAL
     }
 
     /**
      * Removes all blocks in a radius around a location.
      * @param center The center of the area to nuke
      * @param radius The radius of the area
-     **/
-    public void nukeArea(Location center, int radius) {
-        super.nukeArea(center, radius);
+     */
+    public override fun nukeArea(center: Location, radius: Int) {
+        val minX: Int = center.blockX - radius
+        val maxX: Int = center.blockX + radius
+        val minY: Int = center.blockY - radius
+        val maxY: Int = center.blockY + radius
+        val minZ: Int = center.blockZ - radius
+        val maxZ: Int = center.blockZ + radius
+
+        val region: CuboidRegion = CuboidRegion(
+            BlockVector3.at(minX, minY, minZ),
+            BlockVector3.at(maxX, maxY, maxZ)
+        )
+
+        for (vector in region) {
+            DiscoMayhemConst.WORLD.getBlockAt(vector).type = Material.AIR
+        }
     }
 
-    @Override
-    public void prepareArea() {
-        nukeArea(DiscoMayhemConst.GAME_START_LOCATION, 50); // Clear the area before starting the game
+    public override fun prepareArea() {
+        nukeArea(DiscoMayhemConst.GAME_START_LOCATION, DiscoMayhemConst.NUKE_AREA_RADIUS) // Clear the area before starting the game
 
-        Location floorCenter = DiscoMayhemConst.INIT_FLOOR_LOCATION; // The center of the floor
-        Utils.initFloor(7, 7, Material.GLASS,floorCenter,DiscoMayhemConst.WORLD); // Initialize the floor under the player to glass
+        val floorCenter = DiscoMayhemConst.INIT_FLOOR_LOCATION // The center of the floor
+        initFloor(
+            7,
+            7,
+            Material.GLASS,
+            floorCenter,
+            DiscoMayhemConst.WORLD
+        ) // Initialize the floor under the player to glass
 
         // Wait a lil before removing the initial floor.
-        new BukkitRunnable(){
-            @Override
-            public void run() {
-                Utils.initFloor(7, 7, Material.AIR,floorCenter,DiscoMayhemConst.WORLD);
+        object : BukkitRunnable() {
+            override fun run() {
+                initFloor(7, 7, Material.AIR, floorCenter, DiscoMayhemConst.WORLD)
             }
-        }.runTaskLater(plugin, 100);
+        }.runTaskLater(plugin, 100)
     }
 
-    @Override
-    public void prepareGameSetting(Player player) {
-        player.teleport(DiscoMayhemConst.PLAYER_TP_LOCATION);
+    override fun prepareGameSetting() {
+        DiscoMayhemConst.WORLD.setTime(6000) // Set the time to day
+        DiscoMayhemConst.WORLD.setStorm(false) // Disable rain
+        DiscoMayhemConst.WORLD.setThundering(false) // Disable thunder
 
-        DiscoMayhemConst.WORLD.setTime(6000); // Set the time to day
-        DiscoMayhemConst.WORLD.setStorm(false); // Disable rain
-        DiscoMayhemConst.WORLD.setThundering(false); // Disable thunder
+        super.prepareGameSetting()
 
-        player.setGameMode(GameMode.ADVENTURE); // Set the player's game mode to adventure
-        player.getInventory().clear(); // Clear the player's inventory
-        player.setSaturation(20); // Set the player's saturation to full
-        player.setHealth(20); // Set the player's health to full
+        for (player in players) {
+            player.teleport(DiscoMayhemConst.PLAYER_TP_LOCATION)
+            player.setGameMode(GameMode.ADVENTURE) // Set the player's game mode to adventure
+        }
     }
 
     /**
@@ -171,38 +188,64 @@ public class DiscoMayhem extends MinigameSkeleton {
      * after that starts the floor change logic cycle.
      * @param referenceLocation The location to reference for the new floor. this is the location of the last floor. this location will be used to calculate the new floor's center.
      */
-    private void preppingForAFloorCycle(Location referenceLocation) {
+    private fun preppingForAFloorCycle(referenceLocation: Location) {
         if (!isGameRunning || isGamePaused) {
-            return;
+            return
         }
-        Bukkit.getServer().broadcast(Component.text("prepping for change floor").color(NamedTextColor.DARK_AQUA));
+        Bukkit.getServer().broadcast(Component.text("prepping for change floor").color(NamedTextColor.DARK_AQUA))
 
-        Random radiusRandomizer = new Random(),intervalRandomizer = new Random();
+        val radiusRandomizer = Random()
+        val intervalRandomizer = Random()
 
         // Randomize the radius of the floor and the interval between floor changes.
-        int xRad = radiusRandomizer.nextInt(DiscoMayhemConst.FloorLogic.FloorSize.LOWER_BOUND_X_RADIUS, DiscoMayhemConst.FloorLogic.FloorSize.UPPER_BOUND_X_RADIUS+1);
-        int zRad = radiusRandomizer.nextInt(DiscoMayhemConst.FloorLogic.FloorSize.LOWER_BOUND_Z_RADIUS, DiscoMayhemConst.FloorLogic.FloorSize.UPPER_BOUND_Z_RADIUS+1);
-        int interval = intervalRandomizer.nextInt(lowerBound__startingIntervalForChangingFloor, upperBound__startingIntervalForChangingFloor+1);
-        int stopInterval = intervalRandomizer.nextInt(lowerBound__stopChangingFloorInterval, upperBound__stopChangingFloorInterval+1);
+        val xRad = radiusRandomizer.nextInt(
+            DiscoMayhemConst.FloorLogic.FloorSize.LOWER_BOUND_X_RADIUS,
+            DiscoMayhemConst.FloorLogic.FloorSize.UPPER_BOUND_X_RADIUS + 1
+        )
+        val zRad = radiusRandomizer.nextInt(
+            DiscoMayhemConst.FloorLogic.FloorSize.LOWER_BOUND_Z_RADIUS,
+            DiscoMayhemConst.FloorLogic.FloorSize.UPPER_BOUND_Z_RADIUS + 1
+        )
+        val interval = intervalRandomizer.nextInt(
+            lowerBound__startingIntervalForChangingFloor,
+            upperBound__startingIntervalForChangingFloor + 1
+        )
+        val stopInterval =
+            intervalRandomizer.nextInt(lowerBound__stopChangingFloorInterval, upperBound__stopChangingFloorInterval + 1)
 
         // Randomize the center of the new floor. For the z and x coordinates, the min value represents the min distance compared to the last floor reference. For the y coordinate, there is a min and max value.
-        Random newCenterCoordinatesRandomizer = new Random();
-        int randomisedXDiff = newCenterCoordinatesRandomizer.nextInt(DiscoMayhemConst.FloorLogic.NewFloorSpawnBoundaries.LOWER_BOUND_X_CENTER, DiscoMayhemConst.FloorLogic.NewFloorSpawnBoundaries.UPPER_BOUND_X_CENTER+1);
-        randomisedXDiff = randomlyChangeSign(randomisedXDiff);
-        int randomisedZDiff = newCenterCoordinatesRandomizer.nextInt(DiscoMayhemConst.FloorLogic.NewFloorSpawnBoundaries.LOWER_BOUND_Z_CENTER, DiscoMayhemConst.FloorLogic.NewFloorSpawnBoundaries.UPPER_BOUND_Z_CENTER+1);
-        randomisedZDiff = randomlyChangeSign(randomisedZDiff);
-        int randomisedYDiff = newCenterCoordinatesRandomizer.nextInt(DiscoMayhemConst.FloorLogic.NewFloorSpawnBoundaries.LOWER_BOUND_Y_CENTER, DiscoMayhemConst.FloorLogic.NewFloorSpawnBoundaries.UPPER_BOUND_Y_CENTER+1);
+        val newCenterCoordinatesRandomizer = Random()
+        var randomisedXDiff = newCenterCoordinatesRandomizer.nextInt(
+            DiscoMayhemConst.FloorLogic.NewFloorSpawnBoundaries.LOWER_BOUND_X_CENTER,
+            DiscoMayhemConst.FloorLogic.NewFloorSpawnBoundaries.UPPER_BOUND_X_CENTER + 1
+        )
+        randomisedXDiff = randomlyChangeSign(randomisedXDiff)
+        var randomisedZDiff = newCenterCoordinatesRandomizer.nextInt(
+            DiscoMayhemConst.FloorLogic.NewFloorSpawnBoundaries.LOWER_BOUND_Z_CENTER,
+            DiscoMayhemConst.FloorLogic.NewFloorSpawnBoundaries.UPPER_BOUND_Z_CENTER + 1
+        )
+        randomisedZDiff = randomlyChangeSign(randomisedZDiff)
+        val randomisedYDiff = newCenterCoordinatesRandomizer.nextInt(
+            DiscoMayhemConst.FloorLogic.NewFloorSpawnBoundaries.LOWER_BOUND_Y_CENTER,
+            DiscoMayhemConst.FloorLogic.NewFloorSpawnBoundaries.UPPER_BOUND_Y_CENTER + 1
+        )
 
         // center of the new floor. the new center is tied to the reference location.
-        Location center = referenceLocation.clone().add(new Location(DiscoMayhemConst.WORLD,randomisedXDiff,randomisedYDiff,randomisedZDiff));
+        val center = referenceLocation.clone().add(
+            Location(
+                DiscoMayhemConst.WORLD,
+                randomisedXDiff.toDouble(),
+                randomisedYDiff.toDouble(),
+                randomisedZDiff.toDouble()
+            )
+        )
 
-        Bukkit.broadcastMessage(ChatColor.BLUE + "Diff in centers: " + randomisedXDiff + " " + randomisedYDiff + " " + randomisedZDiff);
-        Bukkit.broadcastMessage(ChatColor.BLUE + "new floor center: " + formatLocation(center));
+        Bukkit.broadcastMessage(ChatColor.BLUE.toString() + "Diff in centers: " + randomisedXDiff + " " + randomisedYDiff + " " + randomisedZDiff)
+        Bukkit.broadcastMessage(ChatColor.BLUE.toString() + "new floor center: " + formatLocation(center))
 
         // Start the floor change logic cycle.
-        changeFloor(center,xRad, zRad);
-        activateChangeFloorTimerWithGrowingFrequency(center,interval,stopInterval, xRad, zRad);
-
+        changeFloor(center, xRad, zRad)
+        activateChangeFloorTimerWithGrowingFrequency(center, interval, stopInterval, xRad, zRad)
     }
 
     /**
@@ -210,12 +253,13 @@ public class DiscoMayhem extends MinigameSkeleton {
      * @param value The value to change the sign of
      * @return The value with a randomly changed sign
      */
-    private int randomlyChangeSign(int value) {
-        Random random = new Random();
-        boolean isFlipped = random.nextBoolean();
-        if (isFlipped) value = -value;
+    private fun randomlyChangeSign(value: Int): Int {
+        var value = value
+        val random = Random()
+        val isFlipped = random.nextBoolean()
+        if (isFlipped) value = -value
 
-        return value;
+        return value
     }
 
     /**
@@ -225,32 +269,35 @@ public class DiscoMayhem extends MinigameSkeleton {
      * @param xRad The x radius of the floor
      * @param zRad The z radius of the floor
      */
-    private void activateChangeFloorTimerWithGrowingFrequency(Location center,int interval,int stopInterval,int xRad, int zRad) {
+    private fun activateChangeFloorTimerWithGrowingFrequency(
+        center: Location,
+        interval: Int,
+        stopInterval: Int,
+        xRad: Int,
+        zRad: Int
+    ) {
         if (!isGameRunning || isGamePaused) {
-            return;
+            return
         }
 
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-
+        object : BukkitRunnable() {
+            override fun run() {
                 if (interval == stopInterval || interval == DiscoMayhemConst.MIN_INTERVAL) {
-                    Bukkit.broadcastMessage("recursion stopped. interval is " + interval);
+                    Bukkit.broadcastMessage("recursion stopped. interval is " + interval)
 
-                    chooseFloorBlockType(center,xRad,zRad);
+                    chooseFloorBlockType(center, xRad, zRad)
 
-                    cancel();
-                    return;
+                    cancel()
+                    return
                 }
 
-                changeFloor(center,xRad, zRad);
+                changeFloor(center, xRad, zRad)
 
                 // Recursively call the method with the new interval
-                activateChangeFloorTimerWithGrowingFrequency( center,interval-1,stopInterval,xRad,zRad);
+                activateChangeFloorTimerWithGrowingFrequency(center, interval - 1, stopInterval, xRad, zRad)
             }
-        }.runTaskLater(plugin, interval);
+        }.runTaskLater(plugin, interval.toLong())
     }
-
 
 
     /**
@@ -259,18 +306,19 @@ public class DiscoMayhem extends MinigameSkeleton {
      * @param xLengthRad The x radius of the floor
      * @param zLengthRad The z radius of the floor
      */
-    public void changeFloor(Location center, int xLengthRad, int zLengthRad) {
-        Random blockTypeRandomizer = new Random();
-        //Bukkit.broadcastMessage("floor changed");
+    fun changeFloor(center: Location, xLengthRad: Int, zLengthRad: Int) {
+        val blockTypeRandomizer = Random()
 
-        Material[] blockTypes = DiscoMayhemConst.FloorLogic.DEFAULT_FLOOR_BLOCK_TYPES;
+        //Bukkit.broadcastMessage("floor changed");
+        val blockTypes = DiscoMayhemConst.FloorLogic.DEFAULT_FLOOR_BLOCK_TYPES
 
         // Change the floor under the player to random materials. The floor is a rectangle with side lengths 2*xLengthRad+1 and 2*zLengthRad+1. goes over 1 block at a time.
-        for (int x = -xLengthRad; x <= xLengthRad; x++) {
-            for (int z = -zLengthRad; z <= zLengthRad; z++) {
-                int material = blockTypeRandomizer.nextInt(blockTypes.length);
-                Location selectedLocation = new Location(DiscoMayhemConst.WORLD, center.getX() + x, center.getY(), center.getZ() + z);
-                selectedLocation.getBlock().setType(blockTypes[material]);
+        for (x in -xLengthRad..xLengthRad) {
+            for (z in -zLengthRad..zLengthRad) {
+                val material = blockTypeRandomizer.nextInt(blockTypes.size)
+                val selectedLocation =
+                    Location(DiscoMayhemConst.WORLD, center.getX() + x, center.getY(), center.getZ() + z)
+                selectedLocation.getBlock().setType(blockTypes[material])
             }
         }
     }
@@ -284,37 +332,44 @@ public class DiscoMayhem extends MinigameSkeleton {
      *
      * when the game ends, the intervalTask is immediately canceled. endGame() method takes care of canceling the task.
      */
-    private BukkitTask intervalTask;
-    private void decreaseStartingIntervalForChangingFloorTimer() {
+    private var intervalTask: BukkitTask? = null
+    private fun decreaseStartingIntervalForChangingFloorTimer() {
         if (!isGameRunning || isGamePaused) {
-            return;
+            return
         }
 
         // Decrease the interval for changing the floor as time goes on. The interval is decreased by 2 every a certain amount of time seconds.
-        intervalTask = new BukkitRunnable() {
-            @Override
-            public void run() {
+        intervalTask = object : BukkitRunnable() {
+            override fun run() {
                 if (!isGameRunning || isGamePaused) {
-                    cancel();
-                    return;
+                    cancel()
+                    return
                 }
 
                 if (upperBound__startingIntervalForChangingFloor == DiscoMayhemConst.MIN_INTERVAL) {
-                    Bukkit.broadcastMessage(ChatColor.RED + "The interval for changing the floor has reached the minimum value.");
-                    cancel();
-                    return;
+                    Bukkit.broadcastMessage(ChatColor.RED.toString() + "The interval for changing the floor has reached the minimum value.")
+                    cancel()
+                    return
                 }
 
-                upperBound__startingIntervalForChangingFloor = Math.max(upperBound__startingIntervalForChangingFloor-2, DiscoMayhemConst.MIN_INTERVAL);
-                Bukkit.broadcastMessage(ChatColor.LIGHT_PURPLE + "upperBound__startingIntervalForChangingFloor: " + upperBound__startingIntervalForChangingFloor);
-                lowerBound__startingIntervalForChangingFloor = Math.max(lowerBound__startingIntervalForChangingFloor-2, DiscoMayhemConst.MIN_INTERVAL);
-                Bukkit.broadcastMessage(ChatColor.LIGHT_PURPLE + "lowerBound__startingIntervalForChangingFloor: " + lowerBound__startingIntervalForChangingFloor);
-                upperBound__stopChangingFloorInterval = Math.max(upperBound__stopChangingFloorInterval-2, DiscoMayhemConst.MIN_INTERVAL);
-                Bukkit.broadcastMessage(ChatColor.LIGHT_PURPLE + "upperBound__stopChangingFloorInterval: " + upperBound__stopChangingFloorInterval);
-                lowerBound__stopChangingFloorInterval = Math.max(lowerBound__stopChangingFloorInterval-2, DiscoMayhemConst.MIN_INTERVAL);
-                Bukkit.broadcastMessage(ChatColor.LIGHT_PURPLE + "lowerBound__stopChangingFloorInterval: " + lowerBound__stopChangingFloorInterval);
+                upperBound__startingIntervalForChangingFloor =
+                    max(upperBound__startingIntervalForChangingFloor - 2, DiscoMayhemConst.MIN_INTERVAL)
+                Bukkit.broadcastMessage(ChatColor.LIGHT_PURPLE.toString() + "upperBound__startingIntervalForChangingFloor: " + upperBound__startingIntervalForChangingFloor)
+                lowerBound__startingIntervalForChangingFloor =
+                    max(lowerBound__startingIntervalForChangingFloor - 2, DiscoMayhemConst.MIN_INTERVAL)
+                Bukkit.broadcastMessage(ChatColor.LIGHT_PURPLE.toString() + "lowerBound__startingIntervalForChangingFloor: " + lowerBound__startingIntervalForChangingFloor)
+                upperBound__stopChangingFloorInterval =
+                    max(upperBound__stopChangingFloorInterval - 2, DiscoMayhemConst.MIN_INTERVAL)
+                Bukkit.broadcastMessage(ChatColor.LIGHT_PURPLE.toString() + "upperBound__stopChangingFloorInterval: " + upperBound__stopChangingFloorInterval)
+                lowerBound__stopChangingFloorInterval =
+                    max(lowerBound__stopChangingFloorInterval - 2, DiscoMayhemConst.MIN_INTERVAL)
+                Bukkit.broadcastMessage(ChatColor.LIGHT_PURPLE.toString() + "lowerBound__stopChangingFloorInterval: " + lowerBound__stopChangingFloorInterval)
             }
-        }.runTaskTimer(plugin, DiscoMayhemConst.FloorLogic.ChangingFloor.DELAY_TO_DECREASE_INTERVAL, DiscoMayhemConst.FloorLogic.ChangingFloor.DELAY_TO_DECREASE_INTERVAL);
+        }.runTaskTimer(
+            plugin,
+            DiscoMayhemConst.FloorLogic.ChangingFloor.DELAY_TO_DECREASE_INTERVAL.toLong(),
+            DiscoMayhemConst.FloorLogic.ChangingFloor.DELAY_TO_DECREASE_INTERVAL.toLong()
+        )
     }
 
     /**
@@ -326,50 +381,61 @@ public class DiscoMayhem extends MinigameSkeleton {
      * @param zLengthRad The z radius of the floor
      * @param materialToKeep The material to keep
      */
-    public void removeFloorExceptForChosenMaterial(Location center, int xLengthRad, int zLengthRad, Material materialToKeep) {
+    fun removeFloorExceptForChosenMaterial(
+        center: Location,
+        xLengthRad: Int,
+        zLengthRad: Int,
+        materialToKeep: Material?
+    ) {
         if (!isGameRunning || isGamePaused) {
-            return;
+            return
         }
 
-        Bukkit.broadcastMessage("floor removal");
+        Bukkit.broadcastMessage("floor removal")
 
         // Take the current floor and remove all the materials except for the materialToKeep. go through 1 block at a time. the size of the floor is 2*xLengthRad+1 and 2*zLengthRad+1.
-        for (int x = -xLengthRad; x <= xLengthRad; x++) {
-            for (int z = -zLengthRad; z <= zLengthRad; z++) {
-                Location selectedLocation = new Location(DiscoMayhemConst.WORLD, center.getX() + x, center.getY(), center.getZ() + z);
+        for (x in -xLengthRad..xLengthRad) {
+            for (z in -zLengthRad..zLengthRad) {
+                val selectedLocation =
+                    Location(DiscoMayhemConst.WORLD, center.getX() + x, center.getY(), center.getZ() + z)
 
                 // Only change the block if it is not the material to keep
-                if (selectedLocation.getBlock().getType() != materialToKeep) selectedLocation.getBlock().setType(Material.AIR);
+                if (selectedLocation.getBlock().getType() != materialToKeep) selectedLocation.getBlock()
+                    .setType(Material.AIR)
             }
         }
 
         // At this stage, a new floor is set elsewhere. The player will have a limited time to go from the old floor to the new floor. the timer and the logic
         // can be seen in the bukkit runnable below.
-        preppingForAFloorCycle(center);
+        preppingForAFloorCycle(center)
 
         // Remove the remaining parts of the floor after a certain amount of time. This is the time the player has to go from the old floor to the new floor.
         //fixme: if the new floor is too close to the old one, this runnable will remove blocks from the new floor that their material is the same
         // as the old chosen material from , if they are in the bounds of the old floor.
-        new BukkitRunnable() {
-            @Override
-            public void run() {
+        object : BukkitRunnable() {
+            override fun run() {
                 if (!isGameRunning || isGamePaused) {
-                    cancel();
-                    return;
+                    cancel()
+                    return
                 }
 
                 // Go over the material that isn't deleted and remove it as well.
-                for (int x = -xLengthRad; x <= xLengthRad; x++) {
-                    for (int z = -zLengthRad; z <= zLengthRad; z++) {
-                        Location selectedLocation = new Location(DiscoMayhemConst.WORLD, center.getX() + x, center.getY(), center.getZ() + z);
+                for (x in -xLengthRad..xLengthRad) {
+                    for (z in -zLengthRad..zLengthRad) {
+                        val selectedLocation =
+                            Location(DiscoMayhemConst.WORLD, center.getX() + x, center.getY(), center.getZ() + z)
 
                         // Remove the selected Material
-                        if (selectedLocation.getBlock().getType() == materialToKeep) selectedLocation.getBlock().setType(Material.AIR);
+                        if (selectedLocation.getBlock().getType() == materialToKeep) selectedLocation.getBlock()
+                            .setType(Material.AIR)
                     }
                 }
-                cancel();
+                cancel()
             }
-        }.runTaskLater(plugin, DiscoMayhemConst.FloorLogic.DURATION_OF_STAYING_IN_A_FLOOR_WITH_ONLY_CHOSEN_MATERIAL);
+        }.runTaskLater(
+            plugin,
+            DiscoMayhemConst.FloorLogic.DURATION_OF_STAYING_IN_A_FLOOR_WITH_ONLY_CHOSEN_MATERIAL.toLong()
+        )
     }
 
     /**
@@ -380,71 +446,73 @@ public class DiscoMayhem extends MinigameSkeleton {
      * @param xRad The x radius of the floor
      * @param zRad The z radius of the floor
      */
-    private void chooseFloorBlockType(Location center,int xRad, int zRad) {
-        Random blockTypeRandomizer = new Random();
-        Material[] floorBlockTypes = DiscoMayhemConst.FloorLogic.DEFAULT_FLOOR_BLOCK_TYPES;
+    private fun chooseFloorBlockType(center: Location, xRad: Int, zRad: Int) {
+        val blockTypeRandomizer = Random()
+        val floorBlockTypes = DiscoMayhemConst.FloorLogic.DEFAULT_FLOOR_BLOCK_TYPES
 
-        Material material = floorBlockTypes[blockTypeRandomizer.nextInt(floorBlockTypes.length)]; // get a random material from the list of floor block types
-        Bukkit.getServer().broadcast(Component.text(ChatColor.RED + "floor type chosen: " + material.toString()));
+        val material =
+            floorBlockTypes[blockTypeRandomizer.nextInt(floorBlockTypes.size)] // get a random material from the list of floor block types
+        Bukkit.getServer()
+            .broadcast(Component.text(ChatColor.RED.toString() + "floor type chosen: " + material.toString()))
         // Give the material to all players in their 5th hotbar slot and send a title to all players of the chosen block type.
-        for (Player player : Bukkit.getOnlinePlayers()) {
-            player.getInventory().setItem(4, new ItemStack(material));
+        for (player in Bukkit.getOnlinePlayers()) {
+            player.getInventory().setItem(4, ItemStack(material))
 
             // Send a title to the player with the chosen material with a color that corresponds to the material.
-            Title title = Title.title(
-            Component.empty(),
-            Component.text(material.toString()).color(getColorOfMaterial(material)),
-            Title.Times.times(Duration.ofMillis(200), Duration.ofMillis(2000), Duration.ofMillis(200))
-            );
-            player.showTitle(title);
+            val title = Title.title(
+                Component.empty(),
+                Component.text(material.toString()).color(getColorOfMaterial(material)),
+                Title.Times.times(Duration.ofMillis(200), Duration.ofMillis(2000), Duration.ofMillis(200))
+            )
+            player.showTitle(title)
         }
 
 
         //TODO: as the game progresses, the time to remove the floor should be shortened.
 
         // Remove all the floor except for the chosen material. the time given is the time to remove the floor. overtime this will be shortened as the game progresses and gets more difficult.
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                removeFloorExceptForChosenMaterial(center,xRad, zRad, material);
+        object : BukkitRunnable() {
+            override fun run() {
+                removeFloorExceptForChosenMaterial(center, xRad, zRad, material)
 
                 //remove the material from the players' hotbar, so it won't confuse them.
-                for (Player player : Bukkit.getOnlinePlayers()) {
-                    player.getInventory().clear(4);
+                for (player in Bukkit.getOnlinePlayers()) {
+                    player.getInventory().clear(4)
                 }
 
-                cancel();
+                cancel()
             }
-        }.runTaskLater(plugin, DiscoMayhemConst.FloorLogic.DELAY_TO_SELECT_A_FLOOR_MATERIAL);
+        }.runTaskLater(plugin, DiscoMayhemConst.FloorLogic.DELAY_TO_SELECT_A_FLOOR_MATERIAL.toLong())
     }
 
-    /**
-     * gives the color equivalent of a material (works for wool blocks).
-     * @return The chosen material
-     */
+    companion object {
+        /**
+         * gives the color equivalent of a material (works for wool blocks).
+         * @return The chosen material
+         */
+        fun getColorOfMaterial(material: Material): TextColor {
+            return when (material) {
+                Material.RED_WOOL -> NamedTextColor.RED
+                Material.BLUE_WOOL -> NamedTextColor.BLUE
+                Material.LIME_WOOL -> NamedTextColor.GREEN
+                Material.PURPLE_WOOL -> NamedTextColor.DARK_PURPLE
+                Material.ORANGE_WOOL -> NamedTextColor.GOLD
+                Material.YELLOW_WOOL -> NamedTextColor.YELLOW
+                Material.GREEN_WOOL -> NamedTextColor.DARK_GREEN
+                Material.CYAN_WOOL -> NamedTextColor.DARK_AQUA
+                Material.LIGHT_BLUE_WOOL -> NamedTextColor.AQUA
+                else -> NamedTextColor.WHITE
+            }
+        }
 
-
-public static TextColor getColorOfMaterial(Material material) {
-    return switch (material) {
-        case RED_WOOL -> NamedTextColor.RED;
-        case BLUE_WOOL -> NamedTextColor.BLUE;
-        case LIME_WOOL -> NamedTextColor.GREEN;
-        case PURPLE_WOOL -> NamedTextColor.DARK_PURPLE;
-        case ORANGE_WOOL -> NamedTextColor.GOLD;
-        case YELLOW_WOOL -> NamedTextColor.YELLOW;
-        case GREEN_WOOL -> NamedTextColor.DARK_GREEN;
-        case CYAN_WOOL -> NamedTextColor.DARK_AQUA;
-        case LIGHT_BLUE_WOOL -> NamedTextColor.AQUA;
-        default -> NamedTextColor.WHITE;
-    };
-}
-
-    /**
-     * Formats a location to a string.
-     * @param location The location to format
-     * @return The formatted location
-     */
-    private static String formatLocation(@NotNull Location location) {
-        return location.getWorld().getName() + ". (" + location.getX() + "," + location.getY() + "," + location.getZ()+")";
+        /**
+         * Formats a location to a string.
+         * @param location The location to format
+         * @return The formatted location
+         */
+        private fun formatLocation(location: Location): String {
+            return location.getWorld()
+                .getName() + ". (" + location.getX() + "," + location.getY() + "," + location.getZ() + ")"
+        }
     }
 }

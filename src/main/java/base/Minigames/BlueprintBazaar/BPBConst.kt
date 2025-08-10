@@ -1,6 +1,6 @@
 package base.Minigames.BlueprintBazaar
 
-import base.Other.Direction
+import base.utils.Direction
 import org.bukkit.Bukkit
 import org.bukkit.Location
 import org.bukkit.Material

@@ -1,4 +1,4 @@
-package base.Other
+package base.utils
 
 import base.MinigamePlugin.Companion.plugin
 import org.bukkit.Bukkit
@@ -6,8 +6,6 @@ import org.bukkit.Location
 import org.bukkit.Material
 import org.bukkit.World
 import org.bukkit.scheduler.BukkitRunnable
-import kotlin.collections.iterator
-import kotlin.random.Random
 
 enum class Direction {
     NORTH, SOUTH, EAST, WEST;
@@ -41,20 +39,6 @@ enum class Direction {
 }
 
 object Utils {
-
-    fun <Type> Random.getNextWeighted(weights: Map<Type, Int>): Type {
-        val totalWeight = weights.values.sum()
-        var randomValue = nextInt(totalWeight)
-
-        for ((item, weight) in weights) {
-            if (randomValue < weight) {
-                return item
-            }
-            randomValue -= weight
-        }
-
-        throw IllegalStateException("Should not reach here, weights are not set up correctly.")
-    }
 
     /**
      * Activates a task after a condition is met, with an optional delay after the condition is met.
@@ -150,4 +134,5 @@ object Utils {
 
         Bukkit.broadcastMessage("floor initialized")
     }
+
 }

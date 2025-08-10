@@ -1,10 +1,9 @@
 package base.Minigames
 
-import base.Other.Utils.nukeGameArea
+import base.utils.Utils.nukeGameArea
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 import org.bukkit.Bukkit
-import org.bukkit.GameRule
 import org.bukkit.Location
 import org.bukkit.entity.Player
 import org.bukkit.plugin.Plugin
@@ -22,6 +21,7 @@ protected constructor(@JvmField protected val plugin: Plugin) {
     @Volatile
     protected var isGamePaused: Boolean = false
     protected var sender: Player? = null
+    protected var players: MutableList<Player> = mutableListOf()
 
     /**
     * This list tracks all scheduled tasks that are made via the help of BukkitRunnables. used to cancel the scheduling when desired.
@@ -32,12 +32,15 @@ protected constructor(@JvmField protected val plugin: Plugin) {
 
     enum class WorldSettingsToTrack {
         TIME_OF_DAY,
-        RANDOM_TICK_SPEED
+        RANDOM_TICK_SPEED,
+        GAMEMODE
     }
 
     protected val trackerOfWorldSettingsBeforeStartingGame = mutableMapOf<WorldSettingsToTrack, Any?>(
         WorldSettingsToTrack.TIME_OF_DAY to null,
-        WorldSettingsToTrack.RANDOM_TICK_SPEED to null
+        WorldSettingsToTrack.RANDOM_TICK_SPEED to null,
+        WorldSettingsToTrack.GAMEMODE to null
+
     )
 
     /**
@@ -45,11 +48,11 @@ protected constructor(@JvmField protected val plugin: Plugin) {
      * If the game is already running, it should not start the game again.
      *
      * The method calls methods that prepare the area (prepareArea()) and the game settings (prepareGameSetting()) which are abstract and should be implemented in the subclass.
-     * @param player the player that started the minigame
+     * @param sender the player that started the minigame
      * @throws InterruptedException if the game is interrupted
      */
     @Throws(InterruptedException::class)
-    open fun start(player: Player) {
+    open fun start(sender: Player) {
         if (isGameRunning) {
             Bukkit.getServer().broadcast(Component.text("Minigame is already running!"))
             return
@@ -57,13 +60,14 @@ protected constructor(@JvmField protected val plugin: Plugin) {
             Bukkit.getServer().broadcast(Component.text("Minigame started!").color(NamedTextColor.GREEN))
         }
 
-        sender = player
+        this@MinigameSkeleton.sender = sender
+        players += Bukkit.getServer().onlinePlayers
         isGameRunning = true
         isGamePaused = false
 
         //----- List Of Actions To Be Done When The Game Starts -----//
         prepareArea()
-        prepareGameSetting(player)
+        prepareGameSetting()
 
         //----------------------------------------------------------------//
     }
@@ -136,6 +140,7 @@ protected constructor(@JvmField protected val plugin: Plugin) {
         isGameRunning = false
         isGamePaused = false
         sender = null
+        players.clear()
     }
 
     /**
@@ -144,7 +149,7 @@ protected constructor(@JvmField protected val plugin: Plugin) {
      * @return True if the player is in the minigame, false otherwise
      */
     fun isPlayerInGame(player: Player?): Boolean {
-        return isGameRunning && sender != null && sender == player
+        return isGameRunning && players.contains(player)
     }
 
     /**
@@ -170,16 +175,17 @@ protected constructor(@JvmField protected val plugin: Plugin) {
      * should be overriden with extra settings for the minigame.
      * For example, tping the player to a specific location.
      */
-    open fun prepareGameSetting(player: Player) {
+    open fun prepareGameSetting() {
         //clear the weather and set the time to day
         // ~~~~ note: the dimension got is hardcoded, and it is the overworld.
         Bukkit.getWorld("world")!!.setStorm(false)
         Bukkit.getWorld("world")!!.time = 1000
         Bukkit.getWorld("world")!!.isThundering = false
 
-
-        player.inventory.clear() // Clear the player's inventory
-        player.saturation = 20f // Set the player's saturation to full
-        player.health = 20.0 // Set the player's health to full
+        for (player in players) {
+            player.inventory.clear() // Clear the player's inventory
+            player.saturation = 20f // Set the player's saturation to full
+            player.health = 20.0 // Set the player's health to full
+        }
     }
 }

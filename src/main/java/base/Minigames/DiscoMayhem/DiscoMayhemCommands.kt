@@ -1,65 +1,48 @@
 // src/main/java/me/stavgordeev/plugin/commands/MinigameCommand.java
-package base.Minigames.DiscoMayhem;
+package base.Minigames.DiscoMayhem
 
-import base.commands.MinigameCommandsSkeleton;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
-import org.bukkit.Bukkit;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandSender;
-import org.bukkit.entity.Player;
-import org.jetbrains.annotations.Nullable;
+import base.commands.MinigameCommandsSkeleton
+import net.kyori.adventure.text.Component
+import net.kyori.adventure.text.format.NamedTextColor
+import org.bukkit.Bukkit
+import org.bukkit.command.Command
+import org.bukkit.command.CommandSender
+import org.bukkit.entity.Player
+import java.util.*
 
-import java.util.List;
+class DiscoMayhemCommands(private val discoMayhem: DiscoMayhem) : MinigameCommandsSkeleton() {
+    override fun handleCommand(player: Player, command: Command, label: String, args: Array<String>): Boolean {
+        when (args[0].lowercase(Locale.getDefault())) {
+            "start" -> try {
+                discoMayhem.start(player)
+            } catch (e: InterruptedException) {
+                throw RuntimeException(e)
+            }
 
-public class DiscoMayhemCommands extends MinigameCommandsSkeleton {
-    private final DiscoMayhem discoMayhem;
+            "start_hard_mode" -> try {
+                discoMayhem.startFastMode(player)
+            } catch (e: InterruptedException) {
+                throw RuntimeException(e)
+            }
 
-    public DiscoMayhemCommands(DiscoMayhem discoMayhem) {
-        this.discoMayhem = discoMayhem;
+            "stop" -> discoMayhem.pauseGame()
+            "resume" -> discoMayhem.resumeGame()
+            "end" -> discoMayhem.endGame()
+            "nuke_area" -> discoMayhem.nukeArea(DiscoMayhemConst.GAME_START_LOCATION,DiscoMayhemConst.NUKE_AREA_RADIUS)
+            else -> Bukkit.getServer().broadcast(Component.text("Unknown command.").color(NamedTextColor.RED))
+        }
+        return true
     }
 
-    @Override
-    protected boolean handleCommand(Player player, Command command, String label, String[] args) {
-        switch (args[0].toLowerCase()) {
-            case "start":
-                try {
-                    discoMayhem.start(player);
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
-                }
-                break;
-            case "start_hard_mode":
-                try {
-                    discoMayhem.startFastMode(player);
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
-                }
-                break;
-            case "stop":
-                discoMayhem.pauseGame();
-                break;
-            case "resume":
-                discoMayhem.resumeGame();
-                break;
-            case "end":
-                discoMayhem.endGame();
-                break;
-            case "nuke_area":
-                discoMayhem.nukeArea(DiscoMayhemConst.GAME_START_LOCATION, 50);
-                break;
-            default:
-                Bukkit.getServer().broadcast(Component.text("Unknown command.").color(NamedTextColor.RED));
-                break;
+    override fun handleTabComplete(
+        sender: CommandSender,
+        command: Command,
+        label: String,
+        args: Array<String>
+    ): MutableList<String> {
+        if (args.size == 1) {
+            return mutableListOf<String>("start", "stop", "start_hard_mode", "resume", "end", "nuke_area")
         }
-        return true;
-    }
-
-    @Override
-    protected @Nullable List<String> handleTabComplete(CommandSender sender, Command command, String label, String[] args) {
-        if (args.length == 1) {
-            return List.of("start", "stop", "start_hard_mode", "resume", "end", "nuke_area");
-        }
-        return List.of();
+        return mutableListOf<String>()
     }
 }

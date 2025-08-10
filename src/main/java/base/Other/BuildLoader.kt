@@ -16,6 +16,7 @@ import com.sk89q.worldedit.regions.Region
 import com.sk89q.worldedit.session.ClipboardHolder
 import com.sk89q.worldedit.world.block.BlockState
 import base.MinigamePlugin.Companion.world
+import base.utils.Direction
 import org.bukkit.Bukkit
 import org.bukkit.Location
 import org.bukkit.Material
@@ -90,8 +91,8 @@ object BuildLoader {
         val region: Region = clipboardHolder.clipboard.region
 
         val wallLongestLength: Int = when (facingDirection) {
-            Direction.NORTH,Direction.SOUTH -> region.width
-            Direction.EAST,Direction.WEST -> region.length
+            Direction.NORTH, Direction.SOUTH -> region.width
+            Direction.EAST, Direction.WEST -> region.length
         }
 
         val mirrorTransform = when (facingDirection) {

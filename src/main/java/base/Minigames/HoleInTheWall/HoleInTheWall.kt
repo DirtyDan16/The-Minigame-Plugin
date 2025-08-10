@@ -2,14 +2,14 @@ package base.Minigames.HoleInTheWall
 
 import com.sk89q.worldedit.regions.Region
 import base.Other.BuildLoader
-import base.Other.Direction
+import base.utils.Direction
 import base.MinigamePlugin
 import base.Minigames.HoleInTheWall.HITWConst.Timers
 import base.Minigames.HoleInTheWall.HITWConst.WallSpawnerMode
 import base.Minigames.HoleInTheWall.HITWConst.WallSpawnerState
 import base.Minigames.MinigameSkeleton
-import base.Other.Utils.activateTaskAfterConditionIsMet
-import base.Other.Utils.getNextWeighted
+import base.utils.Utils.activateTaskAfterConditionIsMet
+import base.utils.extensions_for_classes.getNextWeighted
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 import net.kyori.adventure.text.logger.slf4j.ComponentLogger.logger
@@ -819,18 +819,23 @@ class HoleInTheWall (plugin: Plugin) : MinigameSkeleton(plugin) {
         BuildLoader.loadSchematicByFileAndLocation(platformSchematics[2], HITWConst.Locations.PLATFORM)
     }
 
-    override fun prepareGameSetting(player: Player) {
-        //if we want to test the game easily, we'll set the isDevelopment flag to true
-        if (HITWConst.isInDevelopment) {
-            player.gameMode = GameMode.CREATIVE
-        } else {
-            super.prepareGameSetting(player)
-            player.gameMode = GameMode.ADVENTURE
-            player.teleport(HITWConst.Locations.SPAWN) // Teleport the player to the spawn point of the game
+    override fun prepareGameSetting() {
+        fun preparePlayer(player: Player) {
+            player.gameMode = if (HITWConst.isInDevelopment) GameMode.CREATIVE else GameMode.ADVENTURE
+
+            if (!HITWConst.isInDevelopment) {
+                player.teleport(HITWConst.Locations.SPAWN)
+            }
+
+            //give the player infinite jump boost 2.
+            player.addPotionEffect(PotionEffect(PotionEffectType.JUMP_BOOST, -1, 1, false))
         }
 
-        //give the player infinite jump boost 2.
-        player.addPotionEffect(PotionEffect(PotionEffectType.JUMP_BOOST, -1, 1, false))
+        super.prepareGameSetting()
+
+        for (player in players) {
+            preparePlayer(player)
+        }
     }
 
     fun deleteWall(wall: Wall) {

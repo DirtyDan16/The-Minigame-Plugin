@@ -5,7 +5,7 @@ import base.Other.BuildLoader.loadSchematicByFileAndCoordinates
 import base.Other.BuildLoader.loadSchematicByFileAndLocation
 import base.MinigamePlugin
 import base.Minigames.MinigameSkeleton
-import base.Other.Utils.initFloor
+import base.utils.Utils.initFloor
 import net.kyori.adventure.text.Component
 import org.bukkit.Bukkit
 import org.bukkit.Location
@@ -19,6 +19,7 @@ import base.Minigames.BlueprintBazaar.BPBConst.Locations
 import org.bukkit.GameRule
 import base.Minigames.MinigameSkeleton.WorldSettingsToTrack.*
 import com.sk89q.worldedit.math.BlockVector3
+import org.bukkit.GameMode
 
 class BlueprintBazaar(plugin: Plugin) : MinigameSkeleton(plugin) {
     //region vars
@@ -39,8 +40,8 @@ class BlueprintBazaar(plugin: Plugin) : MinigameSkeleton(plugin) {
     }
 
     @Throws(InterruptedException::class)
-    override fun start(player: Player) {
-        super.start(player)
+    override fun start(sender: Player) {
+        super.start(sender)
 
         initSchematics() // Initializes the availableSchematics list
 
@@ -55,13 +56,13 @@ class BlueprintBazaar(plugin: Plugin) : MinigameSkeleton(plugin) {
     override fun endGame() {
         super.endGame()
 
-
         // set the settings of the world to how they were prior for the start of the minigame.
-        BPBConst.WORLD.setGameRule(
-            GameRule.RANDOM_TICK_SPEED,
-            trackerOfWorldSettingsBeforeStartingGame[RANDOM_TICK_SPEED] as Int
-        )
-
+        trackerOfWorldSettingsBeforeStartingGame.apply {
+            BPBConst.WORLD.setGameRule(GameRule.RANDOM_TICK_SPEED, this[RANDOM_TICK_SPEED] as Int)
+            for (player in players) {
+                player.gameMode = this[GAMEMODE] as GameMode
+            }
+        }
 
         nukeArea(Locations.GAME_START_LOCATION,25)
     }
@@ -71,15 +72,23 @@ class BlueprintBazaar(plugin: Plugin) : MinigameSkeleton(plugin) {
         initFloor(20, 20, Material.RED_WOOL, Locations.GAME_START_LOCATION, BPBConst.WORLD)
     }
 
-    override fun prepareGameSetting(player: Player) {
-        super.prepareGameSetting(player)
-        player.teleport(
-            Locations.GAME_START_LOCATION.clone().add(0.0, 8.0, 0.0)
-        ) // Teleport the player to the start location
+    override fun prepareGameSetting() {
+        super.prepareGameSetting()
 
-        trackerOfWorldSettingsBeforeStartingGame[RANDOM_TICK_SPEED] = BPBConst.WORLD.getGameRuleValue(GameRule.RANDOM_TICK_SPEED)
+        //tracking state
+        trackerOfWorldSettingsBeforeStartingGame.apply {
+            put(RANDOM_TICK_SPEED, BPBConst.WORLD.getGameRuleValue(GameRule.RANDOM_TICK_SPEED))
+            put(GAMEMODE, players[0].gameMode)
+        }
 
+        //setting state
         BPBConst.WORLD.setGameRule(GameRule.RANDOM_TICK_SPEED,0)
+
+        for (player in players) {
+            // Teleport the player to the start location
+            player.teleport(Locations.GAME_START_LOCATION.clone().add(0.0, 8.0, 0.0))
+            player.gameMode = GameMode.SURVIVAL
+        }
     }
 
     /**
@@ -118,7 +127,7 @@ class BlueprintBazaar(plugin: Plugin) : MinigameSkeleton(plugin) {
             return
         }
 
-        // Randomly decide if the build should be mirrored //fixme: false for now
+        // Randomly decide if the build should be mirrored //fixme: false for now bcuz mirroring does more than wanted and moves the entre pos of the build plot
         val shouldBeMirrored = false//Random().nextBoolean()
         // Create the new build
         curBuild = createNewBuild(chosenBuild, Locations.CENTER_BUILD_SHOWCASE_PLOT, shouldBeMirrored)
