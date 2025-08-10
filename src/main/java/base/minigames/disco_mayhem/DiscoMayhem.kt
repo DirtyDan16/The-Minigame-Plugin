@@ -1,7 +1,7 @@
 // src/main/java/me/stavgordeev/plugin/Minigame.java
-package base.Minigames.DiscoMayhem
+package base.minigames.disco_mayhem
 
-import base.Minigames.MinigameSkeleton
+import base.minigames.MinigameSkeleton
 import base.utils.extensions_for_classes.getBlockAt
 import base.utils.Utils.initFloor
 import com.sk89q.worldedit.math.BlockVector3

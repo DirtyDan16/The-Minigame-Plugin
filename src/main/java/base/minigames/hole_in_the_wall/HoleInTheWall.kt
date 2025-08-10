@@ -1,13 +1,13 @@
-package base.Minigames.HoleInTheWall
+package base.minigames.hole_in_the_wall
 
 import com.sk89q.worldedit.regions.Region
-import base.Other.BuildLoader
+import base.other.BuildLoader
 import base.utils.Direction
 import base.MinigamePlugin
-import base.Minigames.HoleInTheWall.HITWConst.Timers
-import base.Minigames.HoleInTheWall.HITWConst.WallSpawnerMode
-import base.Minigames.HoleInTheWall.HITWConst.WallSpawnerState
-import base.Minigames.MinigameSkeleton
+import base.minigames.hole_in_the_wall.HITWConst.Timers
+import base.minigames.hole_in_the_wall.HITWConst.WallSpawnerMode
+import base.minigames.hole_in_the_wall.HITWConst.WallSpawnerState
+import base.minigames.MinigameSkeleton
 import base.utils.Utils.activateTaskAfterConditionIsMet
 import base.utils.extensions_for_classes.getNextWeighted
 import net.kyori.adventure.text.Component

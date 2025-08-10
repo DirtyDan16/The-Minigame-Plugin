@@ -1,4 +1,4 @@
-package base.Minigames.BlueprintBazaar
+package base.minigames.blueprint_bazaar
 
 import com.sk89q.worldedit.regions.CuboidRegion
 import org.bukkit.Bukkit

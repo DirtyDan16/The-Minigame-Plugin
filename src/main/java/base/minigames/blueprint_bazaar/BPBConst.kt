@@ -1,4 +1,4 @@
-package base.Minigames.BlueprintBazaar
+package base.minigames.blueprint_bazaar
 
 import base.utils.Direction
 import org.bukkit.Bukkit

@@ -1,11 +1,10 @@
 // src/main/java/me/stavgordeev/plugin/MinigameConstants.java
-package base.Minigames.DiscoMayhem
+package base.minigames.disco_mayhem
 
 import org.bukkit.Bukkit
 import org.bukkit.Location
 import org.bukkit.Material
 import org.bukkit.World
-import java.lang.reflect.Modifier
 
 public object DiscoMayhemConst {
     val WORLD: World = Bukkit.getWorld("world")!!

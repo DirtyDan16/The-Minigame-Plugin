@@ -1,4 +1,4 @@
-package base.Minigames
+package base.minigames
 
 import base.utils.Utils.nukeGameArea
 import net.kyori.adventure.text.Component

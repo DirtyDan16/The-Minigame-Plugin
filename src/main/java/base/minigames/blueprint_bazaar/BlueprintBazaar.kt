@@ -1,10 +1,10 @@
-package base.Minigames.BlueprintBazaar
+package base.minigames.blueprint_bazaar
 
 import com.sk89q.worldedit.regions.CuboidRegion
-import base.Other.BuildLoader.loadSchematicByFileAndCoordinates
-import base.Other.BuildLoader.loadSchematicByFileAndLocation
+import base.other.BuildLoader.loadSchematicByFileAndCoordinates
+import base.other.BuildLoader.loadSchematicByFileAndLocation
 import base.MinigamePlugin
-import base.Minigames.MinigameSkeleton
+import base.minigames.MinigameSkeleton
 import base.utils.Utils.initFloor
 import net.kyori.adventure.text.Component
 import org.bukkit.Bukkit
@@ -15,9 +15,9 @@ import org.bukkit.plugin.Plugin
 import org.bukkit.scheduler.BukkitRunnable
 import java.io.File
 import java.util.*
-import base.Minigames.BlueprintBazaar.BPBConst.Locations
+import base.minigames.blueprint_bazaar.BPBConst.Locations
 import org.bukkit.GameRule
-import base.Minigames.MinigameSkeleton.WorldSettingsToTrack.*
+import base.minigames.MinigameSkeleton.WorldSettingsToTrack.*
 import com.sk89q.worldedit.math.BlockVector3
 import org.bukkit.GameMode
 

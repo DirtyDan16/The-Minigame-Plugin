@@ -1,4 +1,4 @@
-package base.Minigames.HoleInTheWall
+package base.minigames.hole_in_the_wall
 
 import base.commands.MinigameCommandsSkeleton
 import org.bukkit.command.Command

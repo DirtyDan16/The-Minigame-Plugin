@@ -1,4 +1,4 @@
-package base.Listeners;
+package base.listeners;
 
 import base.MinigamePlugin;
 import org.bukkit.ChatColor;

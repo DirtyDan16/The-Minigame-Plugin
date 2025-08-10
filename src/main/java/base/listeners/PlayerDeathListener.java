@@ -1,8 +1,8 @@
 // src/main/java/me/stavgordeev/plugin/listeners/PlayerDeathListener.java
-package base.Listeners;
+package base.listeners;
 
-import base.Minigames.DiscoMayhem.DiscoMayhem;
-import base.Minigames.HoleInTheWall.HoleInTheWall;
+import base.minigames.disco_mayhem.DiscoMayhem;
+import base.minigames.hole_in_the_wall.HoleInTheWall;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.PlayerDeathEvent;

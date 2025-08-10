@@ -1,5 +1,5 @@
 // src/main/java/me/stavgordeev/plugin/commands/MinigameCommand.java
-package base.Minigames.DiscoMayhem
+package base.minigames.disco_mayhem
 
 import base.commands.MinigameCommandsSkeleton
 import net.kyori.adventure.text.Component

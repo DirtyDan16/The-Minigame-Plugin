@@ -1,4 +1,4 @@
-package base.Minigames.BlueprintBazaar
+package base.minigames.blueprint_bazaar
 
 import base.commands.MinigameCommandsSkeleton
 import net.kyori.adventure.text.Component

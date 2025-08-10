@@ -1,13 +1,13 @@
 package base
 
-import base.Listeners.PlayerDeathListener
-import base.Minigames.BlueprintBazaar.BlueprintBazaar
-import base.Minigames.BlueprintBazaar.BlueprintBazaarCommands
-import base.Minigames.DiscoMayhem.DiscoMayhem
-import base.Minigames.DiscoMayhem.DiscoMayhemCommands
-import base.Minigames.HoleInTheWall.HoleInTheWall
-import base.Minigames.HoleInTheWall.HoleInTheWallCommands
-import base.Minigames.MinigameSkeleton
+import base.listeners.PlayerDeathListener
+import base.minigames.blueprint_bazaar.BlueprintBazaar
+import base.minigames.blueprint_bazaar.BlueprintBazaarCommands
+import base.minigames.disco_mayhem.DiscoMayhem
+import base.minigames.disco_mayhem.DiscoMayhemCommands
+import base.minigames.hole_in_the_wall.HoleInTheWall
+import base.minigames.hole_in_the_wall.HoleInTheWallCommands
+import base.minigames.MinigameSkeleton
 import base.commands.MiscCommands
 import org.bukkit.World
 import org.bukkit.plugin.java.JavaPlugin
