@@ -52,6 +52,9 @@ class Wall(
                 Direction.WEST -> HITWConst.Locations.WEST_WALL_SPAWN.clone()
                 Direction.EAST -> HITWConst.Locations.EAST_WALL_SPAWN.clone()
             }
+
+            // We will gather the schematic as a Clipboard from the wall file.
+            // This is to easily and conveniently manipulate the schematic based on the characteristics of the wall.
             holder = BuildLoader.getClipboardHolderFromFile(wallFile, spawnLocation)
 
             // update the holder to reflect the new direction the wall is facing.
@@ -69,7 +72,7 @@ class Wall(
     }
 
 
-    var wallRegion: CuboidRegion
+    lateinit var wallRegion: CuboidRegion
     lateinit var locationOfPistons: MutableList<Location>
 
     //How many blocks the wall travels before it stops moving.
@@ -89,7 +92,7 @@ class Wall(
     var isBeingHandled: Boolean = false // a special value that serves to prevent executing logic on the wall if this is flagged. this can be general purpose, however it is heavily discouraged. its actual use is to prevent logic trying to be repeated on psych walls that are stopped.
     //endregion
 
-    var holder: ClipboardHolder // This is the ClipboardHolder that will be used to hold the schematic of the wall.
+    lateinit var holder: ClipboardHolder // This is the ClipboardHolder that will be used to hold the schematic of the wall.
 
     init {
         // Load the wall file and validate its contents if necessary
@@ -100,12 +103,6 @@ class Wall(
             throw IllegalArgumentException("Wall file does not exist: ${wallFile.path}")
         }
 
-
-
-        // We will gather the schematic as a Clipboard from the wall file.
-        // This is to easily and conveniently manipulate the schematic based on the characteristics of the wall.
-        holder = BuildLoader.getClipboardHolderFromFile(wallFile,spawnLocation)
-
         // we will set the direction of the wall, and update the holder to reflect the direction the wall is facing.
         this.directionWallComesFrom = directionWallComesFrom
 
@@ -114,12 +111,7 @@ class Wall(
             BuildLoader.mirrorClipboardHolder(holder, directionWallIsFacing)
         }
 
-        // Create the wall region based on the clipboard's dimensions.
-        wallRegion = BuildLoader.getRotatedRegion(holder, spawnLocation, directionWallIsFacing)
-
         // -------------------------------------------------------------------------------------------- //
-
-
     }
 
     fun makeWallExist() {

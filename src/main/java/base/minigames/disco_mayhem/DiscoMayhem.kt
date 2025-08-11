@@ -135,8 +135,8 @@ class DiscoMayhem  //-----------------------------------------------------------
     public override fun nukeArea(center: Location, radius: Int) {
         val minX: Int = center.blockX - radius
         val maxX: Int = center.blockX + radius
-        val minY: Int = center.blockY - radius
-        val maxY: Int = center.blockY + radius
+        val minY: Int = center.blockY - radius/3
+        val maxY: Int = center.blockY + radius/3
         val minZ: Int = center.blockZ - radius
         val maxZ: Int = center.blockZ + radius
 

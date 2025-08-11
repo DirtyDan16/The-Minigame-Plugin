@@ -143,12 +143,9 @@ object BuildLoader {
             return clipboardHolder.clipboard.region as CuboidRegion
         }
 
-
-        val clipboard = clipboardHolder.clipboard
-        val rotation = getRotationForDirection(direction).toDouble()
-        val transform = AffineTransform().rotateY(rotation)
-        val region = clipboard.region
-        val origin = clipboard.origin
+        val transform = AffineTransform().rotateY(getRotationForDirection(direction).toDouble())
+        val region = clipboardHolder.clipboard.region
+        val origin = clipboardHolder.clipboard.origin
 
         // Transform all corners of the region
         val points: List<Location> = listOf(
@@ -160,7 +157,7 @@ object BuildLoader {
             // Apply the rotation transform to the relative position
             val transformed: Vector3 = transform.apply(rel.toVector3())
             // Convert back to a Location relative to the paste location
-            pasteLocation.clone().add(transformed.x, transformed.y, transformed.z)
+            return@map pasteLocation.clone().add(transformed.x, transformed.y, transformed.z)
         }
 
         // find the minimum and maximum coordinates from the transformed points
@@ -184,19 +181,18 @@ object BuildLoader {
      * @param location an optional parameter to specify where this shcem should be pasted. if nto specified, it will be pasted in the world pos in was saved at.
      *
      */
-    fun loadSchematicByFileAndLocation(
+    fun loadSchematicByFileAndDirection(
         file: File,
         location: Location? = null,
-        direction: Direction = Direction.NORTH,
+        direction: Direction,
         shouldBeMirrored: Boolean = false,
     ) : Region {
         val clipboardHolder = getClipboardHolderFromFile(file,location)
 
         applyDirectionToClipboardHolder(clipboardHolder, direction)
 
-        if (shouldBeMirrored) {
+        if (shouldBeMirrored)
             mirrorClipboardHolder(clipboardHolder, direction)
-        }
 
         // Load the schematic into the world.
         loadSchematic(clipboardHolder)
@@ -204,9 +200,21 @@ object BuildLoader {
         return getRotatedRegion(clipboardHolder,location,direction)
     }
 
+    fun loadSchematicByFile(
+        file: File,
+        location: Location? = null,
+    ) : Region {
+        val clipboardHolder = getClipboardHolderFromFile(file,location)
+
+        // Load the schematic into the world.
+        loadSchematic(clipboardHolder)
+
+        return clipboardHolder.clipboard.region
+    }
+
     fun loadSchematicByFileAndCoordinates(file: File, x: Int, y: Int, z: Int) {
         val location = Location(world, x.toDouble(), y.toDouble(), z.toDouble())
-        loadSchematicByFileAndLocation(file, location)
+        loadSchematicByFile(file, location)
     }
 
 
@@ -254,7 +262,7 @@ object BuildLoader {
 
 
     @Deprecated(
-        "Should not be used when also using loadSchematicByFileAndLocation(). instead, if u use loadSchematicByFileAndLocation(), prefer using its region parameter in order to get the region of the schematic. "
+        "Should not be used when also using loadSchematicByFileAndLocation() with ANY SCHEMATIC, including others. instead, if u use loadSchematicByFileAndLocation(), prefer using its region parameter in order to get the region of the schematic. "
     )
     fun getRegionFromFile(file: File, location: Location): Region? {
         val format = ClipboardFormats.findByFile(file) ?: return null

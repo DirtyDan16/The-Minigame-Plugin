@@ -2,7 +2,7 @@ package base.minigames.blueprint_bazaar
 
 import com.sk89q.worldedit.regions.CuboidRegion
 import base.other.BuildLoader.loadSchematicByFileAndCoordinates
-import base.other.BuildLoader.loadSchematicByFileAndLocation
+import base.other.BuildLoader.loadSchematicByFileAndDirection
 import base.MinigamePlugin
 import base.minigames.MinigameSkeleton
 import base.utils.Utils.initFloor
@@ -142,7 +142,7 @@ class BlueprintBazaar(plugin: Plugin) : MinigameSkeleton(plugin) {
         // physically load the schematic at the given location
 
         // store the region of the loaded schematic in this
-        val region: CuboidRegion = loadSchematicByFileAndLocation(
+        val region: CuboidRegion = loadSchematicByFileAndDirection(
             chosenBuild,
             location,
             BPBConst.Build.buildFacingDirection,

@@ -789,7 +789,6 @@ class HoleInTheWall (plugin: Plugin) : MinigameSkeleton(plugin) {
                     HITWConst.MAP_FOLDER -> {
                         mapSchematic = component.listFiles()?.firstOrNull()
                             ?: throw IOException("No map schematic found in ${component.name}")
-                        mapSchematicRegion = BuildLoader.getRegionFromFile(mapSchematic, HITWConst.Locations.CENTER_OF_MAP) ?: throw IOException("No region found in map schematic ${mapSchematic.name}")
                     }
                 }
             }
@@ -810,13 +809,10 @@ class HoleInTheWall (plugin: Plugin) : MinigameSkeleton(plugin) {
             endGame()
         }
 
-        // Clear the area around the spawn point
-        this.nukeArea()
-
-        // Load the map schematic (the deco arena)
-        BuildLoader.loadSchematicByFileAndLocation(mapSchematic, HITWConst.Locations.CENTER_OF_MAP)
+        // Load the map schematic (the deco arena), and store the region of the map
+        mapSchematicRegion = BuildLoader.loadSchematicByFile(mapSchematic, HITWConst.Locations.CENTER_OF_MAP)
         // Load the platform schematic (the platform that players will stand on)
-        BuildLoader.loadSchematicByFileAndLocation(platformSchematics[2], HITWConst.Locations.PLATFORM)
+        BuildLoader.loadSchematicByFile(platformSchematics[2], HITWConst.Locations.PLATFORM)
     }
 
     override fun prepareGameSetting() {
@@ -858,7 +854,7 @@ class HoleInTheWall (plugin: Plugin) : MinigameSkeleton(plugin) {
         bringWallToLife(newWall) // Make the wall exist in the world by loading the schematic
 
 
-        //newWall.showBlocks() // Show the corners of the wall for debugging purposes
+        newWall.showBlocks() // Show the corners of the wall for debugging purposes
         Bukkit.getServer().broadcast(Component.text("flipped: ${newWall.isFlipped}. DirectionWallCome: ${newWall.directionWallComesFrom}").color(
             NamedTextColor.DARK_AQUA))
     }
