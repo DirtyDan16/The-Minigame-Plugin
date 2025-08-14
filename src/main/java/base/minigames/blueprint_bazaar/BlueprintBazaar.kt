@@ -9,11 +9,15 @@ import base.other.BuildLoader.loadSchematicByFileAndCoordinates
 import base.other.BuildLoader.loadSchematicByFileAndDirection
 import base.utils.Utils.initFloor
 import base.utils.extensions_for_classes.clearInvAndGiveItems
+import base.utils.extensions_for_classes.getBlockAt
+import base.utils.extensions_for_classes.getMaterialAt
+import base.utils.extensions_for_classes.plus
 import com.sk89q.worldedit.math.BlockVector3
 import com.sk89q.worldedit.regions.CuboidRegion
 import net.kyori.adventure.text.Component
 import org.bukkit.*
 import org.bukkit.entity.Player
+import org.bukkit.event.HandlerList
 import org.bukkit.plugin.Plugin
 import org.bukkit.scheduler.BukkitRunnable
 import java.io.File
@@ -135,8 +139,17 @@ class BlueprintBazaar(plugin: Plugin) : MinigameSkeleton() {
 
         // Randomly decide if the build should be mirrored //fixme: false for now bcuz mirroring does more than wanted and moves the entre pos of the build plot
         val shouldBeMirrored = false//Random().nextBoolean()
+
+        // unregister the player block placing listener for the previous build if there's any.
+        if (curBuild != null) {
+            HandlerList.unregisterAll(curBuild!!)
+        }
+
         // Create the new build
         curBuild = createNewBuild(chosenBuild, Locations.CENTER_BUILD_SHOWCASE_PLOT, shouldBeMirrored)
+
+        // register the player block placing listener for this build.
+        MinigamePlugin.plugin.server.pluginManager.registerEvents(curBuild!!, plugin)
 
         val message = "List of ingredients for build:\n ${curBuild?.materialList.toString()} "
         Bukkit.getServer().broadcast(Component.text(message).color(net.kyori.adventure.text.format.NamedTextColor.AQUA))
@@ -162,21 +175,26 @@ class BlueprintBazaar(plugin: Plugin) : MinigameSkeleton() {
         val minP = region.minimumPoint
         val maxP = region.maximumPoint
 
+
+        //copy the floor from the displayed build plot to the build plot the player is gonna recreate the build at. also clear any blocks in the area of the recreated plot.
+        for (vector in region) {
+            when (vector.y) {
+                minP.y -> BPBConst.WORLD.getBlockAt(vector + Locations.CENTER_BUILD_PLOT_OFFSET).type = BPBConst.WORLD.getMaterialAt(vector)
+                else -> BPBConst.WORLD.getBlockAt(vector + Locations.CENTER_BUILD_PLOT_OFFSET).type = Material.AIR
+            }
+        }
+
+
         val buildRegion = CuboidRegion(
             BlockVector3.at(minP.x,minP.y+1,minP.z),
             maxP
-        )
-
-        //TODO: will be used later to create the floor of the build that is being built
-        val floorRegion = CuboidRegion(
-            minP,
-            BlockVector3.at(maxP.x,minP.y,maxP.z)
         )
 
         //now that the schematic is loaded, we can create a new Build object
 
         // Create a new Build object with the loaded schematic
         return BuildBlueprint(
+            this,
             buildRegion
         )
     }
@@ -203,9 +221,9 @@ class BlueprintBazaar(plugin: Plugin) : MinigameSkeleton() {
         // Load the schematic relative to the center build plot. The x and z coordinates are Modified in a way that makes the builds appear in a grid.
         for (schematic in allSchematics) {
             // Calculate the x, y, and z coordinates for the build
-            val curX = Locations.CENTER_BUILD_PLOT.x().toInt() + (10 * (index % 6))
-            val curY = (Locations.CENTER_BUILD_PLOT.y()).toInt()
-            val curZ = (Locations.CENTER_BUILD_PLOT.z() + 10 * (index / 6)).toInt()
+            val curX = Locations.CENTER_BUILD_SHOWCASE_PLOT.x().toInt() + (10 * (index % 6))
+            val curY = (Locations.CENTER_BUILD_SHOWCASE_PLOT.y()).toInt()
+            val curZ = (Locations.CENTER_BUILD_SHOWCASE_PLOT.z() + 10 * (index / 6)).toInt()
 
             // Initialize the floor for this build
             initFloor(

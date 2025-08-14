@@ -1,6 +1,7 @@
 package base.minigames.blueprint_bazaar
 
 import base.utils.Direction
+import com.sk89q.worldedit.math.BlockVector3
 import org.bukkit.Bukkit
 import org.bukkit.Location
 import org.bukkit.Material
@@ -24,7 +25,7 @@ object BPBConst {
         LIGHT_BLUE_STAINED_GLASS, BLUE_STAINED_GLASS, PURPLE_STAINED_GLASS, PINK_STAINED_GLASS,
 
         // Garden
-        DANDELION, POPPY, BLUE_ORCHID, ALLIUM, AZURE_BLUET, RED_TULIP,
+        DANDELION, POPPY, BLUE_ORCHID, ALLIUM, AZURE_BLUET, RED_TULIP, LILY_OF_THE_VALLEY,
         ORANGE_TULIP, WHITE_TULIP, PINK_TULIP, OXEYE_DAISY, CORNFLOWER,
         MOSS_BLOCK, AZALEA, SAND,RED_SAND,
 
@@ -55,10 +56,8 @@ object BPBConst {
 
     object Locations {
         val GAME_START_LOCATION: Location = Location(WORLD, 0.0, 150.0, 0.0)
-        //val LEFT_BUILD_PLOT: Location = Location(WORLD, GAME_START_LOCATION.x - 10, GAME_START_LOCATION.y + 2, GAME_START_LOCATION.z + 10)
-        val CENTER_BUILD_PLOT: Location = Location(WORLD, GAME_START_LOCATION.x, GAME_START_LOCATION.y + 2, GAME_START_LOCATION.z + 10)
-        val CENTER_BUILD_SHOWCASE_PLOT: Location = Location(WORLD, GAME_START_LOCATION.x, GAME_START_LOCATION.y + 2, GAME_START_LOCATION.z)
-        //val RIGHT_BUILD_PLOT: Location = Location(WORLD, GAME_START_LOCATION.x + 10, GAME_START_LOCATION.y + 2, GAME_START_LOCATION.z + 10)
+        val CENTER_BUILD_SHOWCASE_PLOT = Location(WORLD, GAME_START_LOCATION.x, GAME_START_LOCATION.y + 2, GAME_START_LOCATION.z)
+        val CENTER_BUILD_PLOT_OFFSET = BlockVector3.at(0.0, 0.0, 10.0)
     }
 
     object Timers {

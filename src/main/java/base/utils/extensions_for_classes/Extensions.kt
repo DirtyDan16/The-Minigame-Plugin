@@ -6,6 +6,7 @@ import org.bukkit.World
 import org.bukkit.block.Block
 import org.bukkit.entity.Player
 import org.bukkit.inventory.ItemStack
+import org.bukkit.util.BlockVector
 import kotlin.collections.iterator
 import kotlin.random.Random
 
@@ -29,6 +30,26 @@ fun World.getBlockAt(vector: BlockVector3): Block {
 
 fun World.getMaterialAt(vector: BlockVector3): Material {
     return this.getBlockAt(vector.x,vector.y, vector.z).type
+}
+
+operator fun BlockVector3.plus(other: BlockVector3): BlockVector3 {
+    return BlockVector3.at(
+        this.x + other.x,
+        this.y + other.y,
+        this.z + other.z
+    )
+}
+
+operator fun BlockVector3.minus(other: BlockVector3): BlockVector3 {
+    return BlockVector3.at(
+        this.x - other.x,
+        this.y - other.y,
+        this.z - other.z
+    )
+}
+
+fun Block.toBlockVector3() : BlockVector3 {
+    return BlockVector3.at(this.x,this.y,this.z)
 }
 
 fun Player.clearInvAndGiveItems(

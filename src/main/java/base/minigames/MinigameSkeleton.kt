@@ -13,12 +13,12 @@ abstract class MinigameSkeleton
 
 protected constructor() {
     @Volatile
-    protected var isGameRunning: Boolean = false
+    var isGameRunning: Boolean = false
 
     @Volatile
-    protected var isGamePaused: Boolean = false
-    protected var sender: Player? = null
-    protected var players: MutableList<Player> = mutableListOf()
+    var isGamePaused: Boolean = false
+    var sender: Player? = null
+    var players: MutableList<Player> = mutableListOf()
 
     /**
     * This list tracks all scheduled tasks that are made via the help of BukkitRunnables. used to cancel the scheduling when desired.
@@ -30,7 +30,7 @@ protected constructor() {
     enum class WorldSettingsToTrack {
         TIME_OF_DAY,
         RANDOM_TICK_SPEED,
-        GAMEMODE
+        GAMEMODE,
     }
 
     protected val trackerOfWorldSettingsBeforeStartingGame: MutableMap<WorldSettingsToTrack, Any?> = WorldSettingsToTrack.entries.associateWith { null }.toMutableMap()

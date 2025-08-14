@@ -1,5 +1,13 @@
 package base.minigames.blueprint_bazaar
 
+import base.MinigamePlugin
+import base.minigames.blueprint_bazaar.BPBConst.WORLD
+import base.utils.extensions_for_classes.getMaterialAt
+import base.utils.extensions_for_classes.minus
+import base.utils.extensions_for_classes.plus
+import base.utils.extensions_for_classes.toBlockVector3
+import com.sk89q.worldedit.math.BlockVector3
+import com.sk89q.worldedit.math.Vector3
 import com.sk89q.worldedit.regions.CuboidRegion
 import org.bukkit.Bukkit
 import org.bukkit.Material
@@ -8,19 +16,36 @@ import org.bukkit.inventory.Recipe
 import org.bukkit.inventory.RecipeChoice
 import org.bukkit.inventory.ShapedRecipe
 import org.bukkit.inventory.ShapelessRecipe
+import org.bukkit.event.EventHandler
+import org.bukkit.event.Listener
+import org.bukkit.event.block.BlockBreakEvent
+import org.bukkit.event.block.BlockPlaceEvent
+import kotlin.math.floor
 
 /** *
  * Represents a build in the Blueprint Bazaar minigame.
- * This Object holds data related to a specific build, and used to manage a build's logic within itself
+ * It tracks how complete the build is at.
+ * This Object also holds data related to the build, and used to manage a build's logic within itself
  */
 class BuildBlueprint(
-    val region: CuboidRegion,
-) {
+    val game: BlueprintBazaar,
+    regionOfBuildDisplayed: CuboidRegion
+) : Listener {
     val materialList: MutableSet<Material> = mutableSetOf() // List of materials used in the build
+    val region: CuboidRegion
+    var numOfBlocksBuildDisplayedHas = 0
+    var correctNumOfBlocksInRegion = 0
+        set(blocks) {
+            field = blocks
+            completionPercentage = floor((field / numOfBlocksBuildDisplayedHas).toDouble() * 100)
+            game.sender!!.sendMessage("correctNumOfBlocksInRegion = $correctNumOfBlocksInRegion")
+        }
+
+    var completionPercentage: Double = 0.0
 
     init {
         //region -- Initialize the material list with the materials used in the build
-        for (block in region) {
+        for (block in regionOfBuildDisplayed) {
             // get the material of the block and compare it to existing materials
 
             // If the block is not air and not already in the material list, add it
@@ -38,6 +63,16 @@ class BuildBlueprint(
             }
         }
         //endregion
+
+        region = CuboidRegion(
+            regionOfBuildDisplayed.minimumPoint + BPBConst.Locations.CENTER_BUILD_PLOT_OFFSET,
+            regionOfBuildDisplayed.maximumPoint + BPBConst.Locations.CENTER_BUILD_PLOT_OFFSET
+        )
+
+        // calc the total number of blocks the build to copy from has.
+        regionOfBuildDisplayed.forEach { vector ->
+            if (BPBConst.WORLD.getMaterialAt(vector) != Material.AIR) numOfBlocksBuildDisplayedHas++
+        }
     }
 
     fun getRawMaterialsFromThisMaterial(blockMaterial: Material,hasVisitedThisMaterial: MutableSet<Material> = mutableSetOf<Material>()) {
@@ -114,5 +149,28 @@ class BuildBlueprint(
 
         return setOfMaterials
     }
+
+    @EventHandler
+    fun onBlockPlaced(event: BlockPlaceEvent) {
+        if (!game.isGameRunning || !game.isPlayerInGame(event.player)) return
+
+        val block = event.block
+        if (block.type == WORLD.getMaterialAt(block.toBlockVector3() - BPBConst.Locations.CENTER_BUILD_PLOT_OFFSET)) {
+            correctNumOfBlocksInRegion++
+            if (completionPercentage == 100.0) {
+                event.player.sendMessage("You have managed to complete the build!")
+            }
+        }
+    }
+
+    @EventHandler
+    fun onBlockDestroyed(event: BlockBreakEvent) {
+        if (!game.isGameRunning || !game.isPlayerInGame(event.player)) return
+
+        val block = event.block
+        if (block.type == WORLD.getMaterialAt(block.toBlockVector3() - BPBConst.Locations.CENTER_BUILD_PLOT_OFFSET))
+            correctNumOfBlocksInRegion--
+    }
 }
+
 

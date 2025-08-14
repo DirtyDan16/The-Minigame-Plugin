@@ -35,6 +35,7 @@ class MinigamePlugin : JavaPlugin() {
         // Register the event listeners
         server.pluginManager.registerEvents(PlayerDeathListener(discoMayhem, holeInTheWall), this)
 
+
         getCommand("mg_disco_mayhem")?.setExecutor(
             DiscoMayhemCommands(discoMayhem)
         )
