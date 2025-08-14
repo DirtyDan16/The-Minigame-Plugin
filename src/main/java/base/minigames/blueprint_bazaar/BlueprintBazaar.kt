@@ -1,30 +1,31 @@
 package base.minigames.blueprint_bazaar
 
-import com.sk89q.worldedit.regions.CuboidRegion
-import base.other.BuildLoader.loadSchematicByFileAndCoordinates
-import base.other.BuildLoader.loadSchematicByFileAndDirection
 import base.MinigamePlugin
 import base.minigames.MinigameSkeleton
+import base.minigames.MinigameSkeleton.WorldSettingsToTrack.GAMEMODE
+import base.minigames.MinigameSkeleton.WorldSettingsToTrack.RANDOM_TICK_SPEED
+import base.minigames.blueprint_bazaar.BPBConst.Locations
+import base.other.BuildLoader.loadSchematicByFileAndCoordinates
+import base.other.BuildLoader.loadSchematicByFileAndDirection
 import base.utils.Utils.initFloor
+import base.utils.extensions_for_classes.clearInvAndGiveItems
+import com.sk89q.worldedit.math.BlockVector3
+import com.sk89q.worldedit.regions.CuboidRegion
 import net.kyori.adventure.text.Component
-import org.bukkit.Bukkit
-import org.bukkit.Location
-import org.bukkit.Material
+import org.bukkit.*
 import org.bukkit.entity.Player
 import org.bukkit.plugin.Plugin
 import org.bukkit.scheduler.BukkitRunnable
 import java.io.File
 import java.util.*
-import base.minigames.blueprint_bazaar.BPBConst.Locations
-import org.bukkit.GameRule
-import base.minigames.MinigameSkeleton.WorldSettingsToTrack.*
-import com.sk89q.worldedit.math.BlockVector3
-import org.bukkit.GameMode
 
-class BlueprintBazaar(plugin: Plugin) : MinigameSkeleton(plugin) {
+class BlueprintBazaar(plugin: Plugin) : MinigameSkeleton() {
     //region vars
+    val plugin: MinigamePlugin
+
+
     /** The builds.*/
-    private val allSchematics: Array<File>
+    private var allSchematics: Array<File>
     /** The list of available builds. when a build is chosen, it is removed from this list*/
     private val availableSchematics: MutableList<File?> = mutableListOf<File?>()
 
@@ -33,9 +34,10 @@ class BlueprintBazaar(plugin: Plugin) : MinigameSkeleton(plugin) {
 
     init {
         if (plugin !is MinigamePlugin) throw IllegalArgumentException("Plugin must be an instance of MinigamePlugin")
+        this.plugin = plugin
 
         // Gets the schematics folder from the MinigamePlugin.java. This is where the builds are stored.
-        val schematicsFolder = plugin.getSchematicsFolder("blueprintbazaar") // The folder where the builds are stored
+        val schematicsFolder = this.plugin.getSchematicsFolder("blueprintbazaar") // The folder where the builds are stored
         this.allSchematics = schematicsFolder.listFiles() // Gets the builds from the folder
     }
 
@@ -97,6 +99,10 @@ class BlueprintBazaar(plugin: Plugin) : MinigameSkeleton(plugin) {
     fun initSchematics() {
         // Adds the builds to the availableSchematics list
         checkNotNull(allSchematics)
+
+        // Gets the schematics folder from the MinigamePlugin.java. This is where the builds are stored.
+        val schematicsFolder = plugin.getSchematicsFolder("blueprintbazaar") // The folder where the builds are stored
+        this.allSchematics = schematicsFolder.listFiles() // Gets the builds from the folder
         availableSchematics.addAll(allSchematics.toList())
     }
 
@@ -132,8 +138,12 @@ class BlueprintBazaar(plugin: Plugin) : MinigameSkeleton(plugin) {
         // Create the new build
         curBuild = createNewBuild(chosenBuild, Locations.CENTER_BUILD_SHOWCASE_PLOT, shouldBeMirrored)
 
-        val message = "List of ingridients for build:\n ${curBuild?.materialList.toString()} "
+        val message = "List of ingredients for build:\n ${curBuild?.materialList.toString()} "
         Bukkit.getServer().broadcast(Component.text(message).color(net.kyori.adventure.text.format.NamedTextColor.AQUA))
+
+        for (player in players) {
+            player.clearInvAndGiveItems(curBuild!!.materialList,64)
+        }
     }
 
     private fun createNewBuild(chosenBuild: File, location: Location, shouldBeMirrored: Boolean = false): BuildBlueprint {
@@ -244,3 +254,5 @@ class BlueprintBazaar(plugin: Plugin) : MinigameSkeleton(plugin) {
         runnables.add(runnable)
     }
 }
+
+

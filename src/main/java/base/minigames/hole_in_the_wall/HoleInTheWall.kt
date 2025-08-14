@@ -27,7 +27,7 @@ import java.time.Duration
 import java.util.*
 import kotlin.random.Random
 
-class HoleInTheWall (plugin: Plugin) : MinigameSkeleton(plugin) {
+class HoleInTheWall (val plugin: Plugin) : MinigameSkeleton() {
     //region vars
 
     private lateinit var selectedMapBaseFile: File

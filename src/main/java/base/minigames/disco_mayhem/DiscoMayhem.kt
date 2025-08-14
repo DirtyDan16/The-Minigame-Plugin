@@ -20,13 +20,7 @@ import java.time.Duration
 import java.util.*
 import kotlin.math.max
 
-class DiscoMayhem  //----------------------------------------------------------------------//
-/**
- * Constructor for the DiscoMayhem class.
- *
- * @param plugin The plugin that the minigame is a part of
- */
-    (plugin: Plugin) : MinigameSkeleton(plugin) {
+class DiscoMayhem (val plugin: Plugin) : MinigameSkeleton() {
     //-Game Modifiers that change as the game progresses to scale difficulty-//
     private var upperBound__startingIntervalForChangingFloor = 0
     private var lowerBound__startingIntervalForChangingFloor = 0
@@ -39,7 +33,7 @@ class DiscoMayhem  //-----------------------------------------------------------
      * @throws InterruptedException
      */
     @Throws(InterruptedException::class)
-    public override fun start(sender: Player) {
+    override fun start(sender: Player) {
         super.start(sender)
 
         initModifiers() // Initialize the modifiers for the game
@@ -59,7 +53,7 @@ class DiscoMayhem  //-----------------------------------------------------------
      * @throws InterruptedException
      */
     @Throws(InterruptedException::class)
-    public override fun startFastMode(player: Player) {
+    override fun startFastMode(player: Player) {
         super.startFastMode(player)
 
         upperBound__startingIntervalForChangingFloor = 10
@@ -81,7 +75,7 @@ class DiscoMayhem  //-----------------------------------------------------------
      * Pauses the minigame. The game is paused and the player is notified.
      * The game being paused saves the current state of the game, so it can be resumed later. however, the game is not running.
      */
-    public override fun pauseGame() {
+    override fun pauseGame() {
         super.pauseGame()
         // Add more actions here
     }
@@ -132,7 +126,7 @@ class DiscoMayhem  //-----------------------------------------------------------
      * @param center The center of the area to nuke
      * @param radius The radius of the area
      */
-    public override fun nukeArea(center: Location, radius: Int) {
+    override fun nukeArea(center: Location, radius: Int) {
         val minX: Int = center.blockX - radius
         val maxX: Int = center.blockX + radius
         val minY: Int = center.blockY - radius/3
@@ -140,7 +134,7 @@ class DiscoMayhem  //-----------------------------------------------------------
         val minZ: Int = center.blockZ - radius
         val maxZ: Int = center.blockZ + radius
 
-        val region: CuboidRegion = CuboidRegion(
+        val region = CuboidRegion(
             BlockVector3.at(minX, minY, minZ),
             BlockVector3.at(maxX, maxY, maxZ)
         )
@@ -150,7 +144,7 @@ class DiscoMayhem  //-----------------------------------------------------------
         }
     }
 
-    public override fun prepareArea() {
+    override fun prepareArea() {
         nukeArea(DiscoMayhemConst.GAME_START_LOCATION, DiscoMayhemConst.NUKE_AREA_RADIUS) // Clear the area before starting the game
 
         val floorCenter = DiscoMayhemConst.INIT_FLOOR_LOCATION // The center of the floor

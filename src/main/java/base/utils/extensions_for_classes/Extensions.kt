@@ -4,6 +4,8 @@ import com.sk89q.worldedit.math.BlockVector3
 import org.bukkit.Material
 import org.bukkit.World
 import org.bukkit.block.Block
+import org.bukkit.entity.Player
+import org.bukkit.inventory.ItemStack
 import kotlin.collections.iterator
 import kotlin.random.Random
 
@@ -27,4 +29,22 @@ fun World.getBlockAt(vector: BlockVector3): Block {
 
 fun World.getMaterialAt(vector: BlockVector3): Material {
     return this.getBlockAt(vector.x,vector.y, vector.z).type
+}
+
+fun Player.clearInvAndGiveItems(
+    materialList: Collection<Material>,
+    sizeForEachItemSlot: Int = 1
+) {
+    this.inventory.clear()
+
+    if (materialList.size >= this.inventory.size)
+        this.sendMessage("The amount of items that were attempted to give to u exceed the space u have. Giving only what could have been given")
+
+    materialList.forEachIndexed { index, material ->
+
+        //if we have filled in the entire inventory of the player, stop the action.
+        if (index >= this.inventory.size) return
+
+        this.inventory.setItem(index, ItemStack(material,sizeForEachItemSlot))
+    }
 }

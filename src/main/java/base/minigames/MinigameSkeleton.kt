@@ -6,18 +6,15 @@ import net.kyori.adventure.text.format.NamedTextColor
 import org.bukkit.Bukkit
 import org.bukkit.Location
 import org.bukkit.entity.Player
-import org.bukkit.plugin.Plugin
 import org.bukkit.scheduler.BukkitRunnable
 import kotlin.concurrent.Volatile
 
 abstract class MinigameSkeleton
 
-protected constructor(@JvmField protected val plugin: Plugin) {
-    @JvmField
+protected constructor() {
     @Volatile
     protected var isGameRunning: Boolean = false
 
-    @JvmField
     @Volatile
     protected var isGamePaused: Boolean = false
     protected var sender: Player? = null
@@ -36,12 +33,7 @@ protected constructor(@JvmField protected val plugin: Plugin) {
         GAMEMODE
     }
 
-    protected val trackerOfWorldSettingsBeforeStartingGame = mutableMapOf<WorldSettingsToTrack, Any?>(
-        WorldSettingsToTrack.TIME_OF_DAY to null,
-        WorldSettingsToTrack.RANDOM_TICK_SPEED to null,
-        WorldSettingsToTrack.GAMEMODE to null
-
-    )
+    protected val trackerOfWorldSettingsBeforeStartingGame: MutableMap<WorldSettingsToTrack, Any?> = WorldSettingsToTrack.entries.associateWith { null }.toMutableMap()
 
     /**
      * Starts the minigame.

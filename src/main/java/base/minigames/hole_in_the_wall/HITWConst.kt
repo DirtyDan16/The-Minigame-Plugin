@@ -54,12 +54,12 @@ object HITWConst {
         val EAST_WALL_SPAWN: Location = PIVOT.clone().add(DISTANCE_OF_WALL_FROM_CENTER_OF_PLATFORM + 1.0, 1.0, -1.0)
     }
     
-    object WallDifficulty {
-        const val EASY: Int = 0
-        const val MEDIUM: Int = 1
-        const val HARD: Int = 2
-        const val VERY_HARD: Int = 3
-    }
+        object WallDifficulty {
+            const val EASY: Int = 0
+            const val MEDIUM: Int = 1
+            const val HARD: Int = 2
+            const val VERY_HARD: Int = 3
+        }
 
     enum class WallSpawnerState {
         DO_NO_ACTION,
