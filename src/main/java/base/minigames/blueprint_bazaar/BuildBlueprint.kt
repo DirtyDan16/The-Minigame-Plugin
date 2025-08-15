@@ -6,6 +6,7 @@ import base.utils.extensions_for_classes.getMaterialAt
 import base.utils.extensions_for_classes.minus
 import base.utils.extensions_for_classes.plus
 import base.utils.extensions_for_classes.toBlockVector3
+import com.sk89q.worldedit.event.platform.BlockInteractEvent
 import com.sk89q.worldedit.math.BlockVector3
 import com.sk89q.worldedit.math.Vector3
 import com.sk89q.worldedit.regions.CuboidRegion
@@ -19,7 +20,9 @@ import org.bukkit.inventory.ShapelessRecipe
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import org.bukkit.event.block.BlockBreakEvent
+import org.bukkit.event.block.BlockDamageEvent
 import org.bukkit.event.block.BlockPlaceEvent
+import org.bukkit.inventory.ItemStack
 import kotlin.math.floor
 
 /** *
@@ -155,22 +158,48 @@ class BuildBlueprint(
         if (!game.isGameRunning || !game.isPlayerInGame(event.player)) return
 
         val block = event.block
+
+        // Not allow block placing outside the designated plot.
+        if (block.toBlockVector3() !in region) {
+            event.isCancelled = true
+            return
+        }
+
         if (block.type == WORLD.getMaterialAt(block.toBlockVector3() - BPBConst.Locations.CENTER_BUILD_PLOT_OFFSET)) {
             correctNumOfBlocksInRegion++
             if (completionPercentage == 100.0) {
                 event.player.sendMessage("You have managed to complete the build!")
+                game.completeBuild(this)
             }
         }
     }
 
     @EventHandler
-    fun onBlockDestroyed(event: BlockBreakEvent) {
+    fun onBlockTouched(event: BlockDamageEvent) {
         if (!game.isGameRunning || !game.isPlayerInGame(event.player)) return
 
         val block = event.block
+
+        // Not allow block breaking outside the designated plot.
+        if (block.toBlockVector3() !in region) {
+            event.isCancelled = true
+            return
+        }
+
+        block.type = Material.AIR // remove block manually
+        block.world.dropItemNaturally(block.location, ItemStack(block.type))
+
+
+        // check if the block was related to progression of the build.
         if (block.type == WORLD.getMaterialAt(block.toBlockVector3() - BPBConst.Locations.CENTER_BUILD_PLOT_OFFSET))
             correctNumOfBlocksInRegion--
     }
+
+    @EventHandler
+    fun onBlockBreak(event: BlockBreakEvent) {
+        event.isCancelled = true
+    }
+
 }
 
 

@@ -31,6 +31,7 @@ protected constructor() {
         TIME_OF_DAY,
         RANDOM_TICK_SPEED,
         GAMEMODE,
+        HASTE
     }
 
     protected val trackerOfWorldSettingsBeforeStartingGame: MutableMap<WorldSettingsToTrack, Any?> = WorldSettingsToTrack.entries.associateWith { null }.toMutableMap()

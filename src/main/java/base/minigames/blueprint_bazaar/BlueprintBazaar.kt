@@ -19,6 +19,8 @@ import org.bukkit.*
 import org.bukkit.entity.Player
 import org.bukkit.event.HandlerList
 import org.bukkit.plugin.Plugin
+import org.bukkit.potion.PotionEffect
+import org.bukkit.potion.PotionEffectType
 import org.bukkit.scheduler.BukkitRunnable
 import java.io.File
 import java.util.*
@@ -67,6 +69,9 @@ class BlueprintBazaar(plugin: Plugin) : MinigameSkeleton() {
             BPBConst.WORLD.setGameRule(GameRule.RANDOM_TICK_SPEED, this[RANDOM_TICK_SPEED] as Int)
             for (player in players) {
                 player.gameMode = this[GAMEMODE] as GameMode
+                player.activePotionEffects.clear()
+                player.allowFlight = false
+                player.isFlying = false
             }
         }
 
@@ -94,6 +99,7 @@ class BlueprintBazaar(plugin: Plugin) : MinigameSkeleton() {
             // Teleport the player to the start location
             player.teleport(Locations.GAME_START_LOCATION.clone().add(0.0, 8.0, 0.0))
             player.gameMode = GameMode.SURVIVAL
+            player.allowFlight = true
         }
     }
 
@@ -130,7 +136,6 @@ class BlueprintBazaar(plugin: Plugin) : MinigameSkeleton() {
     fun prepareNewBuild() {
         val chosenBuild = chooseNewBuild()
 
-
         if (chosenBuild == null) {
             Bukkit.getServer().broadcast(Component.text("No more builds available!").color(net.kyori.adventure.text.format.NamedTextColor.AQUA))
             endGame()
@@ -139,11 +144,6 @@ class BlueprintBazaar(plugin: Plugin) : MinigameSkeleton() {
 
         // Randomly decide if the build should be mirrored //fixme: false for now bcuz mirroring does more than wanted and moves the entre pos of the build plot
         val shouldBeMirrored = false//Random().nextBoolean()
-
-        // unregister the player block placing listener for the previous build if there's any.
-        if (curBuild != null) {
-            HandlerList.unregisterAll(curBuild!!)
-        }
 
         // Create the new build
         curBuild = createNewBuild(chosenBuild, Locations.CENTER_BUILD_SHOWCASE_PLOT, shouldBeMirrored)
@@ -210,6 +210,17 @@ class BlueprintBazaar(plugin: Plugin) : MinigameSkeleton() {
             )
             blockLocation.block.type = Material.AIR
         }
+
+        // unregister the player block placing listener for the previous build if there's any.
+        if (curBuild != null) {
+            HandlerList.unregisterAll(curBuild!!)
+        }
+
+    }
+
+    fun completeBuild(build: BuildBlueprint) {
+        deleteBuild(build.region)
+        prepareNewBuild()
     }
 
     /**
