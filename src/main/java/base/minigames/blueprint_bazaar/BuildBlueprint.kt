@@ -1,28 +1,19 @@
 package base.minigames.blueprint_bazaar
 
-import base.MinigamePlugin
 import base.minigames.blueprint_bazaar.BPBConst.WORLD
 import base.utils.extensions_for_classes.getMaterialAt
 import base.utils.extensions_for_classes.minus
 import base.utils.extensions_for_classes.plus
 import base.utils.extensions_for_classes.toBlockVector3
-import com.sk89q.worldedit.event.platform.BlockInteractEvent
-import com.sk89q.worldedit.math.BlockVector3
-import com.sk89q.worldedit.math.Vector3
 import com.sk89q.worldedit.regions.CuboidRegion
 import org.bukkit.Bukkit
 import org.bukkit.Material
-import org.bukkit.inventory.FurnaceRecipe
-import org.bukkit.inventory.Recipe
-import org.bukkit.inventory.RecipeChoice
-import org.bukkit.inventory.ShapedRecipe
-import org.bukkit.inventory.ShapelessRecipe
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import org.bukkit.event.block.BlockBreakEvent
 import org.bukkit.event.block.BlockDamageEvent
 import org.bukkit.event.block.BlockPlaceEvent
-import org.bukkit.inventory.ItemStack
+import org.bukkit.inventory.*
 import kotlin.math.floor
 
 /** *
@@ -52,7 +43,7 @@ class BuildBlueprint(
             // get the material of the block and compare it to existing materials
 
             // If the block is not air and not already in the material list, add it
-            val blockMaterial = BPBConst.WORLD.getBlockAt(
+            val blockMaterial = WORLD.getBlockAt(
                 block.x,
                 block.y,
                 block.z
@@ -74,11 +65,11 @@ class BuildBlueprint(
 
         // calc the total number of blocks the build to copy from has.
         regionOfBuildDisplayed.forEach { vector ->
-            if (BPBConst.WORLD.getMaterialAt(vector) != Material.AIR) numOfBlocksBuildDisplayedHas++
+            if (WORLD.getMaterialAt(vector) != Material.AIR) numOfBlocksBuildDisplayedHas++
         }
     }
 
-    fun getRawMaterialsFromThisMaterial(blockMaterial: Material,hasVisitedThisMaterial: MutableSet<Material> = mutableSetOf<Material>()) {
+    fun getRawMaterialsFromThisMaterial(blockMaterial: Material,hasVisitedThisMaterial: MutableSet<Material> = mutableSetOf()) {
         println(Thread.currentThread().stackTrace.size)
 
         // if we have reached a basic material, return that.
@@ -186,13 +177,12 @@ class BuildBlueprint(
             return
         }
 
-        block.type = Material.AIR // remove block manually
-        block.world.dropItemNaturally(block.location, ItemStack(block.type))
-
-
         // check if the block was related to progression of the build.
         if (block.type == WORLD.getMaterialAt(block.toBlockVector3() - BPBConst.Locations.CENTER_BUILD_PLOT_OFFSET))
             correctNumOfBlocksInRegion--
+
+        block.world.dropItemNaturally(block.location, ItemStack(block.type))
+        block.type = Material.AIR // remove block manually
     }
 
     @EventHandler

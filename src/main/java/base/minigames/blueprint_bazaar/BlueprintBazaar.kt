@@ -5,6 +5,7 @@ import base.minigames.MinigameSkeleton
 import base.minigames.MinigameSkeleton.WorldSettingsToTrack.GAMEMODE
 import base.minigames.MinigameSkeleton.WorldSettingsToTrack.RANDOM_TICK_SPEED
 import base.minigames.blueprint_bazaar.BPBConst.Locations
+import base.other.BuildLoader
 import base.other.BuildLoader.loadSchematicByFileAndCoordinates
 import base.other.BuildLoader.loadSchematicByFileAndDirection
 import base.utils.Utils.initFloor
@@ -19,11 +20,9 @@ import org.bukkit.*
 import org.bukkit.entity.Player
 import org.bukkit.event.HandlerList
 import org.bukkit.plugin.Plugin
-import org.bukkit.potion.PotionEffect
-import org.bukkit.potion.PotionEffectType
 import org.bukkit.scheduler.BukkitRunnable
 import java.io.File
-import java.util.*
+import java.io.IOException
 
 class BlueprintBazaar(plugin: Plugin) : MinigameSkeleton() {
     //region vars
@@ -31,9 +30,10 @@ class BlueprintBazaar(plugin: Plugin) : MinigameSkeleton() {
 
 
     /** The builds.*/
-    private var allSchematics: Array<File>
+    private lateinit var allSchematics: Array<File>
     /** The list of available builds. when a build is chosen, it is removed from this list*/
-    private val availableSchematics: MutableList<File?> = mutableListOf<File?>()
+    private val availableSchematics: MutableSet<File?> = mutableSetOf()
+    private var arena: File? = null
 
     private var curBuild: BuildBlueprint? = null
     //endregion
@@ -41,19 +41,16 @@ class BlueprintBazaar(plugin: Plugin) : MinigameSkeleton() {
     init {
         if (plugin !is MinigamePlugin) throw IllegalArgumentException("Plugin must be an instance of MinigamePlugin")
         this.plugin = plugin
-
-        // Gets the schematics folder from the MinigamePlugin.java. This is where the builds are stored.
-        val schematicsFolder = this.plugin.getSchematicsFolder("blueprintbazaar") // The folder where the builds are stored
-        this.allSchematics = schematicsFolder.listFiles() // Gets the builds from the folder
     }
 
     @Throws(InterruptedException::class)
     override fun start(sender: Player) {
+        initSchematics()
+
         super.start(sender)
 
-        initSchematics() // Initializes the availableSchematics list
-
-        //prepareNewBuild()
+        // start the cycle of builds
+        prepareNewBuild()
     }
 
     @Throws(InterruptedException::class)
@@ -80,7 +77,7 @@ class BlueprintBazaar(plugin: Plugin) : MinigameSkeleton() {
 
     override fun prepareArea() {
         nukeArea(Locations.GAME_START_LOCATION, BPBConst.GAME_AREA_RADIUS)
-        initFloor(20, 20, Material.RED_WOOL, Locations.GAME_START_LOCATION, BPBConst.WORLD)
+        BuildLoader.loadSchematicByFile(arena!!, Locations.GAME_START_LOCATION)
     }
 
     override fun prepareGameSetting() {
@@ -104,16 +101,21 @@ class BlueprintBazaar(plugin: Plugin) : MinigameSkeleton() {
     }
 
     /**
-     * Initializes the availableSchematics list with all the builds in the schematics folder.
+     * Initializes the availableSchematics list with all the builds in the schematics folder, as well as some extras.
      */
     fun initSchematics() {
-        // Adds the builds to the availableSchematics list
-        checkNotNull(allSchematics)
-
         // Gets the schematics folder from the MinigamePlugin.java. This is where the builds are stored.
-        val schematicsFolder = plugin.getSchematicsFolder("blueprintbazaar") // The folder where the builds are stored
-        this.allSchematics = schematicsFolder.listFiles() // Gets the builds from the folder
-        availableSchematics.addAll(allSchematics.toList())
+        val schematicsFolder = plugin.getSchematicsFolder("blueprintbazaar")
+
+        schematicsFolder.listFiles().forEach { path ->
+            when (path.name.substringBefore('.')) {
+                "BlueprintBazaarBuilds" -> this.allSchematics = path.listFiles()
+                "arena" -> arena = path
+                else -> IOException("can't find file in blueprint bazaar")
+            }
+        }
+
+        availableSchematics += allSchematics.toList()
     }
 
     /**
@@ -127,8 +129,8 @@ class BlueprintBazaar(plugin: Plugin) : MinigameSkeleton() {
             return null
         }
         // Choose a random build from the schematics folder and delete it from the list
-        val getARandomBuild = Random()
-        val chosenBuild = availableSchematics.removeAt(getARandomBuild.nextInt(availableSchematics.size))
+        val chosenBuild = availableSchematics.random()
+        availableSchematics.remove(chosenBuild)
 
         return chosenBuild
     }
@@ -151,7 +153,7 @@ class BlueprintBazaar(plugin: Plugin) : MinigameSkeleton() {
         // register the player block placing listener for this build.
         MinigamePlugin.plugin.server.pluginManager.registerEvents(curBuild!!, plugin)
 
-        val message = "List of ingredients for build:\n ${curBuild?.materialList.toString()} "
+        val message = "List of ingredients for build: \n ${chosenBuild.name} \n ${curBuild?.materialList.toString()} "
         Bukkit.getServer().broadcast(Component.text(message).color(net.kyori.adventure.text.format.NamedTextColor.AQUA))
 
         for (player in players) {

@@ -55,13 +55,13 @@ class MinigamePlugin : JavaPlugin() {
     private lateinit var blueprintBazaarSchematicsFolder: File
     private lateinit var holeInTheWallSchematicsFolder: File
     private fun initSchematicsFolders() {
-        // Create the BlueprintBazaarBuilds folder if it doesn't exist
-        blueprintBazaarSchematicsFolder = File(dataFolder, "BlueprintBazaarBuilds")
+        // Create the BlueprintBazaar folder if it doesn't exist
+        blueprintBazaarSchematicsFolder = File(dataFolder, "BlueprintBazaar")
         if (!blueprintBazaarSchematicsFolder.exists()) {
             blueprintBazaarSchematicsFolder.mkdirs() // Creates the folder if it doesn't exist
-            logger.info("Created BlueprintBazaarBuilds folder.")
+            logger.info("Created BlueprintBazaar folder.")
         } else {
-            logger.info("BlueprintBazaarBuilds folder already exists.")
+            logger.info("BlueprintBazaar folder already exists.")
         }
 
         holeInTheWallSchematicsFolder = File(dataFolder, "HoleInTheWall")

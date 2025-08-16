@@ -56,8 +56,8 @@ object BPBConst {
 
     object Locations {
         val GAME_START_LOCATION: Location = Location(WORLD, 0.0, 150.0, 0.0)
-        val CENTER_BUILD_SHOWCASE_PLOT = Location(WORLD, GAME_START_LOCATION.x, GAME_START_LOCATION.y + 2, GAME_START_LOCATION.z)
-        val CENTER_BUILD_PLOT_OFFSET = BlockVector3.at(0.0, 0.0, 10.0)
+        val CENTER_BUILD_SHOWCASE_PLOT = Location(WORLD, GAME_START_LOCATION.x + 20, GAME_START_LOCATION.y + 1, GAME_START_LOCATION.z)
+        val CENTER_BUILD_PLOT_OFFSET: BlockVector3 = BlockVector3.at(-10.0, 0.0, 0.0)
     }
 
     object Timers {
