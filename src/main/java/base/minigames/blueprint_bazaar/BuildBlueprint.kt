@@ -5,6 +5,7 @@ import base.minigames.blueprint_bazaar.BPBConst.WORLD
 import base.utils.extensions_for_classes.getMaterialAt
 import base.utils.extensions_for_classes.minus
 import base.utils.extensions_for_classes.plus
+import base.utils.extensions_for_classes.removeItemsInRegion
 import base.utils.extensions_for_classes.toBlockVector3
 import com.sk89q.worldedit.regions.CuboidRegion
 import net.kyori.adventure.text.Component
@@ -27,7 +28,7 @@ import kotlin.math.floor
 /** *
  * Represents a build in the Blueprint Bazaar minigame.
  * It tracks how complete the build is at.
- * This Object also holds data related to the build, and used to manage a build's logic within itself
+ * This Object also holds data related to the build and used to manage a build's logic within itself
  */
 class BuildBlueprint(
     val game: BlueprintBazaar,
@@ -38,8 +39,8 @@ class BuildBlueprint(
     var numOfBlocksBuildDisplayedHas = 0
     var correctNumOfBlocksInRegion = 0
         set(blocks) {
-            // if we have placed a block in the region, the message will be of color green.
-            // if we have removed a block from the region, the message will be of color red
+            // if we have placed a block in the region, the message will be of the color green.
+            // if we have removed a block from the region, the message will be of the color red
             val color = if (blocks > field) {
                 NamedTextColor.GREEN
             } else if (blocks < field) {
@@ -48,7 +49,7 @@ class BuildBlueprint(
                 NamedTextColor.YELLOW
             }
 
-            field = blocks
+            field = 0.coerceAtLeast(blocks)
             completionPercentage = floor((field / numOfBlocksBuildDisplayedHas).toDouble() * 100)
             val title = Title.title(
                 Component.empty(),
@@ -66,7 +67,7 @@ class BuildBlueprint(
 
     var curBuildTime = 0
 
-    var timerRunnable: BukkitTask
+    var timeElapsedRunnable: BukkitTask
 
 
     init {
@@ -100,13 +101,13 @@ class BuildBlueprint(
             if (WORLD.getMaterialAt(vector) != Material.AIR) numOfBlocksBuildDisplayedHas++
         }
 
-        // A timer that tracks the time elapsed for the current build. gets called every second. gets cancelled when the build is completed.
-        timerRunnable = object : BukkitRunnable() {
+        // A timer that tracks the time elapsed for the current build. gets called every second. it gets cancelled when the build is completed.
+        timeElapsedRunnable = object : BukkitRunnable() {
             override fun run() {
                 game.players.forEach { player ->
                     curBuildTime++
                     player.sendActionBar(Component
-                        .text("Time Elapsed: ${curBuildTime} seconds")
+                        .text("Time Elapsed: $curBuildTime seconds")
                         .color(NamedTextColor.AQUA)
                     )
                 }
@@ -222,7 +223,7 @@ class BuildBlueprint(
             return
         }
 
-        // check if the block was related to progression of the build.
+        // check if the block was related to the progression of the build.
         if (block.type == WORLD.getMaterialAt(block.toBlockVector3() - BPBConst.Locations.CENTER_BUILD_PLOT_OFFSET))
             correctNumOfBlocksInRegion--
 
@@ -243,9 +244,11 @@ class BuildBlueprint(
      * This method stops the timer for the current build and shows a title to the player who completed the build if a player is designated as the finisher, otherwise it just completes the build.
      */
     fun prepareForCompletion(buildFinisher: Player? = null) {
-        // stop the timer for the current build
-        timerRunnable.cancel()
+        // let's first clear the arena by clearing items that are on the ground
+        WORLD.removeItemsInRegion(BPBConst.Locations.ARENA_REGION)
 
+        // stop the timer for the current build
+        timeElapsedRunnable.cancel()
 
         // if we have called this method with a player to designate as the finisher of the build, then we will show a title to that player and send a message to that player.
         if (buildFinisher != null) {

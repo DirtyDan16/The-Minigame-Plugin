@@ -81,7 +81,7 @@ class HoleInTheWall (val plugin: Plugin) : MinigameSkeleton() {
     // The moment swaps naturally every so often to increase replayability.
     private var wallSpawningMode: WallSpawnerMode? = null
 
-    // a tracker for how many *real* walls have been spawned in a row. used for control flow - so one direction will be chosen for a healthy amount of times.
+    // a tracker for how many *real* walls have been spawned in a row. used for control flow - so one direction will be chosen for a healthy number of times.
     var amountOfSpawnsSinceDirectionChange: MutableMap<WallSpawnerMode, Int> = mutableMapOf(
         WallSpawnerMode.WALL_CHAINER to 0,
         WallSpawnerMode.WALLS_FROM_2_OPPOSITE_DIRECTIONS to 0
@@ -144,7 +144,7 @@ class HoleInTheWall (val plugin: Plugin) : MinigameSkeleton() {
             // Clear the list of walls that were planned to be spawned in the game, since otherwise, when we will spawn in walls, the old walls will spawn along with the new ones. (which will deff make walls collide with each other)
             upcomingWalls.clear()
 
-            // clear the trackers of the amount of spawns since direction change
+            // clear the trackers of the number of spawns since direction change
             for (wallSpawnerMode in amountOfSpawnsSinceDirectionChange.entries) {
                 wallSpawnerMode.setValue(0)
             }
@@ -187,7 +187,7 @@ class HoleInTheWall (val plugin: Plugin) : MinigameSkeleton() {
                         currentAvailableListOfModesToAlternateTo = WallSpawnerMode.entries.shuffled().toMutableList()
                     }
 
-                    // take the first mode from the list of available modes to alternate to, and change the mode of the wall spawner to it.
+                    // take the first mode from the list of available modes to alternate to and change the mode of the wall spawner to it.
                     changeMode(currentAvailableListOfModesToAlternateTo.removeFirst())
                 }
             }
@@ -333,13 +333,13 @@ class HoleInTheWall (val plugin: Plugin) : MinigameSkeleton() {
                 //endregion
 
 
-                //region --Check if the walls should be moved, and handle if they should be stopped/deleted/resumed
+                //region --Check if the walls should be moved and handle if they should be stopped/deleted/resumed
 
                 //If the time elapsed is a multiple of the wall speed (which resembles how often the walls should be moved at in ticks), then move the walls
                 if (tickCount % wallSpeed == 0) {
                     // Get the walls that have a lifespan that's greater than 0
                     for (wall in getAliveMovingWalls()) {
-                        // Move the wall if its lifespan is greater than 0 and it should not be stopped
+                        // Move the wall if its lifespan is greater than 0, and it should not be stopped
                         wall.move()
                     }
                     for (wall in getWallsThatAreStopped()) {
@@ -809,7 +809,7 @@ class HoleInTheWall (val plugin: Plugin) : MinigameSkeleton() {
             endGame()
         }
 
-        // Load the map schematic (the deco arena), and store the region of the map
+        // Load the map schematic (the deco arena) and store the region of the map
         mapSchematicRegion = BuildLoader.loadSchematicByFile(mapSchematic, HITWConst.Locations.CENTER_OF_MAP)
         // Load the platform schematic (the platform that players will stand on)
         BuildLoader.loadSchematicByFile(platformSchematics[2], HITWConst.Locations.PLATFORM)

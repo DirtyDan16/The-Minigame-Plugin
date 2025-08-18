@@ -21,7 +21,6 @@ class MinigamePlugin : JavaPlugin() {
 
     override fun onEnable() {
         plugin = this
-        initSchematicsFolders()
 
 
         discoMayhem = DiscoMayhem(this)
@@ -48,37 +47,16 @@ class MinigamePlugin : JavaPlugin() {
         getCommand("misc")?.setExecutor(MiscCommands(this))
     }
 
+
     override fun onDisable() {
         // Plugin shutdown logic
     }
 
-    private lateinit var blueprintBazaarSchematicsFolder: File
-    private lateinit var holeInTheWallSchematicsFolder: File
-    private fun initSchematicsFolders() {
-        // Create the BlueprintBazaar folder if it doesn't exist
-        blueprintBazaarSchematicsFolder = File(dataFolder, "BlueprintBazaar")
-        if (!blueprintBazaarSchematicsFolder.exists()) {
-            blueprintBazaarSchematicsFolder.mkdirs() // Creates the folder if it doesn't exist
-            logger.info("Created BlueprintBazaar folder.")
-        } else {
-            logger.info("BlueprintBazaar folder already exists.")
-        }
-
-        holeInTheWallSchematicsFolder = File(dataFolder, "HoleInTheWall")
-        if (!blueprintBazaarSchematicsFolder.exists()) {
-            // Creates the folder if it doesn't exist
-            if (blueprintBazaarSchematicsFolder.mkdirs()) logger.info("Created HoleInTheWall folder.")
-            else logger.warning("Failed to create HoleInTheWall folder.")
-        } else {
-            logger.info("HoleInTheWall folder already exists.")
-        }
-    }
-
     fun getSchematicsFolder(minigame: String): File {
         return when (minigame) {
-            "blueprintbazaar" -> blueprintBazaarSchematicsFolder
-            "holeinthewall" -> holeInTheWallSchematicsFolder
-            else -> throw IllegalStateException("Unexpected value: " + minigame)
+            "blueprintbazaar" -> File(dataFolder, "BlueprintBazaar")
+            "holeinthewall" -> File(dataFolder, "HoleInTheWall")
+            else -> throw IllegalStateException("Unexpected value: $minigame")
         }
     }
 

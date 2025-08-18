@@ -1,5 +1,6 @@
 package base.minigames
 
+import base.annotations.CalledByCommand
 import base.utils.Utils.nukeGameArea
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
@@ -45,6 +46,7 @@ protected constructor() {
      * @throws InterruptedException if the game is interrupted
      */
     @Throws(InterruptedException::class)
+    @CalledByCommand
     open fun start(sender: Player) {
         if (isGameRunning) {
             Bukkit.getServer().broadcast(Component.text("Minigame is already running!"))
@@ -73,6 +75,7 @@ protected constructor() {
      * @throws InterruptedException if the game is interrupted
      */
     @Throws(InterruptedException::class)
+    @CalledByCommand
     open fun startFastMode(player: Player) {
         if (isGameRunning) {
             Bukkit.getServer().broadcast(Component.text("Minigame is already running!"))
@@ -85,6 +88,7 @@ protected constructor() {
     /**
      * Pauses the game. Paused games can be resumed, and they keep certain logic and game logic. Should be followed with code that pauses the game, like stopping timers, freezing entities...
      */
+    @CalledByCommand
     open fun pauseGame() {
         if (!isGameRunning) {
             Bukkit.getServer().broadcast(Component.text("Minigame is not running!"))
@@ -103,6 +107,7 @@ protected constructor() {
     /**
      * Resumes the game. Resumed games should be able to continue from where they were paused. should be followed with code that resumes the game, like starting timers, unfreezing entities...
      */
+    @CalledByCommand
     open fun resumeGame() {
         if (!isGameRunning) {
             Bukkit.getServer().broadcast(Component.text("Minigame is not running!"))
@@ -118,6 +123,7 @@ protected constructor() {
     /**
      * Ends the game. Should be followed with code that cleans up the arena, the gamerules... Should also be called when the game is interrupted.
      */
+    @CalledByCommand
     open fun endGame() {
         if (!isGameRunning) {
             Bukkit.getServer().broadcast(Component.text("Minigame is not running!"))

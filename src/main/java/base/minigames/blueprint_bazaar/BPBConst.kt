@@ -2,10 +2,12 @@ package base.minigames.blueprint_bazaar
 
 import base.utils.Direction
 import com.sk89q.worldedit.math.BlockVector3
+import com.sk89q.worldedit.regions.CuboidRegion
 import org.bukkit.Bukkit
 import org.bukkit.Location
 import org.bukkit.Material
 import org.bukkit.World
+import org.bukkit.util.BoundingBox
 
 object BPBConst {
     val WORLD: World = Bukkit.getWorld("world") ?: throw IllegalStateException("World 'world' not found. Please ensure it exists in the server configuration.")
@@ -42,7 +44,7 @@ object BPBConst {
         BRICKS, PRISMARINE_BRICKS,
 
         // Nether
-        BLOCK_OF_QUARTZ, WARPED_WART_BLOCK, NETHER_WART_BLOCK, NETHER_BRICKS, BLACKSTONE;
+        QUARTZ_BLOCK, WARPED_WART_BLOCK, NETHER_WART_BLOCK, NETHER_BRICKS, BLACKSTONE;
 
         companion object {
             fun contains(material: Material) : Boolean {
@@ -58,6 +60,15 @@ object BPBConst {
         val GAME_START_LOCATION: Location = Location(WORLD, 0.0, 150.0, 0.0)
         val CENTER_BUILD_SHOWCASE_PLOT = Location(WORLD, GAME_START_LOCATION.x + 20, GAME_START_LOCATION.y + 1, GAME_START_LOCATION.z)
         val CENTER_BUILD_PLOT_OFFSET: BlockVector3 = BlockVector3.at(-10.0, 0.0, 0.0)
+
+        val MIN_CORNER_OF_GAME_AREA: Location = Location(WORLD, -GAME_AREA_RADIUS.toDouble(), 150.0, -GAME_AREA_RADIUS.toDouble())
+        val MAX_CORNER_OF_GAME_AREA: Location = Location(WORLD, GAME_AREA_RADIUS.toDouble(), 160.0, GAME_AREA_RADIUS.toDouble())
+
+        val ARENA_REGION = BoundingBox.of(
+            MIN_CORNER_OF_GAME_AREA,
+            MAX_CORNER_OF_GAME_AREA
+        )
+        const val GAME_AREA_RADIUS: Int = 30
     }
 
     object Timers {
@@ -67,7 +78,4 @@ object BPBConst {
     object Build {
         val buildFacingDirection: Direction = Direction.NORTH
     }
-
-    //public static final Location CENTER_OF_A_BUILD_PLOT = new Location(WORLD, -3, 3, 0); // The center of a build plot. needs to be added to the build plot location to get the center of the build plot.
-    const val GAME_AREA_RADIUS: Int = 30
 }

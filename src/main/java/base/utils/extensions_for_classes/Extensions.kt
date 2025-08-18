@@ -1,12 +1,18 @@
 package base.utils.extensions_for_classes
 
+import base.minigames.blueprint_bazaar.BPBConst
+import base.utils.Direction
 import com.sk89q.worldedit.math.BlockVector3
+import com.sk89q.worldedit.regions.CuboidRegion
+import org.bukkit.Location
 import org.bukkit.Material
 import org.bukkit.World
 import org.bukkit.block.Block
+import org.bukkit.entity.Item
 import org.bukkit.entity.Player
 import org.bukkit.inventory.ItemStack
 import org.bukkit.util.BlockVector
+import org.bukkit.util.BoundingBox
 import kotlin.collections.iterator
 import kotlin.random.Random
 
@@ -67,5 +73,22 @@ fun Player.clearInvAndGiveItems(
         if (index >= this.inventory.size) return
 
         this.inventory.setItem(index, ItemStack(material,sizeForEachItemSlot))
+    }
+}
+
+fun World.removeItemsInRegion(region: BoundingBox) {
+    this.getNearbyEntities( region).forEach { entity ->
+        if (entity is Item) {
+            entity.remove()
+        }
+    }
+}
+
+fun Direction.toYaw(): Float {
+    return when (this) {
+        Direction.SOUTH -> 0f
+        Direction.WEST  -> 90f
+        Direction.NORTH -> 180f
+        Direction.EAST  -> -90f
     }
 }

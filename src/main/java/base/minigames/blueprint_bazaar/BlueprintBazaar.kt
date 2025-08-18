@@ -9,16 +9,19 @@ import base.minigames.blueprint_bazaar.BPBConst.Locations
 import base.other.BuildLoader
 import base.other.BuildLoader.loadSchematicByFileAndCoordinates
 import base.other.BuildLoader.loadSchematicByFileAndDirection
+import base.utils.Direction
 import base.utils.Utils.initFloor
 import base.utils.extensions_for_classes.clearInvAndGiveItems
 import base.utils.extensions_for_classes.getBlockAt
 import base.utils.extensions_for_classes.getMaterialAt
 import base.utils.extensions_for_classes.plus
+import base.utils.extensions_for_classes.toYaw
 import com.sk89q.worldedit.math.BlockVector3
 import com.sk89q.worldedit.regions.CuboidRegion
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 import org.bukkit.*
+import org.bukkit.block.BlockFace
 import org.bukkit.entity.Player
 import org.bukkit.event.HandlerList
 import org.bukkit.plugin.Plugin
@@ -26,6 +29,7 @@ import org.bukkit.scheduler.BukkitRunnable
 import org.bukkit.scoreboard.Objective
 import java.io.File
 import java.io.IOException
+
 
 class BlueprintBazaar(plugin: Plugin) : MinigameSkeleton() {
     //region vars
@@ -39,6 +43,10 @@ class BlueprintBazaar(plugin: Plugin) : MinigameSkeleton() {
     private var arena: File? = null
 
     private var curBuild: BuildBlueprint? = null
+        set(value) {
+            if (curBuild?.timeElapsedRunnable?.isCancelled == false) curBuild?.timeElapsedRunnable?.cancel()
+            field = value
+        }
 
     val scoreboard = Bukkit.getScoreboardManager().newScoreboard
     val timeElapsedForBuild: Objective = scoreboard.registerNewObjective("Blueprint Bazaar","dummy","Blueprint Bazaar")
@@ -51,6 +59,7 @@ class BlueprintBazaar(plugin: Plugin) : MinigameSkeleton() {
     }
 
     @Throws(InterruptedException::class)
+    @CalledByCommand
     override fun start(sender: Player) {
         initSchematics()
 
@@ -75,10 +84,12 @@ class BlueprintBazaar(plugin: Plugin) : MinigameSkeleton() {
     }
 
     @Throws(InterruptedException::class)
+    @CalledByCommand
     override fun startFastMode(player: Player) {
         super.startFastMode(player)
     }
 
+    @CalledByCommand
     override fun endGame() {
         super.endGame()
 
@@ -93,11 +104,13 @@ class BlueprintBazaar(plugin: Plugin) : MinigameSkeleton() {
             }
         }
 
+        curBuild = null
+
         nukeArea(Locations.GAME_START_LOCATION,25)
     }
 
     override fun prepareArea() {
-        nukeArea(Locations.GAME_START_LOCATION, BPBConst.GAME_AREA_RADIUS)
+        nukeArea(Locations.GAME_START_LOCATION, Locations.GAME_AREA_RADIUS)
         BuildLoader.loadSchematicByFile(arena!!, Locations.GAME_START_LOCATION)
     }
 
@@ -116,6 +129,7 @@ class BlueprintBazaar(plugin: Plugin) : MinigameSkeleton() {
         for (player in players) {
             // Teleport the player to the start location
             player.teleport(Locations.GAME_START_LOCATION.clone().add(0.0, 8.0, 0.0))
+            player.setRotation(Direction.EAST.toYaw(),0f)
             player.gameMode = GameMode.SURVIVAL
             player.allowFlight = true
         }
@@ -124,7 +138,13 @@ class BlueprintBazaar(plugin: Plugin) : MinigameSkeleton() {
     /**
      * Initializes the availableSchematics list with all the builds in the schematics folder, as well as some extras.
      */
+    @CalledByCommand
     fun initSchematics() {
+        if (isGameRunning) {
+            sender!!.sendMessage("Cannot initialize schematics while the game is running.")
+            return
+        }
+
         // Gets the schematics folder from the MinigamePlugin.java. This is where the builds are stored.
         val schematicsFolder = plugin.getSchematicsFolder("blueprintbazaar")
 
@@ -300,7 +320,7 @@ class BlueprintBazaar(plugin: Plugin) : MinigameSkeleton() {
 
             override fun run() {
                 // Delete previous build if it exists
-                curBuild?.let { deleteBuild(it.region) }
+                deleteBuild(curBuild!!.region)
 
                 // Check if we've gone through all schematics
                 if (index >= allSchematics.size) {
