@@ -1,6 +1,7 @@
 package base.minigames.blueprint_bazaar
 
 import base.MinigamePlugin
+import base.annotations.CalledByCommand
 import base.minigames.MinigameSkeleton
 import base.minigames.MinigameSkeleton.WorldSettingsToTrack.GAMEMODE
 import base.minigames.MinigameSkeleton.WorldSettingsToTrack.RANDOM_TICK_SPEED
@@ -16,11 +17,13 @@ import base.utils.extensions_for_classes.plus
 import com.sk89q.worldedit.math.BlockVector3
 import com.sk89q.worldedit.regions.CuboidRegion
 import net.kyori.adventure.text.Component
+import net.kyori.adventure.text.format.NamedTextColor
 import org.bukkit.*
 import org.bukkit.entity.Player
 import org.bukkit.event.HandlerList
 import org.bukkit.plugin.Plugin
 import org.bukkit.scheduler.BukkitRunnable
+import org.bukkit.scoreboard.Objective
 import java.io.File
 import java.io.IOException
 
@@ -36,6 +39,10 @@ class BlueprintBazaar(plugin: Plugin) : MinigameSkeleton() {
     private var arena: File? = null
 
     private var curBuild: BuildBlueprint? = null
+
+    val scoreboard = Bukkit.getScoreboardManager().newScoreboard
+    val timeElapsedForBuild: Objective = scoreboard.registerNewObjective("Blueprint Bazaar","dummy","Blueprint Bazaar")
+
     //endregion
 
     init {
@@ -48,6 +55,20 @@ class BlueprintBazaar(plugin: Plugin) : MinigameSkeleton() {
         initSchematics()
 
         super.start(sender)
+
+        // EXPERIMENTAL
+//        run {
+//            //Construct the scoreboard info for the minigame.
+//            timeElapsedForBuild.displaySlot = DisplaySlot.SIDEBAR
+//            // Initial entry line
+//            timeElapsedForBuild.getScore("${ChatColor.YELLOW}Time Elapsed:").score = 2
+//            timeElapsedForBuild.getScore("${ChatColor.WHITE}$timeElapsedForBuild s").score = 1
+//
+//            // display the minigame's scoreboard to the players.
+//            for (player in players)
+//                player.scoreboard = scoreboard
+//            //TODO: finish with scoreboard
+//        }
 
         // start the cycle of builds
         prepareNewBuild()
@@ -139,7 +160,7 @@ class BlueprintBazaar(plugin: Plugin) : MinigameSkeleton() {
         val chosenBuild = chooseNewBuild()
 
         if (chosenBuild == null) {
-            Bukkit.getServer().broadcast(Component.text("No more builds available!").color(net.kyori.adventure.text.format.NamedTextColor.AQUA))
+            Bukkit.getServer().broadcast(Component.text("No more builds available!").color(NamedTextColor.AQUA))
             endGame()
             return
         }
@@ -154,11 +175,12 @@ class BlueprintBazaar(plugin: Plugin) : MinigameSkeleton() {
         MinigamePlugin.plugin.server.pluginManager.registerEvents(curBuild!!, plugin)
 
         val message = "List of ingredients for build: \n ${chosenBuild.name} \n ${curBuild?.materialList.toString()} "
-        Bukkit.getServer().broadcast(Component.text(message).color(net.kyori.adventure.text.format.NamedTextColor.AQUA))
+        Bukkit.getServer().broadcast(Component.text(message).color(NamedTextColor.AQUA))
 
         for (player in players) {
             player.clearInvAndGiveItems(curBuild!!.materialList,64)
         }
+
     }
 
     private fun createNewBuild(chosenBuild: File, location: Location, shouldBeMirrored: Boolean = false): BuildBlueprint {
@@ -186,11 +208,11 @@ class BlueprintBazaar(plugin: Plugin) : MinigameSkeleton() {
             }
         }
 
-
         val buildRegion = CuboidRegion(
             BlockVector3.at(minP.x,minP.y+1,minP.z),
             maxP
         )
+
 
         //now that the schematic is loaded, we can create a new Build object
 
@@ -216,8 +238,8 @@ class BlueprintBazaar(plugin: Plugin) : MinigameSkeleton() {
         // unregister the player block placing listener for the previous build if there's any.
         if (curBuild != null) {
             HandlerList.unregisterAll(curBuild!!)
+            curBuild = null
         }
-
     }
 
     fun completeBuild(build: BuildBlueprint) {
@@ -225,9 +247,20 @@ class BlueprintBazaar(plugin: Plugin) : MinigameSkeleton() {
         prepareNewBuild()
     }
 
+    @CalledByCommand
+    fun skipToNextBuild() {
+        if (!isGameRunning) {
+            sender!!.sendMessage("can't execute this if the game isn't running.")
+            return
+        }
+
+        curBuild?.prepareForCompletion()
+    }
+
     /**
      * Loads all the builds in the schematics folder. The builds are loaded in a grid pattern.
      */
+    @CalledByCommand
     fun loadAllSchematics() {
         var index = 0
         // Load all the builds in the schematics folder
@@ -255,6 +288,7 @@ class BlueprintBazaar(plugin: Plugin) : MinigameSkeleton() {
     }
 
     //fixme: doesn't get rid of the top of given schematics when we remove an old schematic. didn't manage to solve it.
+    @CalledByCommand
     fun cycleThroughSchematics() {
         if (!isGameRunning || isGamePaused) {
             sender!!.sendMessage("Game is not currently alive to do this.")
