@@ -6,30 +6,29 @@ import base.minigames.MinigameSkeleton
 import base.minigames.MinigameSkeleton.WorldSettingsToTrack.GAMEMODE
 import base.minigames.MinigameSkeleton.WorldSettingsToTrack.RANDOM_TICK_SPEED
 import base.minigames.blueprint_bazaar.BPBConst.Locations
+import base.minigames.blueprint_bazaar.BPBConst.WORLD
 import base.other.BuildLoader
 import base.other.BuildLoader.loadSchematicByFileAndCoordinates
 import base.other.BuildLoader.loadSchematicByFileAndDirection
 import base.utils.Direction
 import base.utils.Utils.initFloor
-import base.utils.extensions_for_classes.clearInvAndGiveItems
-import base.utils.extensions_for_classes.getBlockAt
-import base.utils.extensions_for_classes.getMaterialAt
-import base.utils.extensions_for_classes.plus
-import base.utils.extensions_for_classes.toYaw
+import base.utils.extensions_for_classes.*
 import com.sk89q.worldedit.math.BlockVector3
 import com.sk89q.worldedit.regions.CuboidRegion
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 import org.bukkit.*
-import org.bukkit.block.BlockFace
+import org.bukkit.block.Block
+import org.bukkit.block.Chest
+import org.bukkit.block.Container
+import org.bukkit.block.Furnace
 import org.bukkit.entity.Player
-import org.bukkit.event.HandlerList
+import org.bukkit.inventory.ItemStack
 import org.bukkit.plugin.Plugin
 import org.bukkit.scheduler.BukkitRunnable
 import org.bukkit.scoreboard.Objective
 import java.io.File
 import java.io.IOException
-
 
 class BlueprintBazaar(plugin: Plugin) : MinigameSkeleton() {
     //region vars
@@ -95,7 +94,7 @@ class BlueprintBazaar(plugin: Plugin) : MinigameSkeleton() {
 
         // set the settings of the world to how they were prior for the start of the minigame.
         trackerOfWorldSettingsBeforeStartingGame.apply {
-            BPBConst.WORLD.setGameRule(GameRule.RANDOM_TICK_SPEED, this[RANDOM_TICK_SPEED] as Int)
+            WORLD.setGameRule(GameRule.RANDOM_TICK_SPEED, this[RANDOM_TICK_SPEED] as Int)
             for (player in players) {
                 player.gameMode = this[GAMEMODE] as GameMode
                 player.activePotionEffects.clear()
@@ -111,7 +110,27 @@ class BlueprintBazaar(plugin: Plugin) : MinigameSkeleton() {
 
     override fun prepareArea() {
         nukeArea(Locations.GAME_START_LOCATION, Locations.GAME_AREA_RADIUS)
-        BuildLoader.loadSchematicByFile(arena!!, Locations.GAME_START_LOCATION)
+        val arenaRegion: CuboidRegion = BuildLoader.loadSchematicByFile(arena!!, Locations.GAME_START_LOCATION) as CuboidRegion
+
+        // put in furnaces Coal blocks, and in chests axes to strip logs
+        for (vector in arenaRegion) {
+            val block = WORLD.getBlockAt(vector)
+            val state = block.state
+
+            if (state is Container) {
+                val inventory = state.inventory
+                when (block.state) {
+                    is Chest -> {
+                        inventory.addItem(ItemStack(Material.IRON_AXE, 1))
+                    }
+                    is Furnace -> {
+                        inventory.setItem(1, ItemStack(Material.COAL, 64))
+                    }
+                    else -> {}
+                }
+            }
+
+        }
     }
 
     override fun prepareGameSetting() {
@@ -119,12 +138,12 @@ class BlueprintBazaar(plugin: Plugin) : MinigameSkeleton() {
 
         //tracking state
         trackerOfWorldSettingsBeforeStartingGame.apply {
-            put(RANDOM_TICK_SPEED, BPBConst.WORLD.getGameRuleValue(GameRule.RANDOM_TICK_SPEED))
+            put(RANDOM_TICK_SPEED, WORLD.getGameRuleValue(GameRule.RANDOM_TICK_SPEED))
             put(GAMEMODE, players[0].gameMode)
         }
 
         //setting state
-        BPBConst.WORLD.setGameRule(GameRule.RANDOM_TICK_SPEED,0)
+        WORLD.setGameRule(GameRule.RANDOM_TICK_SPEED,0)
 
         for (player in players) {
             // Teleport the player to the start location
@@ -223,8 +242,8 @@ class BlueprintBazaar(plugin: Plugin) : MinigameSkeleton() {
         //copy the floor from the displayed build plot to the build plot the player is gonna recreate the build at. also clear any blocks in the area of the recreated plot.
         for (vector in region) {
             when (vector.y) {
-                minP.y -> BPBConst.WORLD.getBlockAt(vector + Locations.CENTER_BUILD_PLOT_OFFSET).type = BPBConst.WORLD.getMaterialAt(vector)
-                else -> BPBConst.WORLD.getBlockAt(vector + Locations.CENTER_BUILD_PLOT_OFFSET).type = Material.AIR
+                minP.y -> WORLD.getBlockAt(vector + Locations.CENTER_BUILD_PLOT_OFFSET).type = WORLD.getMaterialAt(vector)
+                else -> WORLD.getBlockAt(vector + Locations.CENTER_BUILD_PLOT_OFFSET).type = Material.AIR
             }
         }
 
@@ -243,27 +262,23 @@ class BlueprintBazaar(plugin: Plugin) : MinigameSkeleton() {
         )
     }
 
-    private fun deleteBuild(region: CuboidRegion) {
-        // Set all blocks within the boundaries to air
-        for (block in region.boundingBox) {
-            val blockLocation = Location(
-                BPBConst.WORLD,
-                block.x.toDouble(),
-                block.y.toDouble(),
-                block.z.toDouble()
-            )
-            blockLocation.block.type = Material.AIR
+    private fun deleteBuild(build: BuildBlueprint) {
+        // we need to delete the blocks in both the build display plot and the build plot.
+
+        // Delete the blocks in the build display plot
+        for (vector in build.regionOfBuildDisplayed) {
+            WORLD.getBlockAt(vector).type = Material.AIR
+        }
+        // Delete the blocks in the build plot
+        for (vector in build.region) {
+            WORLD.getBlockAt(vector).type = Material.AIR
         }
 
-        // unregister the player block placing listener for the previous build if there's any.
-        if (curBuild != null) {
-            HandlerList.unregisterAll(curBuild!!)
-            curBuild = null
-        }
+        curBuild = null
     }
 
     fun completeBuild(build: BuildBlueprint) {
-        deleteBuild(build.region)
+        deleteBuild(build)
         prepareNewBuild()
     }
 
@@ -296,8 +311,8 @@ class BlueprintBazaar(plugin: Plugin) : MinigameSkeleton() {
                 6,
                 6,
                 Material.RED_WOOL,
-                Location(BPBConst.WORLD, (curX - 3).toDouble(), (curY - 2).toDouble(), curZ.toDouble()),
-                BPBConst.WORLD
+                Location(WORLD, (curX - 3).toDouble(), (curY - 2).toDouble(), curZ.toDouble()),
+                WORLD
             )
             // Load the schematic
             loadSchematicByFileAndCoordinates(schematic, curX, curY, curZ)
@@ -307,7 +322,6 @@ class BlueprintBazaar(plugin: Plugin) : MinigameSkeleton() {
         }
     }
 
-    //fixme: doesn't get rid of the top of given schematics when we remove an old schematic. didn't manage to solve it.
     @CalledByCommand
     fun cycleThroughSchematics() {
         if (!isGameRunning || isGamePaused) {
@@ -319,17 +333,13 @@ class BlueprintBazaar(plugin: Plugin) : MinigameSkeleton() {
             var index: Int = 0
 
             override fun run() {
-                // Delete previous build if it exists
-                deleteBuild(curBuild!!.region)
-
                 // Check if we've gone through all schematics
                 if (index >= allSchematics.size) {
                     cancel()
                     return
                 }
-
-                // Display new schematic
-                prepareNewBuild()
+                // Delete previous build if it exists
+                curBuild?.prepareForCompletion()
 
                 // Move to next schematic
                 index++
@@ -339,5 +349,6 @@ class BlueprintBazaar(plugin: Plugin) : MinigameSkeleton() {
         runnables.add(runnable)
     }
 }
+
 
 

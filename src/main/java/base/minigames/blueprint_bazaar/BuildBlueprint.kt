@@ -2,6 +2,7 @@ package base.minigames.blueprint_bazaar
 
 import base.MinigamePlugin.Companion.plugin
 import base.minigames.blueprint_bazaar.BPBConst.WORLD
+import base.utils.extensions_for_classes.getBlockAt
 import base.utils.extensions_for_classes.getMaterialAt
 import base.utils.extensions_for_classes.minus
 import base.utils.extensions_for_classes.plus
@@ -13,8 +14,10 @@ import net.kyori.adventure.text.format.NamedTextColor
 import net.kyori.adventure.title.Title
 import org.bukkit.Bukkit
 import org.bukkit.Material
+import org.bukkit.block.data.Bisected
 import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
+import org.bukkit.event.HandlerList
 import org.bukkit.event.Listener
 import org.bukkit.event.block.BlockBreakEvent
 import org.bukkit.event.block.BlockDamageEvent
@@ -32,21 +35,19 @@ import kotlin.math.floor
  */
 class BuildBlueprint(
     val game: BlueprintBazaar,
-    regionOfBuildDisplayed: CuboidRegion,
+    val regionOfBuildDisplayed: CuboidRegion,
 ) : Listener {
     val materialList: MutableSet<Material> = mutableSetOf() // List of materials used in the build
     val region: CuboidRegion
     var numOfBlocksBuildDisplayedHas = 0
-    var correctNumOfBlocksInRegion = 0
+    var correctNumOfBlocksInRegion: Int = 0
         set(blocks) {
             // if we have placed a block in the region, the message will be of the color green.
             // if we have removed a block from the region, the message will be of the color red
-            val color = if (blocks > field) {
-                NamedTextColor.GREEN
-            } else if (blocks < field) {
-                NamedTextColor.RED
-            } else {
-                NamedTextColor.YELLOW
+            val color: NamedTextColor = when {
+                blocks > field -> NamedTextColor.GREEN
+                blocks < field -> NamedTextColor.RED
+                else -> NamedTextColor.YELLOW
             }
 
             field = 0.coerceAtLeast(blocks)
@@ -96,9 +97,23 @@ class BuildBlueprint(
             regionOfBuildDisplayed.maximumPoint + BPBConst.Locations.CENTER_BUILD_PLOT_OFFSET
         )
 
+
         // calc the total number of blocks the build to copy from has.
         regionOfBuildDisplayed.forEach { vector ->
-            if (WORLD.getMaterialAt(vector) != Material.AIR) numOfBlocksBuildDisplayedHas++
+            val block = WORLD.getBlockAt(vector)
+
+            if (block.type != Material.AIR) {
+                // we don't want to count multiple times blocks that occupy more than 1 block, such as doors,so let's check if the block is bisected.
+                if (block.blockData is Bisected) {
+                    val bisected = block.blockData as Bisected
+                    if (bisected.half == Bisected.Half.TOP) {
+                        // Skip the top half, we'll only count the bottom half
+                        return@forEach
+                    }
+                }
+
+                numOfBlocksBuildDisplayedHas++
+            }
         }
 
         // A timer that tracks the time elapsed for the current build. gets called every second. it gets cancelled when the build is completed.
@@ -117,11 +132,14 @@ class BuildBlueprint(
     }
 
     fun getRawMaterialsFromThisMaterial(blockMaterial: Material,hasVisitedThisMaterial: MutableSet<Material> = mutableSetOf()) {
-        println(Thread.currentThread().stackTrace.size)
 
         // if we have reached a basic material, return that.
         if (BPBConst.BasicMaterials.contains(blockMaterial)) {
             materialList += blockMaterial
+            return
+        // Special case: if the material is a striped log, we want to get the base log material. (since striped logs don't have a crafting recipe)
+        } else if (blockMaterial in BPBConst.StripedLogsToLogs.keys) {
+            materialList += BPBConst.StripedLogsToLogs[blockMaterial]!!
             return
         }
 
@@ -174,17 +192,25 @@ class BuildBlueprint(
 
                 val matChoices: List<RecipeChoice.MaterialChoice> = choices.filterIsInstance<RecipeChoice.MaterialChoice>()
 
-                val materials = matChoices.map {
-                    materialChoice -> materialChoice.choices[0]
-                }
+                val materials: Set<Material> = matChoices.flatMap {
+                    matChoice -> matChoice.choices
+                }.toSet()
 
-                setOfMaterials.addAll(materials)
+                val basicMaterials = materials.filter { BPBConst.BasicMaterials.contains(it) }
+
+                if (basicMaterials.isNotEmpty()) {
+                    setOfMaterials.addAll(basicMaterials)
+                } else {
+                    // if we don't have any basic materials, then we will add the first material from each mat choice that is suggested.
+                    setOfMaterials += matChoices.map { it.choices[0]}
+                }
             }
             is FurnaceRecipe -> {
                 val matChoice = this.inputChoice as RecipeChoice.MaterialChoice
 
                 setOfMaterials.add(matChoice.choices[0])
             }
+
             else -> {/*nothing*/}
         }
 
@@ -241,7 +267,9 @@ class BuildBlueprint(
 
     /**
      * Prepares the build for completion.
+     *
      * This method stops the timer for the current build and shows a title to the player who completed the build if a player is designated as the finisher, otherwise it just completes the build.
+     * Also clears the arena by removing items that are on the ground and unregisters the listener for this build.
      */
     fun prepareForCompletion(buildFinisher: Player? = null) {
         // let's first clear the arena by clearing items that are on the ground
@@ -249,6 +277,9 @@ class BuildBlueprint(
 
         // stop the timer for the current build
         timeElapsedRunnable.cancel()
+
+        // unregister the listener for this build
+        HandlerList.unregisterAll(this)
 
         // if we have called this method with a player to designate as the finisher of the build, then we will show a title to that player and send a message to that player.
         if (buildFinisher != null) {

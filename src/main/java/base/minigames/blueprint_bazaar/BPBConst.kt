@@ -27,7 +27,7 @@ object BPBConst {
         LIGHT_BLUE_STAINED_GLASS, BLUE_STAINED_GLASS, PURPLE_STAINED_GLASS, PINK_STAINED_GLASS,
 
         // Garden
-        DANDELION, POPPY, BLUE_ORCHID, ALLIUM, AZURE_BLUET, RED_TULIP, LILY_OF_THE_VALLEY,
+        FLOWER_POTS ,DANDELION, POPPY, BLUE_ORCHID, ALLIUM, AZURE_BLUET, RED_TULIP, LILY_OF_THE_VALLEY,
         ORANGE_TULIP, WHITE_TULIP, PINK_TULIP, OXEYE_DAISY, CORNFLOWER,
         MOSS_BLOCK, AZALEA, SAND,RED_SAND,
 
@@ -53,8 +53,22 @@ object BPBConst {
                 }
                 return false
             }
+            fun contains(materials: Collection<Material>) : Boolean {
+                return materials.all { contains(it) }
+            }
         }
     }
+
+    /**
+     * A map that represents the conversion of stripped logs to their corresponding regular logs. used when calculating the material list the players get for a given build
+     */
+    val StripedLogsToLogs: Map<Material, Material> = mapOf(
+        Material.STRIPPED_OAK_LOG to Material.OAK_LOG,
+        Material.STRIPPED_ACACIA_LOG to Material.ACACIA_LOG,
+        Material.STRIPPED_BIRCH_LOG to Material.BIRCH_LOG,
+        Material.STRIPPED_JUNGLE_LOG to Material.JUNGLE_LOG,
+        Material.STRIPPED_SPRUCE_LOG to Material.SPRUCE_LOG
+    )
 
     object Locations {
         val GAME_START_LOCATION: Location = Location(WORLD, 0.0, 150.0, 0.0)
