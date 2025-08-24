@@ -26,7 +26,7 @@ protected constructor() {
     * This list is automatically called and canceled upon in the endGame() method.
     * a good use for using this is whenever the game is paused and you would want to stop all the tasks.
     */
-    protected val runnables: MutableList<BukkitRunnable> = mutableListOf()
+    val runnables: MutableList<BukkitRunnable> = mutableListOf()
 
     enum class WorldSettingsToTrack {
         TIME_OF_DAY,

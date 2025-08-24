@@ -146,7 +146,7 @@ class Wall(
                 }
             }
         }
-        return locations;
+        return locations
     }
 
 
@@ -304,13 +304,13 @@ class Wall(
             location.block.type = Material.DIAMOND_BLOCK
         }
 
-        val min: Location = Location(
+        val min = Location(
             HITWConst.Locations.WORLD,
             wallRegion.minimumPoint.x.toDouble(),
             wallRegion.minimumPoint.y.toDouble(),
             wallRegion.minimumPoint.z.toDouble()
         )
-        val max: Location = Location(
+        val max = Location(
             HITWConst.Locations.WORLD,
             wallRegion.maximumPoint.x.toDouble(),
             wallRegion.maximumPoint.y.toDouble(),

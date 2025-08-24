@@ -122,6 +122,7 @@ class BlueprintBazaar(plugin: Plugin) : MinigameSkeleton() {
                 when (block.state) {
                     is Chest -> {
                         inventory.addItem(ItemStack(Material.IRON_AXE, 1))
+                        inventory.addItem(ItemStack(Material.HONEYCOMB, 64))
                     }
                     is Furnace -> {
                         inventory.setItem(1, ItemStack(Material.COAL, 64))

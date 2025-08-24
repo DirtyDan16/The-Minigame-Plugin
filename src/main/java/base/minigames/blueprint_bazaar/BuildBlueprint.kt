@@ -2,18 +2,14 @@ package base.minigames.blueprint_bazaar
 
 import base.MinigamePlugin.Companion.plugin
 import base.minigames.blueprint_bazaar.BPBConst.WORLD
-import base.utils.extensions_for_classes.getBlockAt
-import base.utils.extensions_for_classes.getMaterialAt
-import base.utils.extensions_for_classes.minus
-import base.utils.extensions_for_classes.plus
-import base.utils.extensions_for_classes.removeItemsInRegion
-import base.utils.extensions_for_classes.toBlockVector3
+import base.utils.extensions_for_classes.*
 import com.sk89q.worldedit.regions.CuboidRegion
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 import net.kyori.adventure.title.Title
 import org.bukkit.Bukkit
 import org.bukkit.Material
+import org.bukkit.block.Block
 import org.bukkit.block.data.Bisected
 import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
@@ -25,7 +21,10 @@ import org.bukkit.event.block.BlockPlaceEvent
 import org.bukkit.inventory.*
 import org.bukkit.scheduler.BukkitRunnable
 import org.bukkit.scheduler.BukkitTask
+import org.bukkit.util.BoundingBox
+import org.bukkit.util.VoxelShape
 import java.time.Duration
+import kotlin.math.abs
 import kotlin.math.floor
 
 /** *
@@ -37,8 +36,11 @@ class BuildBlueprint(
     val game: BlueprintBazaar,
     val regionOfBuildDisplayed: CuboidRegion,
 ) : Listener {
+
+    //region Properties
     val materialList: MutableSet<Material> = mutableSetOf() // List of materials used in the build
     val region: CuboidRegion
+
     var numOfBlocksBuildDisplayedHas = 0
     var correctNumOfBlocksInRegion: Int = 0
         set(blocks) {
@@ -63,13 +65,17 @@ class BuildBlueprint(
             }
         }
 
+    // List of blocks that are placed but not yet correct
+    var listOfBlocksToKeepTrackOf: MutableList<Block> = mutableListOf()
+
     var completionPercentage: Double = 0.0
 
 
     var curBuildTime = 0
 
     var timeElapsedRunnable: BukkitTask
-
+    val orientationBlocksTracker: BukkitRunnable
+    //endregion
 
     init {
         //region -- Initialize the material list with the materials used in the build
@@ -92,13 +98,15 @@ class BuildBlueprint(
         }
         //endregion
 
+        //region The region of the build that is being replicated.
         region = CuboidRegion(
             regionOfBuildDisplayed.minimumPoint + BPBConst.Locations.CENTER_BUILD_PLOT_OFFSET,
             regionOfBuildDisplayed.maximumPoint + BPBConst.Locations.CENTER_BUILD_PLOT_OFFSET
         )
+        //endregion
 
 
-        // calc the total number of blocks the build to copy from has.
+        //region calc the total number of blocks the build to copy from has.
         regionOfBuildDisplayed.forEach { vector ->
             val block = WORLD.getBlockAt(vector)
 
@@ -115,8 +123,9 @@ class BuildBlueprint(
                 numOfBlocksBuildDisplayedHas++
             }
         }
+        //endregion
 
-        // A timer that tracks the time elapsed for the current build. gets called every second. it gets cancelled when the build is completed.
+        //region A timer that tracks the time elapsed for the current build. gets called every second. it gets canceled when the build is completed.
         timeElapsedRunnable = object : BukkitRunnable() {
             override fun run() {
                 game.players.forEach { player ->
@@ -129,9 +138,31 @@ class BuildBlueprint(
 
             }
         }.runTaskTimer(plugin,20L,20L)
+        //endregion
+
+        //region checker for blocks that are being tracked are oriented correctly.
+        orientationBlocksTracker = object : BukkitRunnable() {
+            override fun run() {
+                // check if the blocks that are being tracked are oriented correctly
+                listOfBlocksToKeepTrackOf.removeIf { block ->
+                    val comparedBlock = getComparedBlockAt(block)
+
+                    if (compareShape(block, comparedBlock)) {
+                        incrementCorrectNumOfBlocksInRegion()
+                        true // remove the block from the list
+                    } else {
+                        false // keep the block in the list
+                    }
+                }
+            }
+        }
+        game.runnables += orientationBlocksTracker
+
+        orientationBlocksTracker.runTaskTimer(plugin, 0L, 8L)
+        //endregion
     }
 
-    fun getRawMaterialsFromThisMaterial(blockMaterial: Material,hasVisitedThisMaterial: MutableSet<Material> = mutableSetOf()) {
+    private fun getRawMaterialsFromThisMaterial(blockMaterial: Material,hasVisitedThisMaterial: MutableSet<Material> = mutableSetOf()) {
 
         // if we have reached a basic material, return that.
         if (BPBConst.BasicMaterials.contains(blockMaterial)) {
@@ -217,51 +248,112 @@ class BuildBlueprint(
         return setOfMaterials
     }
 
+
+    private fun getComparedBlockAt(block: Block): Block {
+        return WORLD.getBlockAt(block.toBlockVector3() - BPBConst.Locations.CENTER_BUILD_PLOT_OFFSET)
+    }
+
+
+    //region For comparing voxel shapes of blocks
+
+    fun compareShape(blockA: Block, blockB: Block): Boolean {
+        if (blockA.blockData == blockB.blockData) return true
+
+        return voxelShapesEqual(blockA.collisionShape, blockB.collisionShape)
+    }
+
+    private fun voxelShapesEqual(shapeA: VoxelShape, shapeB: VoxelShape, epsilon: Double = 1e-6): Boolean {
+        val boxesA: List<BoundingBox> = shapeA.boundingBoxes.sortedWith(
+            compareBy({ it.minX }, { it.minY }, { it.minZ }, { it.maxX }, { it.maxY }, { it.maxZ })
+        )
+        val boxesB: List<BoundingBox> = shapeB.boundingBoxes.sortedWith(
+            compareBy({ it.minX }, { it.minY }, { it.minZ }, { it.maxX }, { it.maxY }, { it.maxZ })
+        )
+        if (boxesA.size != boxesB.size) return false
+        for (i: Int in boxesA.indices) {
+            if (!boxesEqual(boxesA[i], boxesB[i], epsilon)) return false
+        }
+        return true
+    }
+
+    private fun boxesEqual(b1: BoundingBox, b2: BoundingBox, epsilon: Double): Boolean {
+        fun almostEqual(a: Double, b: Double, epsilon: Double): Boolean {
+            return abs(a - b) <= epsilon
+        }
+
+        return almostEqual(b1.minX, b2.minX, epsilon) &&
+                almostEqual(b1.minY, b2.minY, epsilon) &&
+                almostEqual(b1.minZ, b2.minZ, epsilon) &&
+                almostEqual(b1.maxX, b2.maxX, epsilon) &&
+                almostEqual(b1.maxY, b2.maxY, epsilon) &&
+                almostEqual(b1.maxZ, b2.maxZ, epsilon)
+    }
+    //endregion
+
+    private fun incrementCorrectNumOfBlocksInRegion(player: Player? = null) {
+        correctNumOfBlocksInRegion++
+        if (completionPercentage == 100.0) {
+            prepareForCompletion(player)
+        }
+    }
+
     @EventHandler
-    fun onBlockPlaced(event: BlockPlaceEvent) {
+    private fun onBlockPlaced(event: BlockPlaceEvent) {
         if (!game.isGameRunning || !game.isPlayerInGame(event.player)) return
 
-        val block = event.block
-
         // Not allow block placing outside the designated plot.
-        if (block.toBlockVector3() !in region) {
+
+        if (event.block.toBlockVector3() !in region) {
             event.isCancelled = true
             return
         }
 
-        if (block.type == WORLD.getMaterialAt(block.toBlockVector3() - BPBConst.Locations.CENTER_BUILD_PLOT_OFFSET)) {
-            correctNumOfBlocksInRegion++
-            if (completionPercentage == 100.0) {
-                prepareForCompletion(event.player)
+        val block = event.block
+        val comparedBlock = getComparedBlockAt(block)
+
+        if (block.type == comparedBlock.type) {
+
+            // if the block is oriented the same way as the block in the display build, then we will increase the correct number of blocks in the region.
+            // otherwise, we will keep track of the block, but not increment the correct number of blocks in the region, until the block is oriented correctly.
+            if (compareShape(block, comparedBlock))
+                incrementCorrectNumOfBlocksInRegion(event.player)
+            else {
+                listOfBlocksToKeepTrackOf += block
             }
         }
     }
 
     @EventHandler
-    fun onBlockTouched(event: BlockDamageEvent) {
+    private fun onBlockTouched(event: BlockDamageEvent) {
         if (!game.isGameRunning || !game.isPlayerInGame(event.player)) return
 
-        val block = event.block
-
         // Not allow block breaking outside the designated plot.
-        if (block.toBlockVector3() !in region) {
+        if (event.block.toBlockVector3() !in region) {
             event.isCancelled = true
             return
         }
 
-        // check if the block was related to the progression of the build.
-        if (block.type == WORLD.getMaterialAt(block.toBlockVector3() - BPBConst.Locations.CENTER_BUILD_PLOT_OFFSET))
-            correctNumOfBlocksInRegion--
+        val block = event.block
+        val comparedBlock = getComparedBlockAt(block)
 
         // remove block manually at a delay
         Bukkit.getServer().scheduler.runTaskLater(plugin, Runnable{
+            // check if the block was related to the progression of the build.
+            if (block.type == comparedBlock.type) {
+                if (compareShape(block, comparedBlock))
+                    correctNumOfBlocksInRegion--
+                else
+                    listOfBlocksToKeepTrackOf.remove(block)
+            }
+
             block.world.dropItemNaturally(block.location, ItemStack(block.type))
+            // remove the block
             block.type = Material.AIR
         },3L)
     }
 
     @EventHandler
-    fun onBlockBreak(event: BlockBreakEvent) {
+    private fun onBlockBreak(event: BlockBreakEvent) {
         event.isCancelled = true
     }
 
@@ -281,17 +373,24 @@ class BuildBlueprint(
         // unregister the listener for this build
         HandlerList.unregisterAll(this)
 
+
+        val successMessage = Component.text("Build has been completed in $curBuildTime seconds!")
+            .color(NamedTextColor.GREEN)
+
         // if we have called this method with a player to designate as the finisher of the build, then we will show a title to that player and send a message to that player.
         if (buildFinisher != null) {
             // Show a title to all players the time elapsed for the build
             val title = Title.title(
-                Component.text("Build completed in: ${curBuildTime}s!").color(NamedTextColor.GREEN),
+                successMessage,
                 Component.empty(),
                 Title.Times.times(Duration.ofMillis(200), Duration.ofMillis(1000), Duration.ofMillis(300))
             )
 
-            buildFinisher.sendMessage("You have managed to complete the build!")
             buildFinisher.showTitle(title)
+        }
+
+        game.players.forEach { player ->
+            player.sendMessage(successMessage)
         }
 
         game.completeBuild(this)

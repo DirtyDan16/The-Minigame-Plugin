@@ -44,7 +44,7 @@ class BlueprintBazaarCommands(private val blueprintbazaar: BlueprintBazaar) : Mi
         args: Array<String>
     ): MutableList<String> {
         if (args.size == 1) {
-            return mutableListOf<String>(
+            return mutableListOf(
                 "start",
                 "stop",
                 "start_hard_mode",
@@ -57,6 +57,6 @@ class BlueprintBazaarCommands(private val blueprintbazaar: BlueprintBazaar) : Mi
                 "init_schematics"
             )
         }
-        return mutableListOf<String>()
+        return mutableListOf()
     }
 }
