@@ -7,17 +7,17 @@ import org.bukkit.entity.Player
 import java.util.*
 
 class HoleInTheWallCommands(private val holeInTheWall: HoleInTheWall) : MinigameCommandsSkeleton() {
-    override fun handleCommand(player: Player, command: Command, label: String, args: Array<String>): Boolean {
+    override fun handleCommand(sender: Player, command: Command, label: String, args: Array<String>): Boolean {
         when (args[0].lowercase(Locale.ENGLISH)) {
             "start","start_hard_mode" -> {
                 when (args.size) {
-                    1 -> return  error(player, "Please specify a map name to start the game.")
+                    1 -> return  error(sender, "Please specify a map name to start the game.")
                     2 -> {
                         try {
                             if (args[0] == "start_hard_mode") {
-                                holeInTheWall.startFastMode(player, args[1])
+                                holeInTheWall.startFastMode(sender, args[1])
                             } else {
-                                holeInTheWall.start(player, args[1])
+                                holeInTheWall.start(sender, args[1])
                             }
                         } catch (e: InterruptedException) {
                             throw RuntimeException(e)
@@ -26,37 +26,37 @@ class HoleInTheWallCommands(private val holeInTheWall: HoleInTheWall) : Minigame
                     3 -> {
                         try {
                             if (args[0] == "start_hard_mode") {
-                                holeInTheWall.startFastMode(player, args[1], args[2])
+                                holeInTheWall.startFastMode(sender, args[1], args[2])
                             } else {
-                                holeInTheWall.start(player, args[1], args[2])
+                                holeInTheWall.start(sender, args[1], args[2])
                             }
                         } catch (e: InterruptedException) {
                             throw RuntimeException(e)
                         }
                     }
-                    else -> return error(player, "Too many arguments")
+                    else -> return error(sender, "Too many arguments")
                 }
             }
 
             "set" -> {
-                if (args.size == 1) return error(player, "Please specify a setting to change.")
+                if (args.size == 1) return error(sender, "Please specify a setting to change.")
                 when (args[1].lowercase(Locale.getDefault())) {
                     "wall_spawning_mode" -> {
-                        if (args.size < 3) return error(player, "Please specify the wall spawning mode.")
+                        if (args.size < 3) return error(sender, "Please specify the wall spawning mode.")
 
                         holeInTheWall.changeWallSpawningMode(args[2])
                     }
                     "wall_speed" -> {
-                        if (args.size < 3) return error(player, "Please specify the wall speed.")
+                        if (args.size < 3) return error(sender, "Please specify the wall speed.")
 
                         try {
                             val speed = args[2].toInt()
                             holeInTheWall.wallSpeed = speed
                         } catch (_: NumberFormatException) {
-                            return error(player, "Invalid wall speed value")
+                            return error(sender, "Invalid wall speed value")
                         }
                     }
-                    else -> return error(player, "Unknown setting: ${args[1]}.")
+                    else -> return error(sender, "Unknown setting: ${args[1]}.")
                 }
             }
 

@@ -10,16 +10,16 @@ import org.bukkit.entity.Player
 import java.util.*
 
 class BlueprintBazaarCommands(private val blueprintbazaar: BlueprintBazaar) : MinigameCommandsSkeleton() {
-    override fun handleCommand(player: Player, command: Command, label: String, args: Array<String>): Boolean {
+    override fun handleCommand(sender: Player, command: Command, label: String, args: Array<String>): Boolean {
         when (args[0].lowercase(Locale.getDefault())) {
             "start" -> try {
-                blueprintbazaar.start(player)
+                blueprintbazaar.start(sender)
             } catch (e: InterruptedException) {
                 throw RuntimeException(e)
             }
 
             "start_hard_mode" -> try {
-                blueprintbazaar.startFastMode(player)
+                blueprintbazaar.startFastMode(sender)
             } catch (e: InterruptedException) {
                 throw RuntimeException(e)
             }

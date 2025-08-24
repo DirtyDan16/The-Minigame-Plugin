@@ -11,16 +11,16 @@ import org.bukkit.entity.Player
 import java.util.*
 
 class DiscoMayhemCommands(private val discoMayhem: DiscoMayhem) : MinigameCommandsSkeleton() {
-    override fun handleCommand(player: Player, command: Command, label: String, args: Array<String>): Boolean {
+    override fun handleCommand(sender: Player, command: Command, label: String, args: Array<String>): Boolean {
         when (args[0].lowercase(Locale.getDefault())) {
             "start" -> try {
-                discoMayhem.start(player)
+                discoMayhem.start(sender)
             } catch (e: InterruptedException) {
                 throw RuntimeException(e)
             }
 
             "start_hard_mode" -> try {
-                discoMayhem.startFastMode(player)
+                discoMayhem.startFastMode(sender)
             } catch (e: InterruptedException) {
                 throw RuntimeException(e)
             }

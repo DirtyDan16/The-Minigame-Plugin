@@ -4,12 +4,11 @@ import com.google.errorprone.annotations.CheckReturnValue
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 import org.bukkit.command.Command
-import org.bukkit.command.CommandExecutor
 import org.bukkit.command.CommandSender
 import org.bukkit.command.TabExecutor
 import org.bukkit.entity.Player
 
-abstract class MinigameCommandsSkeleton : CommandExecutor, TabExecutor {
+abstract class MinigameCommandsSkeleton : TabExecutor {
     /**
      * Executes the given command, returning its success
      * @param sender Source of the command
@@ -24,7 +23,7 @@ abstract class MinigameCommandsSkeleton : CommandExecutor, TabExecutor {
             return false
         }
 
-        if (args.size == 0) {
+        if (args.isEmpty()) {
             return true
         }
 
@@ -38,8 +37,7 @@ abstract class MinigameCommandsSkeleton : CommandExecutor, TabExecutor {
      * the command block.
      * @param command Command which was executed
      * @param label Alias of the command which was used
-     * @param args The arguments passed to the command, including final
-     * partial argument to be completed
+     * @param args The arguments passed to the command
      * @return A List of possible completions for the final argument, or null
      */
     override fun onTabComplete(
@@ -51,22 +49,28 @@ abstract class MinigameCommandsSkeleton : CommandExecutor, TabExecutor {
         return handleTabComplete(sender, command, label, args)
     }
 
+    /**
+     * Sends an error message to the player and returns false
+     * @param sender The player to send the message to
+     * @param msg The message to send
+     * @return false because it is used exclusively in the onTabComplete method - which requires a boolean return type. false indicates the command was not successful
+     */
     @CheckReturnValue
-    protected fun error(player: Player, msg: String): Boolean {
-        player.sendMessage(Component.text(msg).color(NamedTextColor.RED))
+    protected fun error(sender: Player, msg: String): Boolean {
+        sender.sendMessage(Component.text(msg).color(NamedTextColor.RED))
         return false
     }
 
     /**
      * Handles the command
-     * @param player The player who executed the command
+     * @param sender The player who executed the command
      * @param command The command that was executed
      * @param label The alias of the command that was used
      * @param args The arguments passed to the command
      * @return true if the command was handled, otherwise false
      */
     protected abstract fun handleCommand(
-        player: Player,
+        sender: Player,
         command: Command,
         label: String,
         args: Array<String>
@@ -86,4 +90,27 @@ abstract class MinigameCommandsSkeleton : CommandExecutor, TabExecutor {
         label: String,
         args: Array<String>
     ): List<String>
+
+
+    // This is a template for sub-commands, copy and paste it into a new minigamecommand file
+//
+//    enum class SubCommands {
+//        START,
+//        START_HARD_MODE,
+//        PAUSE,
+//        RESUME,
+//        END,
+//        NUKE_ARENA;
+//
+//        companion object {
+//            /**
+//             * Converts a string to a SubCommand enum value. Case-insensitive.
+//             * @param str The string to convert
+//             * @return The SubCommand enum value, or null if the string does not match any enum value
+//             */
+//            fun fromString(str: String): SubCommands? {
+//                return entries.find { it.name.equals(str, ignoreCase = true) }
+//            }
+//        }
+//    }
 }
