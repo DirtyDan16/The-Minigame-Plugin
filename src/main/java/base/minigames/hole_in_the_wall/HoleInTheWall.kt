@@ -27,6 +27,7 @@ import java.time.Duration
 import java.util.*
 import kotlin.random.Random
 
+
 class HoleInTheWall (val plugin: Plugin) : MinigameSkeleton() {
     //region vars
 

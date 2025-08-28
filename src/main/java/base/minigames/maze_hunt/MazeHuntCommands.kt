@@ -43,11 +43,7 @@ class MazeHuntCommands(val mazeHunt: MazeHunt) : MinigameCommandsSkeleton() {
             SubCommands.PAUSE -> mazeHunt.pauseGame()
             SubCommands.RESUME -> mazeHunt.resumeGame()
             SubCommands.END -> mazeHunt.endGame()
-            SubCommands.NUKE_ARENA -> {
-                if (args.size < 2) return error(sender, "Please specify the radius.")
-                val radius = args[1].toIntOrNull() ?: return error(sender, "Invalid radius.")
-                mazeHunt.nukeArea(sender.location, radius)
-            }
+            SubCommands.NUKE_ARENA -> mazeHunt.nukeArea()
             else -> return error(sender, "Unknown command.")
         }
 
@@ -62,10 +58,6 @@ class MazeHuntCommands(val mazeHunt: MazeHunt) : MinigameCommandsSkeleton() {
     ): List<String> {
         return when (args.size) {
             1 -> SubCommands.entries.map { it.name.lowercase()}
-            2 -> when (SubCommands.fromString(args[0])) {
-                SubCommands.NUKE_ARENA -> listOf("<radius>")
-                else -> listOf()
-            }
             else -> {listOf()}
         }
     }

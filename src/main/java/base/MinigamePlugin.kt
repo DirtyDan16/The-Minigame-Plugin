@@ -9,6 +9,8 @@ import base.minigames.hole_in_the_wall.HoleInTheWall
 import base.minigames.hole_in_the_wall.HoleInTheWallCommands
 import base.minigames.MinigameSkeleton
 import base.commands.MiscCommands
+import base.minigames.maze_hunt.MazeHunt
+import base.minigames.maze_hunt.MazeHuntCommands
 import org.bukkit.World
 import org.bukkit.plugin.java.JavaPlugin
 import java.io.File
@@ -18,6 +20,7 @@ class MinigamePlugin : JavaPlugin() {
     lateinit var discoMayhem: DiscoMayhem
     lateinit var blueprintBazaar: BlueprintBazaar
     lateinit var holeInTheWall: HoleInTheWall
+    lateinit var mazeHunt: MazeHunt
 
     override fun onEnable() {
         plugin = this
@@ -26,6 +29,7 @@ class MinigamePlugin : JavaPlugin() {
         discoMayhem = DiscoMayhem(this)
         blueprintBazaar= BlueprintBazaar(this)
         holeInTheWall = HoleInTheWall(this)
+        mazeHunt = MazeHunt()
 
 
         world = server.getWorld("world")!! // Initialize the world object
@@ -33,7 +37,6 @@ class MinigamePlugin : JavaPlugin() {
 
         // Register the event listeners
         server.pluginManager.registerEvents(PlayerDeathListener(discoMayhem, holeInTheWall), this)
-
 
         getCommand("mg_disco_mayhem")?.setExecutor(
             DiscoMayhemCommands(discoMayhem)
@@ -43,6 +46,9 @@ class MinigamePlugin : JavaPlugin() {
         )
         getCommand("mg_hole_in_the_wall")?.setExecutor(
             HoleInTheWallCommands(holeInTheWall)
+        )
+        getCommand("mg_maze_hunt")?.setExecutor(
+            MazeHuntCommands(mazeHunt)
         )
         getCommand("misc")?.setExecutor(MiscCommands(this))
     }

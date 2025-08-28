@@ -2,13 +2,34 @@ package base.minigames.maze_hunt
 
 import base.annotations.CalledByCommand
 import base.minigames.MinigameSkeleton
+import base.minigames.maze_hunt.MHConst.Locations.MAZE_ORIGIN
+import base.minigames.maze_hunt.MHConst.Locations.WORLD
 import org.bukkit.Location
 import org.bukkit.entity.Player
+import base.minigames.maze_hunt.MHConst.MazeGen
+import base.minigames.maze_hunt.MHConst.MazeGen.BIT_SIZE
+import base.minigames.maze_hunt.MHConst.MazeGen.MAZE_DIMENSION_X
+import base.minigames.maze_hunt.MHConst.MazeGen.MAZE_DIMENSION_Z
+import base.utils.Direction
+import base.utils.extensions_for_classes.getBlockAt
+import base.utils.successChance
+import org.bukkit.Material
+import org.jetbrains.kotlinx.multik.api.d2array
+import org.jetbrains.kotlinx.multik.api.mk
+import org.jetbrains.kotlinx.multik.ndarray.data.D2Array
+import org.jetbrains.kotlinx.multik.ndarray.data.get
+import org.jetbrains.kotlinx.multik.ndarray.data.set
+import base.minigames.maze_hunt.MHConst.BitPoint
 
 class MazeHunt : MinigameSkeleton() {
     @CalledByCommand
     override fun start(sender: Player) {
-        super.start(sender)
+        try {
+            super.start(sender)
+        } catch (e: InterruptedException) {
+//            endGame()
+            throw e
+        }
     }
 
     @CalledByCommand
@@ -29,18 +50,192 @@ class MazeHunt : MinigameSkeleton() {
     @CalledByCommand
     override fun endGame() {
         super.endGame()
+        nukeArea()
     }
 
-    override fun nukeArea(center: Location, radius: Int) {
-        super.nukeArea(center, radius)
+    @CalledByCommand
+    fun nukeArea() {
+        // Nuke the game area
+        for (vector in MHConst.Locations.MAZE_REGION) {
+            WORLD.getBlockAt(vector).type = Material.AIR
+        }
     }
 
     override fun prepareGameSetting() {
         super.prepareGameSetting()
     }
 
+
+    val _TRUE = 1.toByte()
+    val _FALSE = 0.toByte()
     override fun prepareArea() {
-        TODO("Not yet implemented")
+        nukeArea()
+
+        //region Code that creates the maze area
+
+        // generate the corners of the maze area
+        MHConst.Locations.MAZE_REGION.let {
+            WORLD.getBlockAt(it.minimumPoint).type = Material.REDSTONE_BLOCK
+            WORLD.getBlockAt(it.maximumPoint).type = Material.REDSTONE_BLOCK
+        }
+
+
+        /** 2D array to keep track of generated bits*/
+        val mazeMatrix: D2Array<Byte> = mk.d2array(MAZE_DIMENSION_X, MAZE_DIMENSION_Z, { _FALSE })
+
+        /** this set keeps track of all the indices of the bits that have been generated */
+        val generatedBitsIndexes: MutableSet<BitPoint> = mutableSetOf()
+
+        // Start generating from the center of the maze
+        mazeMatrix[MAZE_DIMENSION_X / 2, MAZE_DIMENSION_Z / 2] = _TRUE
+        physicallyCreateBit(MAZE_DIMENSION_X/2,MAZE_DIMENSION_Z/2, MazeGen.BIT_RADIUS)
+
+        // -1 because we already placed the first bit in the center
+        var numberOfBitsLeftToGenerate = MazeGen.AMOUNT_OF_BITS - 1
+        // add the center bit to the set of generated bits
+        generatedBitsIndexes += BitPoint(MAZE_DIMENSION_X / 2, MAZE_DIMENSION_Z / 2)
+
+
+        // Limit the number of bit-snakes to prevent infinite loops
+        var maxAmountOfTries = MazeGen.MAX_ATTEMPTS_TO_GENERATE
+
+        while (numberOfBitsLeftToGenerate > 0 && maxAmountOfTries > 0) {
+            maxAmountOfTries -= 1
+
+            // Select a random spot already generated from the bits that have been generated. It stores the coordinates of the bit. Start a new chain of bits from there
+            val newBitCreatorStartingSpot: BitPoint = generatedBitsIndexes.random()
+
+            numberOfBitsLeftToGenerate = startNewChainOfBits(newBitCreatorStartingSpot, mazeMatrix,generatedBitsIndexes, numberOfBitsLeftToGenerate)
+        }
+
+        //endregion
+    }
+
+    /**
+     * Start a new chain of bits from the given starting spot in the maze matrix.
+     * A chain of bits is a series of bits that are connected to each other in a mostly straight line, with a small chance to change the direction at each step.
+     * The chain of bits will continue until it either runs out of bits to generate or it reaches a point where it can no longer safely generate a new bit in the current direction.
+     * @param newBitCreatorStartingSpot The starting spot for the new chain of bits in the maze matrix.
+     * @param mazeMatrix The maze matrix.
+     * @param bitsLeft The number of bits left to generate in the maze.
+     * @return The updated number of bits left to generate after generating the new chain of bits.
+     */
+    private fun startNewChainOfBits(
+        newBitCreatorStartingSpot: BitPoint,
+        mazeMatrix: D2Array<Byte>,
+        generatedBitsIndexes: MutableSet<BitPoint>,
+        bitsLeft: Int
+    ) : Int {
+        var returnedNumOfBitsLeft = bitsLeft
+
+        // in the direction the new chain of bits will go towards mostly. we need to make sure that it is safe to travel in that direction, so we filter the directions first
+        var potentialDirections = Direction.entries.filter { dir ->
+            isSafeToTravelForwards(dir, newBitCreatorStartingSpot, mazeMatrix)
+        }
+        // If there is no safe direction to travel, return early
+        if (potentialDirections.isEmpty()) return returnedNumOfBitsLeft
+
+
+        var curDirectionOfChain = potentialDirections.random()
+
+        var curLengthOfChain = 0
+
+        //region Code for deciding the new Bit that will be generated and generating it
+        while (
+            returnedNumOfBitsLeft > 0 &&
+            curLengthOfChain < MazeGen.MAX_LENGTH_OF_CHAIN &&
+            isSafeToTravelForwards(curDirectionOfChain, newBitCreatorStartingSpot, mazeMatrix)
+        ) {
+            // calculate the position of the new bit to be generated
+            when (curDirectionOfChain) {
+                Direction.NORTH -> {newBitCreatorStartingSpot.z -= 1 }
+                Direction.SOUTH -> { newBitCreatorStartingSpot.z += 1 }
+                Direction.EAST -> { newBitCreatorStartingSpot.x += 1 }
+                Direction.WEST -> { newBitCreatorStartingSpot.x -= 1 }
+            }
+
+            physicallyCreateBit(newBitCreatorStartingSpot.x,newBitCreatorStartingSpot.z, MazeGen.BIT_RADIUS)
+
+            mazeMatrix[newBitCreatorStartingSpot.x, newBitCreatorStartingSpot.z] = _TRUE
+            generatedBitsIndexes += newBitCreatorStartingSpot.copy()
+
+            returnedNumOfBitsLeft -= 1
+            curLengthOfChain += 1
+
+            // have a small chance to change the predominant direction
+            if (successChance(MazeGen.PROBABILITY_OF_CHANGING_DIRECTION)) {
+                curDirectionOfChain = listOf(
+                    curDirectionOfChain.getClockwise(),
+                    curDirectionOfChain.getCounterClockwise()
+                ).random()
+            }
+        }
+        //endregion
+
+        return returnedNumOfBitsLeft
+    }
+
+    /**
+     * Check if it is safe to travel forwards in the current direction of the chain of bits.
+     * It is safe to travel forwards if there is enough space in the maze matrix to generate a new bit in that direction, without touching any surrounding existing bit.
+     * @param direction The current direction of the chain of bits.
+     * @param point The current point in the maze matrix.
+     * @param mazeMatrix The maze matrix.
+     * @return True if it is safe to travel forwards, false otherwise.
+     */
+    private fun isSafeToTravelForwards(
+        direction: Direction,
+        point: BitPoint,
+        mazeMatrix: D2Array<Byte>
+    ) : Boolean {
+        fun isAreaClear(point: BitPoint, xRange: IntRange, zRange: IntRange): Boolean {
+            return zRange.all { zOffset ->
+                xRange.all { xOffset ->
+                    mazeMatrix[point.x + xOffset,point.z + zOffset] == _FALSE
+                }
+            }
+        }
+
+        // the tiles to check in the direction of travel.
+        val directionTilesToCheck = -1..1
+
+        // how far to check in the direction of travel
+        val longReach = 2
+        var smallReach = 1
+        //
+
+        return when (direction) {
+            Direction.NORTH -> if (point.z >= longReach) {
+                isAreaClear(point, directionTilesToCheck, -minOf(point.z, longReach)..-smallReach)
+            } else false
+            Direction.SOUTH -> if (point.z <= MAZE_DIMENSION_Z-1 - longReach) {
+                isAreaClear(point, directionTilesToCheck, smallReach..minOf(point.z, longReach))
+            } else false
+            Direction.EAST -> if (point.x <= MAZE_DIMENSION_Z-1 - longReach) {
+                isAreaClear(point, smallReach..minOf(point.x, longReach), directionTilesToCheck)
+            } else false
+            Direction.WEST -> if (point.x >= longReach) {
+                isAreaClear(point,-minOf(point.x, longReach)..-smallReach, directionTilesToCheck)
+            } else false
+        }
+    }
+
+    /**
+     * Physically create a maze Bit in the game world - this is a square-like platform defined by the size.
+     * @param bitIndexX The x index of the bit in the maze matrix.
+     * @param bitIndexZ The z index of the bit in the maze matrix.
+     * @param radius The radius of the bit in blocks. The size of the bit will be (radius * 2 + 1) x (radius * 2 + 1)
+     * Made from a predefined block type
+     */
+    fun physicallyCreateBit(bitIndexX: Int, bitIndexZ: Int, radius: Int) {
+        val center = Location(
+            WORLD,
+            bitIndexX.toDouble()*BIT_SIZE + MAZE_ORIGIN.x,
+            MAZE_ORIGIN.y,
+            bitIndexZ.toDouble()*BIT_SIZE + MAZE_ORIGIN.z
+        )
+
+        base.utils.Utils.initFloor(radius, radius, MazeGen.FLOOR_MATERIAL, center, WORLD)
     }
 
 
