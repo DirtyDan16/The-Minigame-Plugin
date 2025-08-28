@@ -70,7 +70,19 @@ object MHConst {
         /** Probability (0.0 to 1.0) of changing the direction that the Chain of Bits goes towards*/
         const val PROBABILITY_OF_CHANGING_DIRECTION = 0.3
 
-        val FLOOR_MATERIAL = Material.OAK_PLANKS
+        /** Materials and their relative weights to be used when generating the floor of the maze*/
+        val FLOOR_MATERIALS = listOf(
+            Pair(Material.COBBLESTONE,30),
+            Pair(Material.STONE,50),
+            Pair(Material.MOSSY_COBBLESTONE,15),
+            Pair(Material.MOSSY_STONE_BRICKS,10),
+            Pair(Material.ANDESITE,20),
+            Pair(Material.DEEPSLATE,20),
+            Pair(Material.COBBLED_DEEPSLATE,10),
+            Pair(Material.GOLD_ORE,1),
+            Pair(Material.IRON_ORE,2),
+            Pair(Material.COAL_ORE,3),
+        )
     }
 
     data class BitPoint(var x: Int, var z: Int)

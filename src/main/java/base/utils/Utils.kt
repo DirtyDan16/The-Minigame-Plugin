@@ -139,18 +139,30 @@ object Utils {
         Bukkit.broadcastMessage("floor initialized")
     }
 
+    /**
+     * Returns true with the given probability (chance).
+     * @param chance A double between 0.0 and 1.0 representing the probability of returning true.
+     * @return true with the given probability, false otherwise.
+     */
+    fun successChance(chance: Double): Boolean {
+        require(chance in 0.0..1.0) { "Chance must be between 0.0 and 1.0" }
+        return Random.Default.nextDouble() < chance
+    }
+
+    inline fun doActionByChance(probability: Double, action: () -> Unit) {
+        if (successChance(probability)) action()
+    }
+
+    fun <T> Collection<Pair<T, Int>>.getWeightedRandom(): T {
+        val totalWeight = this.sumOf { it.second }
+        var randomValue = Random.nextInt(totalWeight)
+        for ((item, weight) in this) {
+            randomValue -= weight
+            if (randomValue < 0) {
+                return item
+            }
+        }
+        throw IllegalStateException("Should never reach here if weights are positive")
+    }
 }
 
-/**
- * Returns true with the given probability (chance).
- * @param chance A double between 0.0 and 1.0 representing the probability of returning true.
- * @return true with the given probability, false otherwise.
- */
-fun successChance(chance: Double): Boolean {
-    require(chance in 0.0..1.0) { "Chance must be between 0.0 and 1.0" }
-    return Random.Default.nextDouble() < chance
-}
-
-inline fun doActionByChance(probability: Double, action: () -> Unit) {
-    if (successChance(probability)) action()
-}

@@ -12,7 +12,6 @@ import base.minigames.maze_hunt.MHConst.MazeGen.MAZE_DIMENSION_X
 import base.minigames.maze_hunt.MHConst.MazeGen.MAZE_DIMENSION_Z
 import base.utils.Direction
 import base.utils.extensions_for_classes.getBlockAt
-import base.utils.successChance
 import org.bukkit.Material
 import org.jetbrains.kotlinx.multik.api.d2array
 import org.jetbrains.kotlinx.multik.api.mk
@@ -20,6 +19,8 @@ import org.jetbrains.kotlinx.multik.ndarray.data.D2Array
 import org.jetbrains.kotlinx.multik.ndarray.data.get
 import org.jetbrains.kotlinx.multik.ndarray.data.set
 import base.minigames.maze_hunt.MHConst.BitPoint
+import base.utils.Utils.getWeightedRandom
+import base.utils.Utils.successChance
 
 class MazeHunt : MinigameSkeleton() {
     @CalledByCommand
@@ -235,7 +236,12 @@ class MazeHunt : MinigameSkeleton() {
             bitIndexZ.toDouble()*BIT_SIZE + MAZE_ORIGIN.z
         )
 
-        base.utils.Utils.initFloor(radius, radius, MazeGen.FLOOR_MATERIAL, center, WORLD)
+        for (x in -radius..radius) {
+            for (z in -radius..radius) {
+                val selectedLocation = Location(WORLD, center.x + x, center.y, center.z + z)
+                selectedLocation.block.type = MazeGen.FLOOR_MATERIALS.getWeightedRandom()
+            }
+        }
     }
 
 
