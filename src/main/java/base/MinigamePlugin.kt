@@ -29,14 +29,14 @@ class MinigamePlugin : JavaPlugin() {
         discoMayhem = DiscoMayhem(this)
         blueprintBazaar= BlueprintBazaar(this)
         holeInTheWall = HoleInTheWall(this)
-        mazeHunt = MazeHunt()
+        mazeHunt = MazeHunt(this)
 
 
         world = server.getWorld("world")!! // Initialize the world object
 
 
         // Register the event listeners
-        server.pluginManager.registerEvents(PlayerDeathListener(discoMayhem, holeInTheWall), this)
+        server.pluginManager.registerEvents(PlayerDeathListener(discoMayhem, holeInTheWall,mazeHunt), this)
 
         getCommand("mg_disco_mayhem")?.setExecutor(
             DiscoMayhemCommands(discoMayhem)

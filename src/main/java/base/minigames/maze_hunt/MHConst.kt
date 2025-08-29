@@ -21,12 +21,13 @@ object MHConst {
 
         val MAZE_ORIGIN = PIVOT.clone()
 
-        val GAME_START_LOCATION = Location(
+        val PLAYERS_START_LOCATION = Location(
             WORLD,
             MAZE_DIMENSION_X/2 * BIT_SIZE.toDouble() + MAZE_ORIGIN.x,
-            MAZE_ORIGIN.y + 1,
+            MAZE_ORIGIN.y + 10,
             MAZE_DIMENSION_Z/2 * BIT_SIZE.toDouble() + MAZE_ORIGIN.z
         )
+        val START_LOCATION_PLATFORM = PLAYERS_START_LOCATION.clone().apply { y -= 3 }
 
         val BOTTOM_CORNER: BlockVector3 = BlockVector3.at(
             MAZE_ORIGIN.x - BIT_RADIUS,
@@ -43,6 +44,8 @@ object MHConst {
         val MAZE_REGION = CuboidRegion(BOTTOM_CORNER, TOP_CORNER)
     }
 
+    const val STARTING_PLATFORM_RADIUS = 5
+    const val STARTING_PLATFORM_LIFESPAN = 20L*10
 
     object MazeGen {
         /** Radius of each bit in blocks

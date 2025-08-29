@@ -1,28 +1,24 @@
 // src/main/java/me/stavgordeev/plugin/listeners/PlayerDeathListener.java
-package base.listeners;
+package base.listeners
 
-import base.minigames.disco_mayhem.DiscoMayhem;
-import base.minigames.hole_in_the_wall.HoleInTheWall;
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.Listener;
-import org.bukkit.event.entity.PlayerDeathEvent;
+import base.minigames.disco_mayhem.DiscoMayhem
+import base.minigames.hole_in_the_wall.HoleInTheWall
+import base.minigames.maze_hunt.MazeHunt
+import org.bukkit.event.EventHandler
+import org.bukkit.event.Listener
+import org.bukkit.event.entity.PlayerDeathEvent
 
-public class PlayerDeathListener implements Listener {
-    private final DiscoMayhem discoMayhem;
-    private final HoleInTheWall holeInTheWall;
-
-    public PlayerDeathListener(DiscoMayhem discoMayhem, HoleInTheWall holeInTheWall) {
-        this.discoMayhem = discoMayhem;
-        this.holeInTheWall = holeInTheWall;
-    }
-
+class PlayerDeathListener(
+    private val discoMayhem: DiscoMayhem,
+    private val holeInTheWall: HoleInTheWall,
+    private val mazeHunt: MazeHunt
+) : Listener {
     @EventHandler
-    public void onPlayerDeath(PlayerDeathEvent event) {
-        if (discoMayhem.isPlayerInGame(event.getEntity())) {
-            discoMayhem.endGame();
-        }
-        if (holeInTheWall.isPlayerInGame(event.getEntity())) {
-            holeInTheWall.endGame();
+    fun onPlayerDeath(event: PlayerDeathEvent) {
+        when {
+            mazeHunt.isPlayerInGame(event.entity) -> mazeHunt.endGame()
+            discoMayhem.isPlayerInGame(event.entity) -> discoMayhem.endGame()
+            holeInTheWall.isPlayerInGame(event.entity) -> holeInTheWall.endGame()
         }
     }
 }

@@ -6,6 +6,7 @@ import base.minigames.maze_hunt.MHConst.Locations.MAZE_ORIGIN
 import base.minigames.maze_hunt.MHConst.Locations.WORLD
 import org.bukkit.Location
 import org.bukkit.entity.Player
+import base.minigames.maze_hunt.MHConst.Locations
 import base.minigames.maze_hunt.MHConst.MazeGen
 import base.minigames.maze_hunt.MHConst.MazeGen.BIT_SIZE
 import base.minigames.maze_hunt.MHConst.MazeGen.MAZE_DIMENSION_X
@@ -20,9 +21,15 @@ import org.jetbrains.kotlinx.multik.ndarray.data.get
 import org.jetbrains.kotlinx.multik.ndarray.data.set
 import base.minigames.maze_hunt.MHConst.BitPoint
 import base.utils.Utils.getWeightedRandom
+import base.utils.Utils.initFloor
 import base.utils.Utils.successChance
+import org.bukkit.Bukkit
+import org.bukkit.GameRule.DO_DAYLIGHT_CYCLE
+import org.bukkit.plugin.Plugin
+import org.bukkit.scheduler.BukkitRunnable
 
-class MazeHunt : MinigameSkeleton() {
+
+class MazeHunt(val plugin: Plugin) : MinigameSkeleton() {
     @CalledByCommand
     override fun start(sender: Player) {
         try {
@@ -52,18 +59,38 @@ class MazeHunt : MinigameSkeleton() {
     override fun endGame() {
         super.endGame()
         nukeArea()
+        // delete the starting platform for cases where it is still there
+        deleteStartingPlatform()
+    }
+
+    private fun deleteStartingPlatform() {
+        initFloor(
+            MHConst.STARTING_PLATFORM_RADIUS,
+            MHConst.STARTING_PLATFORM_RADIUS,
+            Material.AIR,
+            Locations.START_LOCATION_PLATFORM,
+            WORLD
+        )
     }
 
     @CalledByCommand
     fun nukeArea() {
         // Nuke the game area
-        for (vector in MHConst.Locations.MAZE_REGION) {
+        for (vector in Locations.MAZE_REGION) {
             WORLD.getBlockAt(vector).type = Material.AIR
         }
     }
 
     override fun prepareGameSetting() {
         super.prepareGameSetting()
+
+        WORLD.time = 1000
+        WORLD.setGameRule(DO_DAYLIGHT_CYCLE, false)
+
+        for (player in players) {
+            player.teleport(Locations.PLAYERS_START_LOCATION)
+            player.gameMode = org.bukkit.GameMode.SURVIVAL
+        }
     }
 
 
@@ -72,10 +99,27 @@ class MazeHunt : MinigameSkeleton() {
     override fun prepareArea() {
         nukeArea()
 
+        // Create the starting platform for the players to stand on. it'll be deleted momentarily.
+        initFloor(
+            MHConst.STARTING_PLATFORM_RADIUS,
+            MHConst.STARTING_PLATFORM_RADIUS,
+            Material.GLASS,
+            Locations.START_LOCATION_PLATFORM,
+            WORLD
+        )
+
+        val platformDeleter = object : BukkitRunnable() {
+            override fun run() {
+                deleteStartingPlatform()
+            }
+        }
+        runnables += platformDeleter
+        platformDeleter.runTaskLater(plugin, MHConst.STARTING_PLATFORM_LIFESPAN)
+
         //region Code that creates the maze area
 
         // generate the corners of the maze area
-        MHConst.Locations.MAZE_REGION.let {
+        Locations.MAZE_REGION.let {
             WORLD.getBlockAt(it.minimumPoint).type = Material.REDSTONE_BLOCK
             WORLD.getBlockAt(it.maximumPoint).type = Material.REDSTONE_BLOCK
         }
