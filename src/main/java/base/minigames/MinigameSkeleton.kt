@@ -1,6 +1,8 @@
 package base.minigames
 
 import base.annotations.CalledByCommand
+import base.utils.ExitStatus
+import base.utils.Utils
 import base.utils.Utils.nukeGameArea
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
@@ -8,40 +10,49 @@ import org.bukkit.Bukkit
 import org.bukkit.Location
 import org.bukkit.entity.Player
 import org.bukkit.scheduler.BukkitRunnable
-import kotlin.concurrent.Volatile
 
 abstract class MinigameSkeleton
 
 protected constructor() {
-    @Volatile
-    var isGameRunning: Boolean = false
 
-    @Volatile
+    //region Fields
+    var isGameRunning: Boolean = false
     var isGamePaused: Boolean = false
     var sender: Player? = null
     var players: MutableList<Player> = mutableListOf()
 
     /**
-    * This list tracks all scheduled tasks that are made via the help of BukkitRunnables. used to cancel the scheduling when desired.
-    * This list is automatically called and canceled upon in the endGame() method.
-    * a good use for using this is whenever the game is paused and you would want to stop all the tasks.
-    */
+     *
+     * This list tracks all scheduled tasks that are made via the help of BukkitRunnables. Used to cancel the scheduling when desired.
+     * This list is automatically called and canceled upon in the endGame() method.
+     * A good use for using this is whenever the game is paused, and you would want to stop all the tasks.
+     */
+//    @Deprecated("Use [pausableRunnables] instead for tasks that need to be paused and resumed.", ReplaceWith("pausableRunnables"))
     val runnables: MutableList<BukkitRunnable> = mutableListOf()
+
+    /**
+     * This list tracks all scheduled tasks that are made via the help of [Utils.PausableBukkitRunnable]. Used to pause and resume the scheduling when desired.
+     * This list is automatically called and canceled upon in the endGame() method.
+     * When the game is paused, all the runnables in this list are paused, and when the game is resumed, all the runnables in this list are resumed.
+     */
+    val pausableRunnables: MutableList<Utils.PausableBukkitRunnable> = mutableListOf()
 
     enum class WorldSettingsToTrack {
         TIME_OF_DAY,
         RANDOM_TICK_SPEED,
         GAMEMODE,
-        HASTE
+        HASTE,
+        DIFFICULTY
     }
 
     protected val trackerOfWorldSettingsBeforeStartingGame: MutableMap<WorldSettingsToTrack, Any?> = WorldSettingsToTrack.entries.associateWith { null }.toMutableMap()
+    //endregion
 
     /**
      * Starts the minigame.
      * If the game is already running, it should not start the game again.
      *
-     * The method calls methods that prepare the area (prepareArea()) and the game settings (prepareGameSetting()) which are abstract and should be implemented in the subclass.
+     * The method calls methods that prepare the area ([prepareArea]) and the game settings ([prepareGameSetting]) which are abstract and should be implemented in the subclass.
      * @param sender the player that started the minigame
      * @throws InterruptedException if the game is interrupted
      */
@@ -68,9 +79,9 @@ protected constructor() {
     }
 
     /**
-     * Starts the minigame in fast mode. This is essentially the same as start(), but it is the hard mode of the minigame.
+     * Starts the minigame in fast mode. This is essentially the same as [start], but it is the hard mode of the minigame.
      * The increased difficulty should be handled in the minigame itself.
-     * Should call start() as well.
+     * Should call [start] as well.
      * @param player the player that started the minigame
      * @throws InterruptedException if the game is interrupted
      */
@@ -100,6 +111,11 @@ protected constructor() {
 
         isGamePaused = true
 
+        pausableRunnables.removeIf { it.shouldBeRemoved }
+
+        for (runnable in pausableRunnables) {
+            runnable.pause()
+        }
 
         Bukkit.getServer().broadcast(Component.text("Minigame paused!"))
     }
@@ -117,17 +133,25 @@ protected constructor() {
             return
         }
         isGamePaused = false
+
+        for (runnable in pausableRunnables) {
+            runnable.start()
+        }
+
         Bukkit.getServer().broadcast(Component.text("Minigame resumed!"))
     }
 
     /**
      * Ends the game. Should be followed with code that cleans up the arena, the gamerules... Should also be called when the game is interrupted.
+     * Should also call [endGameSkeleton] at the start of it
      */
     @CalledByCommand
-    open fun endGame() {
+    abstract fun endGame() : Unit
+
+    fun endGameSkeleton() : ExitStatus {
         if (!isGameRunning) {
             Bukkit.getServer().broadcast(Component.text("Minigame is not running!"))
-            return
+            return ExitStatus.EARLY_EXIT
         }
         Bukkit.getServer().broadcast(Component.text("Minigame ended!").color(NamedTextColor.GREEN))
 
@@ -140,6 +164,8 @@ protected constructor() {
         isGamePaused = false
         sender = null
         players.clear()
+
+        return ExitStatus.COMPLETED
     }
 
     /**
@@ -152,7 +178,7 @@ protected constructor() {
     }
 
     /**
-     * Nukes an area. Should be overridden and followed with code that clears the physical area. Typically should be called in endGame().
+     * Nukes an area. Should be overridden and followed with code that clears the physical area. Typically, it should be called in [endGameSkeleton].
      * @param center the center of the nuke
      * @param radius the radius of the nuke
      */
@@ -162,7 +188,7 @@ protected constructor() {
     }
 
     /**
-     * Prepares the area. Should be followed with code that prepares the physical area. Typically should be called in start().
+     * Prepares the area. Should be followed with code that prepares the physical area. Typically, it should be called in [start].
      */
     abstract fun prepareArea()
 
@@ -171,7 +197,7 @@ protected constructor() {
      * This method is called when the game starts and is responsible for setting up the game environment.
      * This includes setting the weather, time of day, inventory, health, saturation, and other game-related settings.
      *
-     * should be overriden with extra settings for the minigame.
+     * Should be overridden with extra settings for the minigame.
      * For example, tping the player to a specific location.
      */
     open fun prepareGameSetting() {

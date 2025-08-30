@@ -18,7 +18,6 @@ import com.sk89q.worldedit.regions.CuboidRegion
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 import org.bukkit.*
-import org.bukkit.block.Block
 import org.bukkit.block.Chest
 import org.bukkit.block.Container
 import org.bukkit.block.Furnace
@@ -30,6 +29,9 @@ import org.bukkit.scoreboard.Objective
 import java.io.File
 import java.io.IOException
 
+@Suppress("RECEIVER_NULLABILITY_MISMATCH_BASED_ON_JAVA_ANNOTATIONS", "NULLABILITY_MISMATCH_BASED_ON_JAVA_ANNOTATIONS",
+    "SameParameterValue", "DEPRECATION"
+)
 class BlueprintBazaar(plugin: Plugin) : MinigameSkeleton() {
     //region vars
     val plugin: MinigamePlugin
@@ -37,7 +39,7 @@ class BlueprintBazaar(plugin: Plugin) : MinigameSkeleton() {
 
     /** The builds.*/
     private lateinit var allSchematics: Array<File>
-    /** The list of available builds. when a build is chosen, it is removed from this list*/
+    /** The list of available builds. When a build is chosen, it is removed from this list*/
     private val availableSchematics: MutableSet<File?> = mutableSetOf()
     private var arena: File? = null
 
@@ -90,9 +92,9 @@ class BlueprintBazaar(plugin: Plugin) : MinigameSkeleton() {
 
     @CalledByCommand
     override fun endGame() {
-        super.endGame()
+        super.endGameSkeleton()
 
-        // set the settings of the world to how they were prior for the start of the minigame.
+        // set the settings of the world to how they were prior to the start of the minigame.
         trackerOfWorldSettingsBeforeStartingGame.apply {
             WORLD.setGameRule(GameRule.RANDOM_TICK_SPEED, this[RANDOM_TICK_SPEED] as Int)
             for (player in players) {
@@ -201,7 +203,7 @@ class BlueprintBazaar(plugin: Plugin) : MinigameSkeleton() {
 
         if (chosenBuild == null) {
             Bukkit.getServer().broadcast(Component.text("No more builds available!").color(NamedTextColor.AQUA))
-            endGame()
+            endGameSkeleton()
             return
         }
 
@@ -339,10 +341,10 @@ class BlueprintBazaar(plugin: Plugin) : MinigameSkeleton() {
                     cancel()
                     return
                 }
-                // Delete previous build if it exists
+                // Delete the previous build if it exists
                 curBuild?.prepareForCompletion()
 
-                // Move to next schematic
+                // Move to the next schematic
                 index++
             }
         }

@@ -42,7 +42,7 @@ class MazeHuntCommands(val mazeHunt: MazeHunt) : MinigameCommandsSkeleton() {
             SubCommands.START_HARD_MODE -> mazeHunt.startFastMode(sender)
             SubCommands.PAUSE -> mazeHunt.pauseGame()
             SubCommands.RESUME -> mazeHunt.resumeGame()
-            SubCommands.END -> mazeHunt.endGame()
+            SubCommands.END -> mazeHunt.endGameSkeleton()
             SubCommands.NUKE_ARENA -> mazeHunt.nukeArea()
             else -> return error(sender, "Unknown command.")
         }

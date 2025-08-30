@@ -1,6 +1,7 @@
 package base.minigames.maze_hunt
 
 import base.annotations.CalledByCommand
+import base.annotations.ShouldBeReset
 import base.minigames.MinigameSkeleton
 import base.minigames.maze_hunt.MHConst.Locations.MAZE_ORIGIN
 import base.minigames.maze_hunt.MHConst.Locations.WORLD
@@ -8,6 +9,7 @@ import org.bukkit.Location
 import org.bukkit.entity.Player
 import base.minigames.maze_hunt.MHConst.Locations
 import base.minigames.maze_hunt.MHConst.MazeGen
+import base.minigames.maze_hunt.MHConst.Spawns.Mobs
 import base.minigames.maze_hunt.MHConst.MazeGen.BIT_SIZE
 import base.minigames.maze_hunt.MHConst.MazeGen.MAZE_DIMENSION_X
 import base.minigames.maze_hunt.MHConst.MazeGen.MAZE_DIMENSION_Z
@@ -20,24 +22,67 @@ import org.jetbrains.kotlinx.multik.ndarray.data.D2Array
 import org.jetbrains.kotlinx.multik.ndarray.data.get
 import org.jetbrains.kotlinx.multik.ndarray.data.set
 import base.minigames.maze_hunt.MHConst.BitPoint
+import base.utils.ExitStatus
+import base.utils.Utils
 import base.utils.Utils.getWeightedRandom
 import base.utils.Utils.initFloor
 import base.utils.Utils.successChance
-import org.bukkit.Bukkit
+import org.bukkit.Difficulty
 import org.bukkit.GameRule.DO_DAYLIGHT_CYCLE
+import org.bukkit.event.EventHandler
+import org.bukkit.event.Listener
+import org.bukkit.event.entity.EntityCombustEvent
 import org.bukkit.plugin.Plugin
-import org.bukkit.scheduler.BukkitRunnable
+import org.bukkit.plugin.java.JavaPlugin
 
+class MazeHunt(val plugin: Plugin) : MinigameSkeleton() , Listener {
+    /** this set keeps track of all the indices of the bits that have been generated */
+    @ShouldBeReset
+    val generatedBitsIndexes: MutableSet<BitPoint> = mutableSetOf()
 
-class MazeHunt(val plugin: Plugin) : MinigameSkeleton() {
+    /** Number of mobs to spawn every mob spawning cycle. Gets increased as time goes on. */
+    @ShouldBeReset
+    var amountOfMobsToSpawnPerInterval: Int = Mobs.INITIAL_AMOUNTS_OF_MOBS_TO_SPAWN_IN_A_CYCLE
+
     @CalledByCommand
     override fun start(sender: Player) {
         try {
             super.start(sender)
+
+            pausableRunnables += Utils.PausableBukkitRunnable(plugin as JavaPlugin, remainingTicks = MHConst.STARTING_PLATFORM_LIFESPAN) {
+                startGameLoop()
+            }.apply { this.start() }
+
         } catch (e: InterruptedException) {
-//            endGame()
+            pauseGame()
             throw e
         }
+    }
+
+    private fun startGameLoop() {
+        //fixme: PausableBukkitRunnable is still buggy. I add to the list more and more instances of this for some reason everytime i resume()
+        //region Start spawning mobs
+        pausableRunnables += Utils.PausableBukkitRunnable(plugin as JavaPlugin, periodTicks = Mobs.SPAWN_CYCLE_DELAY) {
+            for (i in 1..amountOfMobsToSpawnPerInterval) {
+                val chosenMobToSpawn = Mobs.ALLOWED_MOB_TYPES.getWeightedRandom()
+
+                val chosenLocationToSpawnAt: Location = generatedBitsIndexes.random().let {
+                    getBitLocation(it.x, it.z)
+                }.apply { y += 1 }
+
+                WORLD.spawnEntity(chosenLocationToSpawnAt, chosenMobToSpawn)
+            }
+
+            for (player in players) { player.sendMessage("New mob wave!") }
+
+        }.apply { this.start() }
+
+        // Gradually increase the number of mobs spawned per interval
+        pausableRunnables += Utils.PausableBukkitRunnable(plugin, periodTicks = Mobs.NUM_OF_SPAWNS_INCREASER_TIMER_RANGE.random()) {
+            amountOfMobsToSpawnPerInterval += 1
+        }.apply { this.start() }
+
+        //endregion
     }
 
     @CalledByCommand
@@ -57,10 +102,15 @@ class MazeHunt(val plugin: Plugin) : MinigameSkeleton() {
 
     @CalledByCommand
     override fun endGame() {
-        super.endGame()
+        if (endGameSkeleton() == ExitStatus.EARLY_EXIT) return
         nukeArea()
-        // delete the starting platform for cases where it is still there
-        deleteStartingPlatform()
+        deleteStartingPlatform()// delete the starting platform for cases where it is still there
+
+        WORLD.difficulty = Difficulty.PEACEFUL
+
+        //RESET GLOBAL VARIABLES
+        generatedBitsIndexes.clear()
+        amountOfMobsToSpawnPerInterval = Mobs.INITIAL_AMOUNTS_OF_MOBS_TO_SPAWN_IN_A_CYCLE
     }
 
     private fun deleteStartingPlatform() {
@@ -87,10 +137,20 @@ class MazeHunt(val plugin: Plugin) : MinigameSkeleton() {
         WORLD.time = 1000
         WORLD.setGameRule(DO_DAYLIGHT_CYCLE, false)
 
+        WORLD.difficulty = Mobs.WORLD_DIFFICULTY
+
         for (player in players) {
             player.teleport(Locations.PLAYERS_START_LOCATION)
             player.gameMode = org.bukkit.GameMode.SURVIVAL
         }
+    }
+
+    /** Disable mobs getting burned by the sun while Maze Hunt is running*/
+    @EventHandler
+    fun onEntityCombust(event: EntityCombustEvent) {
+        if (!isGameRunning) return
+
+        event.isCancelled = true
     }
 
 
@@ -99,7 +159,7 @@ class MazeHunt(val plugin: Plugin) : MinigameSkeleton() {
     override fun prepareArea() {
         nukeArea()
 
-        // Create the starting platform for the players to stand on. it'll be deleted momentarily.
+        // Create the starting platform for the players to stand on. It'll be deleted momentarily.
         initFloor(
             MHConst.STARTING_PLATFORM_RADIUS,
             MHConst.STARTING_PLATFORM_RADIUS,
@@ -108,13 +168,11 @@ class MazeHunt(val plugin: Plugin) : MinigameSkeleton() {
             WORLD
         )
 
-        val platformDeleter = object : BukkitRunnable() {
-            override fun run() {
-                deleteStartingPlatform()
-            }
-        }
-        runnables += platformDeleter
-        platformDeleter.runTaskLater(plugin, MHConst.STARTING_PLATFORM_LIFESPAN)
+
+        pausableRunnables += Utils.PausableBukkitRunnable(plugin as JavaPlugin, MHConst.STARTING_PLATFORM_LIFESPAN) {
+            deleteStartingPlatform()
+        }.apply { this.start() }
+
 
         //region Code that creates the maze area
 
@@ -128,8 +186,6 @@ class MazeHunt(val plugin: Plugin) : MinigameSkeleton() {
         /** 2D array to keep track of generated bits*/
         val mazeMatrix: D2Array<Byte> = mk.d2array(MAZE_DIMENSION_X, MAZE_DIMENSION_Z, { _FALSE })
 
-        /** this set keeps track of all the indices of the bits that have been generated */
-        val generatedBitsIndexes: MutableSet<BitPoint> = mutableSetOf()
 
         // Start generating from the center of the maze
         mazeMatrix[MAZE_DIMENSION_X / 2, MAZE_DIMENSION_Z / 2] = _TRUE
@@ -273,12 +329,7 @@ class MazeHunt(val plugin: Plugin) : MinigameSkeleton() {
      * Made from a predefined block type
      */
     fun physicallyCreateBit(bitIndexX: Int, bitIndexZ: Int, radius: Int) {
-        val center = Location(
-            WORLD,
-            bitIndexX.toDouble()*BIT_SIZE + MAZE_ORIGIN.x,
-            MAZE_ORIGIN.y,
-            bitIndexZ.toDouble()*BIT_SIZE + MAZE_ORIGIN.z
-        )
+        val center = getBitLocation(bitIndexX, bitIndexZ)
 
         for (x in -radius..radius) {
             for (z in -radius..radius) {
@@ -288,5 +339,14 @@ class MazeHunt(val plugin: Plugin) : MinigameSkeleton() {
         }
     }
 
-
+    private fun getBitLocation(bitIndexX: Int, bitIndexZ: Int): Location {
+        val center = Location(
+            WORLD,
+            bitIndexX.toDouble() * BIT_SIZE + MAZE_ORIGIN.x,
+            MAZE_ORIGIN.y,
+            bitIndexZ.toDouble() * BIT_SIZE + MAZE_ORIGIN.z
+        )
+        return center
+    }
 }
+

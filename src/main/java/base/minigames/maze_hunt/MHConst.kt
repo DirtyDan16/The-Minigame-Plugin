@@ -6,12 +6,13 @@ import base.minigames.maze_hunt.MHConst.MazeGen.MAZE_DIMENSION_X
 import base.minigames.maze_hunt.MHConst.MazeGen.MAZE_DIMENSION_Z
 import com.sk89q.worldedit.math.BlockVector3
 import com.sk89q.worldedit.regions.CuboidRegion
+import org.bukkit.Difficulty
 import org.bukkit.Location
 import org.bukkit.Material
 import org.bukkit.World
+import org.bukkit.entity.EntityType
 
 object MHConst {
-
 
     object Locations {
         val WORLD: World = org.bukkit.Bukkit.getWorld("world") ?: throw IllegalStateException("World 'world' not found")
@@ -45,7 +46,7 @@ object MHConst {
     }
 
     const val STARTING_PLATFORM_RADIUS = 5
-    const val STARTING_PLATFORM_LIFESPAN = 20L*10
+    const val STARTING_PLATFORM_LIFESPAN = 20L*5
 
     object MazeGen {
         /** Radius of each bit in blocks
@@ -86,6 +87,36 @@ object MHConst {
             Pair(Material.IRON_ORE,2),
             Pair(Material.COAL_ORE,3),
         )
+    }
+
+    object Spawns {
+        object Mobs {
+            val WORLD_DIFFICULTY = Difficulty.NORMAL
+
+            const val INITIAL_AMOUNTS_OF_MOBS_TO_SPAWN_IN_A_CYCLE = 1
+
+            const val SPAWN_CYCLE_DELAY = 20L*10
+
+            val NUM_OF_SPAWNS_INCREASER_TIMER_RANGE = 20L*10..20L*20
+
+
+            /** List of allowed mob types and their relative weights when spawning*/
+            val ALLOWED_MOB_TYPES = listOf(
+                Pair(EntityType.ZOMBIE,15),
+                Pair(EntityType.HUSK,10),
+                Pair(EntityType.SKELETON,10),
+                Pair(EntityType.STRAY,5),
+                Pair(EntityType.CREEPER,5),
+                Pair(EntityType.SPIDER,5),
+                Pair(EntityType.ENDERMAN,2),
+                Pair(EntityType.WITCH,1),
+                Pair(EntityType.SILVERFISH,5),
+                Pair(EntityType.BREEZE,2),
+                Pair(EntityType.BLAZE,2),
+                Pair(EntityType.SLIME,10),
+                Pair(EntityType.MAGMA_CUBE,2)
+            )
+        }
     }
 
     data class BitPoint(var x: Int, var z: Int)

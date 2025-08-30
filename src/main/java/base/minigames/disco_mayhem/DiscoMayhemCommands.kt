@@ -27,7 +27,7 @@ class DiscoMayhemCommands(private val discoMayhem: DiscoMayhem) : MinigameComman
 
             "stop" -> discoMayhem.pauseGame()
             "resume" -> discoMayhem.resumeGame()
-            "end" -> discoMayhem.endGame()
+            "end" -> discoMayhem.endGameSkeleton()
             "nuke_area" -> discoMayhem.nukeArea(DiscoMayhemConst.GAME_START_LOCATION,DiscoMayhemConst.NUKE_AREA_RADIUS)
             else -> Bukkit.getServer().broadcast(Component.text("Unknown command.").color(NamedTextColor.RED))
         }

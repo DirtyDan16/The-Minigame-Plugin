@@ -8,6 +8,7 @@ import base.minigames.hole_in_the_wall.HITWConst.Timers
 import base.minigames.hole_in_the_wall.HITWConst.WallSpawnerMode
 import base.minigames.hole_in_the_wall.HITWConst.WallSpawnerState
 import base.minigames.MinigameSkeleton
+import base.utils.ExitStatus
 import base.utils.Utils.activateTaskAfterConditionIsMet
 import base.utils.extensions_for_classes.getNextWeighted
 import net.kyori.adventure.text.Component
@@ -216,7 +217,7 @@ class HoleInTheWall (val plugin: Plugin) : MinigameSkeleton() {
     }
 
     override fun endGame() {
-        super.endGame()
+        if (super.endGameSkeleton() == ExitStatus.EARLY_EXIT) return
 
         // -------------------------- INITIALIZATION --------------------------
 
@@ -313,7 +314,7 @@ class HoleInTheWall (val plugin: Plugin) : MinigameSkeleton() {
                 timeLeft-= 1/20
                 timeElapsed+= 1/20
                 if (timeLeft <= 0) {
-                    endGame()
+                    endGameSkeleton()
                 }
 
                 //region ---Check if the wall speed should be increased
@@ -801,13 +802,13 @@ class HoleInTheWall (val plugin: Plugin) : MinigameSkeleton() {
             processMapComponents()
         } catch (e: IOException) {
             logger().error("HITW: I/O failure while preparing area", e)
-            endGame()
+            endGameSkeleton()
         } catch (e: IllegalStateException) {
             logger().error("HITW: Invalid state during map preparation", e)
-            endGame()
+            endGameSkeleton()
         } catch (e: Exception) {
             logger().error("HITW: Unexpected error during game setup", e)
-            endGame()
+            endGameSkeleton()
         }
 
         // Load the map schematic (the deco arena) and store the region of the map

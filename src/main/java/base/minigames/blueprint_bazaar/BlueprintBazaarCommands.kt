@@ -26,7 +26,7 @@ class BlueprintBazaarCommands(private val blueprintbazaar: BlueprintBazaar) : Mi
 
             "stop" -> blueprintbazaar.pauseGame()
             "resume" -> blueprintbazaar.resumeGame()
-            "end" -> blueprintbazaar.endGame()
+            "end" -> blueprintbazaar.endGameSkeleton()
             "nuke_area" -> blueprintbazaar.nukeArea(BPBConst.Locations.GAME_START_LOCATION, BPBConst.Locations.GAME_AREA_RADIUS)
             "spawn_build" -> blueprintbazaar.skipToNextBuild()
             "showcase_all_builds" -> blueprintbazaar.loadAllSchematics()

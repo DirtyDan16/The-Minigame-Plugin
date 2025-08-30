@@ -20,15 +20,16 @@ import java.time.Duration
 import java.util.*
 import kotlin.math.max
 
+@Suppress("DEPRECATION")
 class DiscoMayhem (val plugin: Plugin) : MinigameSkeleton() {
-    //-Game Modifiers that change as the game progresses to scale difficulty-//
+    //--Game Modifiers that change as the game progresses to scale difficulty-//
     private var upperBound__startingIntervalForChangingFloor = 0
     private var lowerBound__startingIntervalForChangingFloor = 0
     private var upperBound__stopChangingFloorInterval = 0
     private var lowerBound__stopChangingFloorInterval = 0
 
     /**
-     * Starts the minigame. The player is teleported to the starting location and the game is initialized.
+     * Starts the minigame. The player is teleported to the starting location, and the game is initialized.
      * @param sender The player that starts the minigame
      * @throws InterruptedException
      */
@@ -48,7 +49,7 @@ class DiscoMayhem (val plugin: Plugin) : MinigameSkeleton() {
     }
 
     /**
-     * Starts the minigame in fast mode. The player is teleported to the starting location and the game is initialized.
+     * Starts the minigame in fast mode. The player is teleported to the starting location, and the game is initialized.
      * @param player The player that starts the minigame
      * @throws InterruptedException
      */
@@ -73,7 +74,7 @@ class DiscoMayhem (val plugin: Plugin) : MinigameSkeleton() {
 
     /**
      * Pauses the minigame. The game is paused and the player is notified.
-     * The game being paused saves the current state of the game, so it can be resumed later. however, the game is not running.
+     * The game being paused saves the current state of the game, so it can be resumed later. However, the game is not running.
      */
     override fun pauseGame() {
         super.pauseGame()
@@ -84,7 +85,7 @@ class DiscoMayhem (val plugin: Plugin) : MinigameSkeleton() {
      * Resumes the minigame. The game is resumed and the player is notified.
      */
     //fixme: some parts of the game are not resumed- the game is not resumed, but the floor is not changed nor old floors aren't removed.
-    fun resumeGame(player: Player?) {
+    override fun resumeGame() {
         super.resumeGame()
 
         activateGameEvents() // Resume the game events
@@ -94,14 +95,14 @@ class DiscoMayhem (val plugin: Plugin) : MinigameSkeleton() {
     /**
      * Ends the minigame. The game is ended and the player is notified. The area is cleared.
      */
-    fun endGame(player: Player?) {
-        super.endGame()
+    override fun endGame() {
+        super.endGameSkeleton()
 
         nukeArea(DiscoMayhemConst.GAME_START_LOCATION, DiscoMayhemConst.NUKE_AREA_RADIUS)
 
         initModifiers() // Reset the modifiers for the game
 
-        if (intervalTask != null && !intervalTask!!.isCancelled()) intervalTask!!.cancel() // Cancel the task that decreases the interval for changing the floor as time goes on
+        if (intervalTask != null && !intervalTask!!.isCancelled) intervalTask!!.cancel() // Cancel the task that decreases the interval for changing the floor as time goes on
 
 
         //player.teleport(MinigameConstants.GAME_START_LOCATION.clone().add(0, -70, 0));
@@ -165,22 +166,22 @@ class DiscoMayhem (val plugin: Plugin) : MinigameSkeleton() {
     }
 
     override fun prepareGameSetting() {
-        DiscoMayhemConst.WORLD.setTime(6000) // Set the time to day
+        DiscoMayhemConst.WORLD.time = 6000 // Set the time to day
         DiscoMayhemConst.WORLD.setStorm(false) // Disable rain
-        DiscoMayhemConst.WORLD.setThundering(false) // Disable thunder
+        DiscoMayhemConst.WORLD.isThundering = false // Disable thunder
 
         super.prepareGameSetting()
 
         for (player in players) {
             player.teleport(DiscoMayhemConst.PLAYER_TP_LOCATION)
-            player.setGameMode(GameMode.ADVENTURE) // Set the player's game mode to adventure
+            player.gameMode = GameMode.ADVENTURE // Set the player's game mode to adventure
         }
     }
 
     /**
-     * Prepares for a floor cycle. Initializes the new floor and gives it randomised values.
-     * after that starts the floor change logic cycle.
-     * @param referenceLocation The location to reference for the new floor. this is the location of the last floor. this location will be used to calculate the new floor's center.
+     * Prepares for a floor cycle. Initializes the new floor and gives it randomized values.
+     * After that starts the floor change logic cycle.
+     * @param referenceLocation The location to reference for the new floor. This is the location of the last floor. This location will be used to calculate the new floor's center.
      */
     private fun preppingForAFloorCycle(referenceLocation: Location) {
         if (!isGameRunning || isGamePaused) {
@@ -277,7 +278,7 @@ class DiscoMayhem (val plugin: Plugin) : MinigameSkeleton() {
         object : BukkitRunnable() {
             override fun run() {
                 if (interval == stopInterval || interval == DiscoMayhemConst.MIN_INTERVAL) {
-                    Bukkit.broadcastMessage("recursion stopped. interval is " + interval)
+                    Bukkit.broadcastMessage("recursion stopped. interval is $interval")
 
                     chooseFloorBlockType(center, xRad, zRad)
 
@@ -306,13 +307,13 @@ class DiscoMayhem (val plugin: Plugin) : MinigameSkeleton() {
         //Bukkit.broadcastMessage("floor changed");
         val blockTypes = DiscoMayhemConst.FloorLogic.DEFAULT_FLOOR_BLOCK_TYPES
 
-        // Change the floor under the player to random materials. The floor is a rectangle with side lengths 2*xLengthRad+1 and 2*zLengthRad+1. goes over 1 block at a time.
+        // Change the floor under the player to random materials. The floor is a rectangle with side lengths 2*xLengthRad+1 and 2*zLengthRad+1. Goes over 1 block at a time.
         for (x in -xLengthRad..xLengthRad) {
             for (z in -zLengthRad..zLengthRad) {
                 val material = blockTypeRandomizer.nextInt(blockTypes.size)
                 val selectedLocation =
-                    Location(DiscoMayhemConst.WORLD, center.getX() + x, center.getY(), center.getZ() + z)
-                selectedLocation.getBlock().setType(blockTypes[material])
+                    Location(DiscoMayhemConst.WORLD, center.x + x, center.y, center.z + z)
+                selectedLocation.block.type = blockTypes[material]
             }
         }
     }
@@ -324,9 +325,12 @@ class DiscoMayhem (val plugin: Plugin) : MinigameSkeleton() {
      *
      * This is done to make the game more difficult as time goes on.
      *
-     * when the game ends, the intervalTask is immediately canceled. endGame() method takes care of canceling the task.
+     * When the game ends, the intervalTask is immediately canceled. endGame() method takes care of canceling the task.
      */
-    private var intervalTask: BukkitTask? = null
+    private var intervalTask: BukkitTask?
+        get() = null
+        set(value) = TODO()
+
     private fun decreaseStartingIntervalForChangingFloorTimer() {
         if (!isGameRunning || isGamePaused) {
             return
@@ -387,19 +391,18 @@ class DiscoMayhem (val plugin: Plugin) : MinigameSkeleton() {
 
         Bukkit.broadcastMessage("floor removal")
 
-        // Take the current floor and remove all the materials except for the materialToKeep. go through 1 block at a time. the size of the floor is 2*xLengthRad+1 and 2*zLengthRad+1.
+        // Take the current floor and remove all the materials except for the materialToKeep. Go through 1 block at a time. The size of the floor is 2*xLengthRad+1 and 2*zLengthRad+1.
         for (x in -xLengthRad..xLengthRad) {
             for (z in -zLengthRad..zLengthRad) {
                 val selectedLocation =
-                    Location(DiscoMayhemConst.WORLD, center.getX() + x, center.getY(), center.getZ() + z)
+                    Location(DiscoMayhemConst.WORLD, center.x + x, center.y, center.z + z)
 
                 // Only change the block if it is not the material to keep
-                if (selectedLocation.getBlock().getType() != materialToKeep) selectedLocation.getBlock()
-                    .setType(Material.AIR)
+                if (selectedLocation.block.type != materialToKeep) selectedLocation.block.type = Material.AIR
             }
         }
 
-        // At this stage, a new floor is set elsewhere. The player will have a limited time to go from the old floor to the new floor. the timer and the logic
+        // At this stage, a new floor is set elsewhere. The player will have a limited time to go from the old floor to the new floor. The timer and the logic
         // can be seen in the bukkit runnable below.
         preppingForAFloorCycle(center)
 
@@ -417,11 +420,10 @@ class DiscoMayhem (val plugin: Plugin) : MinigameSkeleton() {
                 for (x in -xLengthRad..xLengthRad) {
                     for (z in -zLengthRad..zLengthRad) {
                         val selectedLocation =
-                            Location(DiscoMayhemConst.WORLD, center.getX() + x, center.getY(), center.getZ() + z)
+                            Location(DiscoMayhemConst.WORLD, center.x + x, center.y, center.z + z)
 
                         // Remove the selected Material
-                        if (selectedLocation.getBlock().getType() == materialToKeep) selectedLocation.getBlock()
-                            .setType(Material.AIR)
+                        if (selectedLocation.block.type == materialToKeep) selectedLocation.block.type = Material.AIR
                     }
                 }
                 cancel()
@@ -450,7 +452,7 @@ class DiscoMayhem (val plugin: Plugin) : MinigameSkeleton() {
             .broadcast(Component.text(ChatColor.RED.toString() + "floor type chosen: " + material.toString()))
         // Give the material to all players in their 5th hotbar slot and send a title to all players of the chosen block type.
         for (player in Bukkit.getOnlinePlayers()) {
-            player.getInventory().setItem(4, ItemStack(material))
+            player.inventory.setItem(4, ItemStack(material))
 
             // Send a title to the player with the chosen material with a color that corresponds to the material.
             val title = Title.title(
@@ -464,14 +466,14 @@ class DiscoMayhem (val plugin: Plugin) : MinigameSkeleton() {
 
         //TODO: as the game progresses, the time to remove the floor should be shortened.
 
-        // Remove all the floor except for the chosen material. the time given is the time to remove the floor. overtime this will be shortened as the game progresses and gets more difficult.
+        // Remove all the floor except for the chosen material. The time given is the time to remove the floor. Overtime this will be shortened as the game progresses and gets more difficult.
         object : BukkitRunnable() {
             override fun run() {
                 removeFloorExceptForChosenMaterial(center, xRad, zRad, material)
 
                 //remove the material from the players' hotbar, so it won't confuse them.
                 for (player in Bukkit.getOnlinePlayers()) {
-                    player.getInventory().clear(4)
+                    player.inventory.clear(4)
                 }
 
                 cancel()
@@ -506,7 +508,7 @@ class DiscoMayhem (val plugin: Plugin) : MinigameSkeleton() {
          */
         private fun formatLocation(location: Location): String {
             return location.getWorld()
-                .getName() + ". (" + location.getX() + "," + location.getY() + "," + location.getZ() + ")"
+                .name + ". (" + location.x + "," + location.y + "," + location.z + ")"
         }
     }
 }
