@@ -35,7 +35,7 @@ class DiscoMayhem (val plugin: Plugin) : MinigameSkeleton() {
      */
     @Throws(InterruptedException::class)
     override fun start(sender: Player) {
-        super.start(sender)
+        super.startSkeleton(sender)
 
         initModifiers() // Initialize the modifiers for the game
 
@@ -55,7 +55,7 @@ class DiscoMayhem (val plugin: Plugin) : MinigameSkeleton() {
      */
     @Throws(InterruptedException::class)
     override fun startFastMode(player: Player) {
-        super.startFastMode(player)
+        start(player)
 
         upperBound__startingIntervalForChangingFloor = 10
         lowerBound__startingIntervalForChangingFloor = 10
@@ -73,20 +73,11 @@ class DiscoMayhem (val plugin: Plugin) : MinigameSkeleton() {
     }
 
     /**
-     * Pauses the minigame. The game is paused and the player is notified.
-     * The game being paused saves the current state of the game, so it can be resumed later. However, the game is not running.
-     */
-    override fun pauseGame() {
-        super.pauseGame()
-        // Add more actions here
-    }
-
-    /**
      * Resumes the minigame. The game is resumed and the player is notified.
      */
     //fixme: some parts of the game are not resumed- the game is not resumed, but the floor is not changed nor old floors aren't removed.
     override fun resumeGame() {
-        super.resumeGame()
+        super.resumeGameSkeleton()
 
         activateGameEvents() // Resume the game events
         // Add more actions here

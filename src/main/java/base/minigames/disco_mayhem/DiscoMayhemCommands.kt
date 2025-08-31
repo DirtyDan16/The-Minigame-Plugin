@@ -27,7 +27,7 @@ class DiscoMayhemCommands(private val discoMayhem: DiscoMayhem) : MinigameComman
 
             "stop" -> discoMayhem.pauseGame()
             "resume" -> discoMayhem.resumeGame()
-            "end" -> discoMayhem.endGameSkeleton()
+            "end" -> discoMayhem.endGame()
             "nuke_area" -> discoMayhem.nukeArea(DiscoMayhemConst.GAME_START_LOCATION,DiscoMayhemConst.NUKE_AREA_RADIUS)
             else -> Bukkit.getServer().broadcast(Component.text("Unknown command.").color(NamedTextColor.RED))
         }
@@ -41,8 +41,8 @@ class DiscoMayhemCommands(private val discoMayhem: DiscoMayhem) : MinigameComman
         args: Array<String>
     ): MutableList<String> {
         if (args.size == 1) {
-            return mutableListOf<String>("start", "stop", "start_hard_mode", "resume", "end", "nuke_area")
+            return mutableListOf("start", "stop", "start_hard_mode", "resume", "end", "nuke_area")
         }
-        return mutableListOf<String>()
+        return mutableListOf()
     }
 }

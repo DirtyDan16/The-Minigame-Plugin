@@ -64,7 +64,7 @@ class BlueprintBazaar(plugin: Plugin) : MinigameSkeleton() {
     override fun start(sender: Player) {
         initSchematics()
 
-        super.start(sender)
+        super.startSkeleton(sender)
 
         // EXPERIMENTAL
 //        run {
@@ -82,12 +82,6 @@ class BlueprintBazaar(plugin: Plugin) : MinigameSkeleton() {
 
         // start the cycle of builds
         prepareNewBuild()
-    }
-
-    @Throws(InterruptedException::class)
-    @CalledByCommand
-    override fun startFastMode(player: Player) {
-        super.startFastMode(player)
     }
 
     @CalledByCommand

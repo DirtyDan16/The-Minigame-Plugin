@@ -86,23 +86,9 @@ class MazeHunt(val plugin: Plugin) : MinigameSkeleton() , Listener {
     }
 
     @CalledByCommand
-    override fun startFastMode(player: Player) {
-        super.startFastMode(player)
-    }
-
-    @CalledByCommand
-    override fun pauseGame() {
-        super.pauseGame()
-    }
-
-    @CalledByCommand
-    override fun resumeGame() {
-        super.resumeGame()
-    }
-
-    @CalledByCommand
     override fun endGame() {
-        if (endGameSkeleton() == ExitStatus.EARLY_EXIT) return
+        endGameSkeleton()
+
         nukeArea()
         deleteStartingPlatform()// delete the starting platform for cases where it is still there
 

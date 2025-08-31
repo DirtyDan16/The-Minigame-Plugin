@@ -29,6 +29,7 @@ import java.util.*
 import kotlin.random.Random
 
 
+@Suppress("NULLABILITY_MISMATCH_BASED_ON_JAVA_ANNOTATIONS")
 class HoleInTheWall (val plugin: Plugin) : MinigameSkeleton() {
     //region vars
 
@@ -123,10 +124,12 @@ class HoleInTheWall (val plugin: Plugin) : MinigameSkeleton() {
         stateOfWallSpawner = WallSpawnerState.IDLE // Set the initial state of the wall spawner to IDLE
 
         this.mapName = mapName
-        start(player)
+        startSkeleton(player)
 
         startRepeatingGameLoop()
     }
+
+
 
     fun startFastMode(player: Player, mapName: String, wallSpawningMode: String? = null) {
         wallSpeed = Timers.WALL_SPEED.last() // Set the wall speed to the maximum speed
@@ -217,7 +220,7 @@ class HoleInTheWall (val plugin: Plugin) : MinigameSkeleton() {
     }
 
     override fun endGame() {
-        if (super.endGameSkeleton() == ExitStatus.EARLY_EXIT) return
+        endGameSkeleton()
 
         // -------------------------- INITIALIZATION --------------------------
 
@@ -257,7 +260,8 @@ class HoleInTheWall (val plugin: Plugin) : MinigameSkeleton() {
     }
 
     override fun pauseGame() {
-        super.pauseGame()
+        pauseGameSkeleton()
+
         // Cancel the periodic task that updates the game state and handles all game events - such as wall movement, wall spawning, and wall deletion.
         gameEvents?.cancel()
 
@@ -269,7 +273,7 @@ class HoleInTheWall (val plugin: Plugin) : MinigameSkeleton() {
     }
 
     override fun resumeGame() {
-        super.resumeGame()
+        resumeGameSkeleton()
         // resume the periodic task that updates the game state and handles all game events - such as wall movement, wall spawning, and wall deletion.
         startRepeatingGameLoop()
 
@@ -387,7 +391,7 @@ class HoleInTheWall (val plugin: Plugin) : MinigameSkeleton() {
     // this is a flag that is used for
     // Mode: WALLS_FROM_2_OPPOSITE_DIRECTIONS,
     // at the state: WallSpawnerState.INTENDING_TO_CREATE_MULTIPLE_WALLS_AT_ONCE
-    // purpose: to stop the wall spawner to swapping the real wall direction multiple times in a row from the method isConsideringSwappingRealWallDirection()
+    // purpose: to stop the wall spawner from swapping the real wall direction multiple times in a row from the method isConsideringSwappingRealWallDirection()
     var atTheProcessOfConsideringSwappingRealWallDirection: Boolean = false
 
     // this is a flag that is used for
@@ -492,7 +496,7 @@ class HoleInTheWall (val plugin: Plugin) : MinigameSkeleton() {
                     WallSpawnerMode.WALL_CHAINER -> {
                         // if we don't have any walls in the arena, we can add one immediately, otherwise we'll decide where and when to add it via the bridger states
                         if (existingWallsList.isEmpty()) {
-                            // Create a new wall with the a random direction and add it to the upcoming walls list
+                            // Create a new wall with a random direction and add it to the upcoming walls list
                             createNewWall(Direction.entries.random(), false)
 
                             WallSpawnerState.SPAWNING_1_WALL
@@ -521,7 +525,7 @@ class HoleInTheWall (val plugin: Plugin) : MinigameSkeleton() {
                 val mode = wallSpawningMode!!
                 when (mode) {
                     WallSpawnerMode.WALL_CHAINER -> {
-                        // increment the amount of spawns since direction change for the current mode
+                        // increment the amount of spawn since direction change for the current mode
                         amountOfSpawnsSinceDirectionChange.let {
                             it[mode] = it[mode]!! + 1
                         }
@@ -544,7 +548,7 @@ class HoleInTheWall (val plugin: Plugin) : MinigameSkeleton() {
                         // Increment the counters that keep track of how many walls have been spawned since the vars' states were checked
                         amountOfSpawnsSinceSwitchedTheRealDirection++
 
-                        // increment the amount of spawns since direction change for the current mode
+                        // increment the number of spawns since direction change for the current mode
                         amountOfSpawnsSinceDirectionChange.let {
                             it[mode] = it[mode]!! + 1
                         }
@@ -598,12 +602,12 @@ class HoleInTheWall (val plugin: Plugin) : MinigameSkeleton() {
             } //endregion
 
             WallSpawnerState.INTENDING_TO_CREATE_MULTIPLE_WALLS_AT_ONCE -> { //region INTENDING_TO_CREATE_MULTIPLE_WALLS_AT_ONCE
-                // Default condition to swap state, will be set later based on the mode
+                // Default condition to swap state will be set later based on the mode
                 var conditionToSwapState: () -> Boolean = { true }
 
                 when (wallSpawningMode) {
                     WallSpawnerMode.WALLS_FROM_ALL_DIRECTIONS -> { //region WALLS_FROM_ALL_DIRECTIONS
-                        // take randomly between 2 and 4 directions from the Direction enum to add to the DirectionsOfUpcomingWalls
+                        // randomly take between 2 and 4 directions from the Direction enum to add to the DirectionsOfUpcomingWalls
                         val numOfWallsToSpawn = Random.nextInt(2, 4 + 1)
 
                         val directionsToSpawn = Direction.entries.shuffled().take(numOfWallsToSpawn).toMutableList()

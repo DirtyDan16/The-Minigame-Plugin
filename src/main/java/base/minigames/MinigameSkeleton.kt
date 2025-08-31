@@ -9,8 +9,10 @@ import net.kyori.adventure.text.format.NamedTextColor
 import org.bukkit.Bukkit
 import org.bukkit.Location
 import org.bukkit.entity.Player
+import org.bukkit.plugin.Plugin
 import org.bukkit.scheduler.BukkitRunnable
 
+@Suppress("NOTHING_TO_INLINE")
 abstract class MinigameSkeleton
 
 protected constructor() {
@@ -58,7 +60,8 @@ protected constructor() {
      */
     @Throws(InterruptedException::class)
     @CalledByCommand
-    open fun start(sender: Player) {
+    open fun start(sender: Player) {}
+    protected inline fun startSkeleton(sender: Player) {
         if (isGameRunning) {
             Bukkit.getServer().broadcast(Component.text("Minigame is already running!"))
             return
@@ -87,20 +90,14 @@ protected constructor() {
      */
     @Throws(InterruptedException::class)
     @CalledByCommand
-    open fun startFastMode(player: Player) {
-        if (isGameRunning) {
-            Bukkit.getServer().broadcast(Component.text("Minigame is already running!"))
-            return
-        }
-
-        start(player)
-    }
+    open fun startFastMode(player: Player) {startFastMode(player)}
 
     /**
-     * Pauses the game. Paused games can be resumed, and they keep certain logic and game logic. Should be followed with code that pauses the game, like stopping timers, freezing entities...
+     * Pauses the game. Paused games can be resumed, and they keep certain logic and game logic. Should be overridden and followed with code that pauses the game, like stopping timers, freezing entities...
      */
     @CalledByCommand
-    open fun pauseGame() {
+    open fun pauseGame() {pauseGameSkeleton()}
+    protected inline fun pauseGameSkeleton() {
         if (!isGameRunning) {
             Bukkit.getServer().broadcast(Component.text("Minigame is not running!"))
             return
@@ -121,10 +118,11 @@ protected constructor() {
     }
 
     /**
-     * Resumes the game. Resumed games should be able to continue from where they were paused. should be followed with code that resumes the game, like starting timers, unfreezing entities...
+     * Resumes the game. Resumed games should be able to continue from where they were paused. should be overridden and followed with code that resumes the game, like starting timers, unfreezing entities...
      */
     @CalledByCommand
-    open fun resumeGame() {
+    open fun resumeGame() {resumeGameSkeleton()}
+    protected inline fun resumeGameSkeleton() {
         if (!isGameRunning) {
             Bukkit.getServer().broadcast(Component.text("Minigame is not running!"))
             return
@@ -142,13 +140,12 @@ protected constructor() {
     }
 
     /**
-     * Ends the game. Should be followed with code that cleans up the arena, the gamerules... Should also be called when the game is interrupted.
+     * Ends the game. Should be overridden and followed with code that cleans up the arena, the gamerules... Should also be called when the game is interrupted.
      * Should also call [endGameSkeleton] at the start of it
      */
     @CalledByCommand
-    abstract fun endGame() : Unit
-
-    fun endGameSkeleton() : ExitStatus {
+    open fun endGame() { endGameSkeleton() }
+    protected inline fun endGameSkeleton() : ExitStatus {
         if (!isGameRunning) {
             Bukkit.getServer().broadcast(Component.text("Minigame is not running!"))
             return ExitStatus.EARLY_EXIT

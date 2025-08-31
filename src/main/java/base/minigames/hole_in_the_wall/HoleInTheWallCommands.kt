@@ -62,7 +62,7 @@ class HoleInTheWallCommands(private val holeInTheWall: HoleInTheWall) : Minigame
 
             "stop" -> holeInTheWall.pauseGame()
             "resume" -> holeInTheWall.resumeGame()
-            "end" -> holeInTheWall.endGameSkeleton()
+            "end" -> holeInTheWall.endGame()
             "spawn_wall" -> holeInTheWall.createNewWall()
             "clear_walls" -> holeInTheWall.clearWalls()
         }
