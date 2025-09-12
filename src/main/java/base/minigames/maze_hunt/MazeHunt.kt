@@ -22,19 +22,22 @@ import org.jetbrains.kotlinx.multik.ndarray.data.D2Array
 import org.jetbrains.kotlinx.multik.ndarray.data.get
 import org.jetbrains.kotlinx.multik.ndarray.data.set
 import base.minigames.maze_hunt.MHConst.BitPoint
-import base.utils.ExitStatus
 import base.utils.Utils
-import base.utils.Utils.getWeightedRandom
+import base.utils.extensions_for_classes.getWeightedRandom
 import base.utils.Utils.initFloor
 import base.utils.Utils.successChance
+import com.destroystokyo.paper.event.block.BlockDestroyEvent
 import org.bukkit.Difficulty
+import org.bukkit.GameRule
 import org.bukkit.GameRule.DO_DAYLIGHT_CYCLE
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
+import org.bukkit.event.block.BlockBreakEvent
 import org.bukkit.event.entity.EntityCombustEvent
+import org.bukkit.inventory.ItemStack
+import org.bukkit.metadata.FixedMetadataValue
 import org.bukkit.plugin.Plugin
 import org.bukkit.plugin.java.JavaPlugin
-import java.lang.reflect.Method
 
 class MazeHunt(val plugin: Plugin) : MinigameSkeleton() , Listener {
     /** this set keeps track of all the indices of the bits that have been generated */
@@ -45,10 +48,14 @@ class MazeHunt(val plugin: Plugin) : MinigameSkeleton() , Listener {
     @ShouldBeReset
     var amountOfMobsToSpawnPerInterval: Int = Mobs.INITIAL_AMOUNTS_OF_MOBS_TO_SPAWN_IN_A_CYCLE
 
+    /** Number of Loot Crates to spawn every crate spawning cycle. Gets increased as time goes on. */
+    @ShouldBeReset
+    var amountOfCratesToSpawnPerInterval: Int = MHConst.Spawns.LootCrates.INITIAL_AMOUNTS_OF_CRATES_TO_SPAWN_IN_A_CYCLE
+
     @CalledByCommand
     override fun start(sender: Player) {
         try {
-            super.start(sender)
+            super.startSkeleton(sender)
 
             pausableRunnables += Utils.PausableBukkitRunnable(plugin as JavaPlugin, remainingTicks = MHConst.STARTING_PLATFORM_LIFESPAN) {
                 startGameLoop()
@@ -63,7 +70,10 @@ class MazeHunt(val plugin: Plugin) : MinigameSkeleton() , Listener {
     private fun startGameLoop() {
         //region Start spawning mobs
         pausableRunnables += Utils.PausableBukkitRunnable(plugin as JavaPlugin, periodTicks = Mobs.SPAWN_CYCLE_DELAY) {
-            for (i in 1..amountOfMobsToSpawnPerInterval) {
+            repeat(amountOfMobsToSpawnPerInterval) {
+                if (generatedBitsIndexes.isEmpty())
+                    return@repeat
+
                 val chosenMobToSpawn = Mobs.ALLOWED_MOB_TYPES.getWeightedRandom()
 
                 val chosenLocationToSpawnAt: Location = generatedBitsIndexes.random().let {
@@ -83,6 +93,63 @@ class MazeHunt(val plugin: Plugin) : MinigameSkeleton() , Listener {
         }.apply { this.start() }
 
         //endregion
+
+        //region Start Spawning Loot Crates
+        pausableRunnables += Utils.PausableBukkitRunnable(plugin, periodTicks = Mobs.SPAWN_CYCLE_DELAY) {
+            repeat(amountOfCratesToSpawnPerInterval) {
+                if (generatedBitsIndexes.isEmpty())
+                    return@repeat
+
+                val chosenCrateType = MHConst.Spawns.LootCrates.LootCrateType.entries.random()
+
+                val chosenLocationToSpawnAt: Location = generatedBitsIndexes.random().let {
+                    getBitLocation(it.x, it.z)
+                }.apply {
+                    x += (-MazeGen.BIT_RADIUS..MazeGen.BIT_RADIUS).random()
+                    y += 2
+                    z += (-MazeGen.BIT_RADIUS..MazeGen.BIT_RADIUS).random()
+                }
+
+                var blockAt = WORLD.getBlockAt(chosenLocationToSpawnAt)
+
+                blockAt.type = chosenCrateType.material
+
+                // We store metadata of the crate type so that only blocks with this metadata will drop loot when broken, and not just every block that has been broken.
+                // The onLootCrateBreak will listen to the block break and check the metadata of the block.
+                blockAt.setMetadata("isALootCrate", FixedMetadataValue(plugin, chosenCrateType.name))
+            }
+        }.apply { this.start() }
+
+        // Gradually increase the number of crates spawned per interval
+        pausableRunnables += Utils.PausableBukkitRunnable(plugin, periodTicks = MHConst.Spawns.LootCrates.NUM_OF_SPAWNS_INCREASER_TIMER_RANGE.random()) {
+            amountOfCratesToSpawnPerInterval += 1
+        }.apply { this.start() }
+        //endregion
+    }
+
+    @EventHandler
+    private fun onLootCrateBreak(event: BlockBreakEvent) {
+        if (event.block.hasMetadata("isALootCrate").not())
+            return
+
+        val metaList = event.block.getMetadata("isALootCrate")
+
+        val typeName = metaList.first { it.owningPlugin == plugin }.asString()
+
+        // convert string back to enum
+        val crateType = MHConst.Spawns.LootCrates.LootCrateType.valueOf(typeName)
+
+        // Now you have the enum instance and can access its pool.
+
+        // Poll n number of rolls from the pool
+        val itemsInside: List<ItemStack> = List(crateType.rolls.random()) { crateType.lootTable.getWeightedRandom() }
+        itemsInside.forEach { event.player.inventory.addItem(it) }
+
+        // We'll delete the metadata to not accidentally think later on that there's still loot to obtain from a place where there isn't a loot crate
+        event.block.removeMetadata("isALootCrate",plugin)
+
+        // disable the block drop so that the physical block won't be used/exploited
+        event.isDropItems = false
     }
 
     @CalledByCommand
@@ -93,10 +160,16 @@ class MazeHunt(val plugin: Plugin) : MinigameSkeleton() , Listener {
         deleteStartingPlatform()// delete the starting platform for cases where it is still there
 
         WORLD.difficulty = Difficulty.PEACEFUL
+        WORLD.setGameRule(GameRule.DO_FIRE_TICK,true)
 
         //RESET GLOBAL VARIABLES
         generatedBitsIndexes.clear()
         amountOfMobsToSpawnPerInterval = Mobs.INITIAL_AMOUNTS_OF_MOBS_TO_SPAWN_IN_A_CYCLE
+        amountOfCratesToSpawnPerInterval= MHConst.Spawns.LootCrates.INITIAL_AMOUNTS_OF_CRATES_TO_SPAWN_IN_A_CYCLE
+
+        players.forEach { player ->
+            player.inventory.clear()
+        }
     }
 
     private fun deleteStartingPlatform() {
@@ -113,7 +186,11 @@ class MazeHunt(val plugin: Plugin) : MinigameSkeleton() , Listener {
     fun nukeArea() {
         // Nuke the game area
         for (vector in Locations.MAZE_REGION) {
-            WORLD.getBlockAt(vector).type = Material.AIR
+            var blockAt = WORLD.getBlockAt(vector)
+            blockAt.type = Material.AIR
+
+            if (blockAt.hasMetadata("isALootCrate"))
+                blockAt.removeMetadata("isALootCrate",plugin)
         }
     }
 
@@ -122,7 +199,7 @@ class MazeHunt(val plugin: Plugin) : MinigameSkeleton() , Listener {
 
         WORLD.time = 1000
         WORLD.setGameRule(DO_DAYLIGHT_CYCLE, false)
-
+        WORLD.setGameRule(GameRule.DO_FIRE_TICK,false)
         WORLD.difficulty = Mobs.WORLD_DIFFICULTY
 
         for (player in players) {

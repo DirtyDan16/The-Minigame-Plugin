@@ -14,6 +14,9 @@ import org.bukkit.Material
 import org.bukkit.World
 import org.bukkit.entity.EntityType
 import org.bukkit.inventory.ItemStack
+import org.bukkit.inventory.meta.Damageable
+import org.bukkit.inventory.meta.PotionMeta
+import org.bukkit.potion.PotionType
 
 object MHConst {
 
@@ -41,7 +44,7 @@ object MHConst {
 
         val TOP_CORNER: BlockVector3 = BlockVector3.at(
             MAZE_ORIGIN.x + MAZE_DIMENSION_X * BIT_SIZE + BIT_RADIUS,
-            MAZE_ORIGIN.y + 1,
+            MAZE_ORIGIN.y + 2,
             MAZE_ORIGIN.z + MAZE_DIMENSION_Z * BIT_SIZE + BIT_RADIUS
         )
 
@@ -122,71 +125,162 @@ object MHConst {
         }
 
         object LootCrates {
-            enum class LootCrateMaterial(block: Material) {
-                MELEE_WEAPON_LOOT_TABLE(Material.RED_WOOL),
-                RANGED_WEAPON_LOOT_TABLE(Material.PURPLE_WOOL),
-                ARMOR_LOOT_TABLE(Material.GREEN_WOOL),
-                FOOD_LOOT_TABLE(Material.YELLOW_WOOL),
+            const val INITIAL_AMOUNTS_OF_CRATES_TO_SPAWN_IN_A_CYCLE = 1
+
+            val NUM_OF_SPAWNS_INCREASER_TIMER_RANGE = 20L*10..20L*20
+
+            /**
+             * Defines the different loot crate types.
+             * Also assigns a given type to its corresponding information - its display block, its loot table, and how many rolls you get from the type.
+             */
+            enum class LootCrateType(
+                val material: Material,
+                val lootTable: List<Pair<ItemStack, Int>>,
+                val rolls: IntRange
+            ) {
+                MELEE_WEAPON_LOOT_TABLE(Material.RED_WOOL,meleeWeaponLootTable,1..2),
+                RANGED_WEAPON_LOOT_TABLE(Material.ORANGE_WOOL, rangedWeaponLootTable, 1..3),
+                ARMOR_LOOT_TABLE(Material.GREEN_WOOL, armorLootTable, 1..2),
+                FOOD_LOOT_TABLE(Material.YELLOW_WOOL, foodLootTable, 1..5),
+                POTION_LOOT_TABLE(Material.PURPLE_WOOL,potionLootTable,1..2)
             }
 
-            private enum class DurabilityRange(val range: IntRange) {
-                LEATHER_ARMOR(5..20),
-                IRON_ARMOR(4..8),
-                DIAMOND_ARMOR(0..4),
-                WOOD_WEAPONS(15..30),
-                STONE_WEAPONS(10..20),
-                IRON_WEAPONS(5..15),
+
+            /**
+             * Represents different durability ranges for items in the game.
+             * Each enum constant defines a specific range of durability values for different item types.
+             * The range specifies the dura that is remaining!
+             * Used to randomly generate durability values within appropriate ranges for different tiers of items.
+             */
+            private enum class DurabilityRange(val duraRange: IntRange) {
+                LEATHER_ARMOR(10..20),
+                IRON_ARMOR(8..12),
+                DIAMOND_ARMOR(4..8),
+                WOOD_WEAPONS(15..20),
+                STONE_WEAPONS(10..15),
+                IRON_WEAPONS(8..15),
                 DIAMOND_WEAPONS(5..10),
-                BOWS(10..25),
+                BOWS(10..18),
                 FISHING_ROD(5..10);
-                fun durability(): Short = range.random().toShort()
             }
 
-            val MELEE_WEAPON_LOOT_TABLE = listOf(
-                ItemStack(Material.WOODEN_SWORD).apply { durability = DurabilityRange.WOOD_WEAPONS.durability() } to 10,
-                ItemStack(Material.WOODEN_AXE).apply { durability = DurabilityRange.WOOD_WEAPONS.durability() } to 8,
-                ItemStack(Material.STONE_SWORD).apply { durability = DurabilityRange.STONE_WEAPONS.durability() } to 7,
-                ItemStack(Material.STONE_AXE).apply { durability = DurabilityRange.STONE_WEAPONS.durability() } to 5,
-                ItemStack(Material.IRON_SWORD).apply { durability = DurabilityRange.IRON_WEAPONS.durability() } to 4,
-                ItemStack(Material.IRON_AXE).apply { durability = DurabilityRange.IRON_WEAPONS.durability() } to 3,
-                ItemStack(Material.DIAMOND_SWORD).apply { durability = DurabilityRange.DIAMOND_WEAPONS.durability() } to 1,
+            private fun ItemStack.setDurability(dura: Int) {
+                val meta = this.itemMeta as Damageable
+                meta.damage = type.maxDurability - dura
+                this.itemMeta = meta
+            }
+
+            /**
+             * Melee weapon loot table containing different tiers of weapons with their weights.
+             * Higher weights indicate more common items.
+             * Contains:
+             * - Wooden weapons (Sword: 10, Axe: 8)
+             * - Stone weapons (Sword: 7, Axe: 5)
+             * - Iron weapons (Sword: 4, Axe: 3)
+             * - Diamond sword (Weight: 1)
+             */
+            val meleeWeaponLootTable  = listOf(
+                ItemStack(Material.WOODEN_SWORD).apply { setDurability(DurabilityRange.WOOD_WEAPONS.duraRange.random()) } to 10,
+                ItemStack(Material.WOODEN_AXE).apply { setDurability(DurabilityRange.WOOD_WEAPONS.duraRange.random())} to 8,
+                ItemStack(Material.STONE_SWORD).apply { setDurability(DurabilityRange.STONE_WEAPONS.duraRange.random())} to 7,
+                ItemStack(Material.STONE_AXE).apply { setDurability(DurabilityRange.STONE_WEAPONS.duraRange.random())} to 5,
+                ItemStack(Material.IRON_SWORD).apply { setDurability(DurabilityRange.IRON_WEAPONS.duraRange.random())} to 4,
+                ItemStack(Material.IRON_AXE).apply { setDurability(DurabilityRange.IRON_WEAPONS.duraRange.random())} to 3,
+                ItemStack(Material.DIAMOND_SWORD).apply { setDurability(DurabilityRange.DIAMOND_WEAPONS.duraRange.random())} to 1,
             )
 
-            val RANGED_WEAPON_LOOT_TABLE = listOf(
-                ItemStack(Material.BOW).apply { durability = DurabilityRange.BOWS.durability() } to 2,
-                ItemStack(Material.CROSSBOW).apply { durability = DurabilityRange.BOWS.durability() } to 2,
-                ItemStack(Material.FISHING_ROD).apply { durability = DurabilityRange.FISHING_ROD.durability() } to 1,
+            /**
+             * Ranged weapon loot table containing different projectile weapons and ammunition with their weights.
+             * Contains:
+             * - Bows and Crossbows (Weight: 2 each)
+             * - Fishing Rod (Weight: 1)
+             * - Arrows (4x: Weight 5, 12x: Weight 1)
+             * - Special ammunition (Tipped Arrows, Wind Charges: Weight 2 each)
+             * - Splash Potion (Weight: 2)
+             */
+            val rangedWeaponLootTable = listOf(
+                ItemStack(Material.BOW).apply {  setDurability(DurabilityRange.BOWS.duraRange.random())} to 2,
+                ItemStack(Material.CROSSBOW).apply {  setDurability(DurabilityRange.BOWS.duraRange.random())} to 2,
+                ItemStack(Material.FISHING_ROD).apply {  setDurability(DurabilityRange.FISHING_ROD.duraRange.random())} to 1,
+                ItemStack(Material.SNOWBALL,16) to 5,
                 ItemStack(Material.ARROW,4) to 5,
                 ItemStack(Material.ARROW,12) to 1,
-                ItemStack(Material.TIPPED_ARROW,4) to 2,
+                ItemStack(Material.TIPPED_ARROW,4).apply {
+                    val meta = itemMeta as PotionMeta
+                    meta.basePotionType = PotionType.SLOWNESS
+                    itemMeta = meta
+                } to 2,
                 ItemStack(Material.WIND_CHARGE,4) to 2,
-                ItemStack(Material.SPLASH_POTION) to 2,
             )
 
-            val ARMOR_LOOT_TABLE = listOf(
+            private fun ItemStack.setPotionType(type: PotionType) {
+                val meta = (itemMeta as PotionMeta)
+                meta.basePotionType = type
+                itemMeta = meta
+            }
+
+            /**
+             * Potion loot table containing different types of splash potions with their weights.
+             * Higher weights indicate more common items.
+             * Contains:
+             * - Combat potions (Harming, Healing: Weight 10 each)
+             * - Utility potions (Swiftness, Poison: Weight 7 each)
+             * - Support potions (Regeneration: Weight 6)
+             * - Special effects (Leaping, Long Slow Falling: Weight 4 each)
+             * - Debuff potions (Strong Slowness: Weight 3)
+             */
+            val potionLootTable = listOf(
+                ItemStack(Material.SPLASH_POTION).apply { setPotionType(PotionType.HARMING) } to 10,
+                ItemStack(Material.SPLASH_POTION).apply { setPotionType(PotionType.HEALING) } to 10,
+                ItemStack(Material.SPLASH_POTION).apply { setPotionType(PotionType.SWIFTNESS) } to 7,
+                ItemStack(Material.SPLASH_POTION).apply { setPotionType(PotionType.POISON) } to 7,
+                ItemStack(Material.SPLASH_POTION).apply { setPotionType(PotionType.REGENERATION) } to 6,
+                ItemStack(Material.SPLASH_POTION).apply { setPotionType(PotionType.LEAPING) } to 4,
+                ItemStack(Material.SPLASH_POTION).apply { setPotionType(PotionType.LONG_SLOW_FALLING) } to 4,
+                ItemStack(Material.SPLASH_POTION).apply { setPotionType(PotionType.STRONG_SLOWNESS) } to 3,
+            )
+
+
+            /**
+             * Armor loot table containing different tiers of armor pieces with their weights.
+             * Contains:
+             * - Leather armor set (All pieces: Weight 10)
+             * - Iron armor set (All pieces: Weight 6)
+             * - Diamond armor set (All pieces: Weight 1)
+             * Each piece includes a helmet, chestplate, leggings, and boots
+             */
+            val armorLootTable = listOf(
                 // Leather Armor (Common)
-                ItemStack(Material.LEATHER_HELMET).apply { durability = DurabilityRange.LEATHER_ARMOR.durability() } to 10,
-                ItemStack(Material.LEATHER_CHESTPLATE).apply { durability = DurabilityRange.LEATHER_ARMOR.durability() } to 10,
-                ItemStack(Material.LEATHER_LEGGINGS).apply { durability = DurabilityRange.LEATHER_ARMOR.durability() } to 10,
-                ItemStack(Material.LEATHER_BOOTS).apply { durability = DurabilityRange.LEATHER_ARMOR.durability() } to 10,
+                ItemStack(Material.LEATHER_HELMET).apply { setDurability(DurabilityRange.LEATHER_ARMOR.duraRange.random())} to 10,
+                ItemStack(Material.LEATHER_CHESTPLATE).apply { setDurability(DurabilityRange.LEATHER_ARMOR.duraRange.random())} to 10,
+                ItemStack(Material.LEATHER_LEGGINGS).apply { setDurability(DurabilityRange.LEATHER_ARMOR.duraRange.random())} to 10,
+                ItemStack(Material.LEATHER_BOOTS).apply { setDurability(DurabilityRange.LEATHER_ARMOR.duraRange.random())} to 10,
 
                 // Iron Armor (Uncommon)
-                ItemStack(Material.IRON_HELMET).apply { durability = DurabilityRange.IRON_ARMOR.durability() } to 6,
-                ItemStack(Material.IRON_CHESTPLATE).apply { durability = DurabilityRange.IRON_ARMOR.durability() } to 6,
-                ItemStack(Material.IRON_LEGGINGS).apply { durability = DurabilityRange.IRON_ARMOR.durability() } to 6,
-                ItemStack(Material.IRON_BOOTS).apply { durability = DurabilityRange.IRON_ARMOR.durability() } to 6,
+                ItemStack(Material.IRON_HELMET).apply { setDurability(DurabilityRange.IRON_ARMOR.duraRange.random())} to 6,
+                ItemStack(Material.IRON_CHESTPLATE).apply { setDurability(DurabilityRange.IRON_ARMOR.duraRange.random())} to 6,
+                ItemStack(Material.IRON_LEGGINGS).apply { setDurability(DurabilityRange.IRON_ARMOR.duraRange.random())} to 6,
+                ItemStack(Material.IRON_BOOTS).apply { setDurability(DurabilityRange.IRON_ARMOR.duraRange.random())} to 6,
 
                 // Diamond Armor (Rare)
-                ItemStack(Material.DIAMOND_HELMET).apply { durability = DurabilityRange.DIAMOND_ARMOR.durability() } to 1,
-                ItemStack(Material.DIAMOND_CHESTPLATE).apply { durability = DurabilityRange.DIAMOND_ARMOR.durability() } to 1,
-                ItemStack(Material.DIAMOND_LEGGINGS).apply { durability = DurabilityRange.DIAMOND_ARMOR.durability() } to 1,
-                ItemStack(Material.DIAMOND_BOOTS).apply { durability = DurabilityRange.DIAMOND_ARMOR.durability() } to 1
+                ItemStack(Material.DIAMOND_HELMET).apply { setDurability(DurabilityRange.DIAMOND_ARMOR.duraRange.random())} to 1,
+                ItemStack(Material.DIAMOND_CHESTPLATE).apply { setDurability(DurabilityRange.DIAMOND_ARMOR.duraRange.random())} to 1,
+                ItemStack(Material.DIAMOND_LEGGINGS).apply { setDurability(DurabilityRange.DIAMOND_ARMOR.duraRange.random())} to 1,
+                ItemStack(Material.DIAMOND_BOOTS).apply { setDurability(DurabilityRange.DIAMOND_ARMOR.duraRange.random())} to 1
             )
 
-            val FOOD_LOOT_TABLE = listOf(
+            /**
+             * Food loot table containing different types of food items with their weights.
+             * Contains:
+             * - Basic foods (Cookie x8, Carrot x4, Potato x4, Apple x4: Weight 5)
+             * - Medium tier foods (Bread x3: Weight 3)
+             * - Cooked meats (Porkchop x2, Chicken x2, Beef x2: Weight 2)
+             * - Special food (Golden Apple x1: Weight 1)
+             */
+            val foodLootTable = listOf(
                 ItemStack(Material.COOKIE,8) to 5,
                 ItemStack(Material.CARROT,4) to 5,
-                ItemStack(Material.POTATOES,4) to 5,
+                ItemStack(Material.POTATO,4) to 5,
                 ItemStack(Material.APPLE,4) to 5,
                 ItemStack(Material.BREAD,3) to 3,
                 ItemStack(Material.COOKED_PORKCHOP,2) to 2,

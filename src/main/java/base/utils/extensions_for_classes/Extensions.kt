@@ -1,17 +1,13 @@
 package base.utils.extensions_for_classes
 
-import base.minigames.blueprint_bazaar.BPBConst
 import base.utils.Direction
 import com.sk89q.worldedit.math.BlockVector3
-import com.sk89q.worldedit.regions.CuboidRegion
-import org.bukkit.Location
 import org.bukkit.Material
 import org.bukkit.World
 import org.bukkit.block.Block
 import org.bukkit.entity.Item
 import org.bukkit.entity.Player
 import org.bukkit.inventory.ItemStack
-import org.bukkit.util.BlockVector
 import org.bukkit.util.BoundingBox
 import kotlin.collections.iterator
 import kotlin.random.Random
@@ -90,5 +86,30 @@ fun Direction.toYaw(): Float {
         Direction.WEST  -> 90f
         Direction.NORTH -> 180f
         Direction.EAST  -> -90f
+    }
+}
+
+fun <T> Collection<Pair<T, Int>>.getWeightedRandom(): T {
+    val totalWeight = this.sumOf { it.second }
+    var randomValue = Random.Default.nextInt(totalWeight)
+    for ((item, weight) in this) {
+        randomValue -= weight
+        if (randomValue < 0) {
+            return item
+        }
+    }
+    throw IllegalStateException("Should never reach here if weights are positive")
+}
+
+inline fun <reified T: Number> T.randomlyFlipSign(): T {
+    if (Random.Default.nextBoolean()) return this
+
+    return when (this) {
+        is Int -> -this as T
+        is Double -> -this as T
+        is Float -> -this as T
+        is Long -> -this as T
+        is Short -> -this as T
+        else -> this
     }
 }

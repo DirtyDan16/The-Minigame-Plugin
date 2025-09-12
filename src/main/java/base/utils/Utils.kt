@@ -2,7 +2,7 @@
 
 package base.utils
 
-import base.MinigamePlugin.Companion.plugin
+import base.MinigamePlugin
 import org.bukkit.Bukkit
 import org.bukkit.Location
 import org.bukkit.Material
@@ -11,7 +11,6 @@ import org.bukkit.plugin.java.JavaPlugin
 import org.bukkit.scheduler.BukkitRunnable
 import org.bukkit.scheduler.BukkitTask
 import kotlin.math.max
-import kotlin.math.min
 import kotlin.random.Random
 
 /** A simple wrapper class to hold an integer value by reference. Useful for passing integers to functions that need to modify them. */
@@ -89,7 +88,7 @@ object Utils {
                     conditionToCancel?.invoke() == true -> cancel()
                     condition.invoke() -> {
                         if (delayAfterConditionMet > 0L) {
-                            Bukkit.getScheduler().runTaskLater(plugin, action, delayAfterConditionMet)
+                            Bukkit.getScheduler().runTaskLater(MinigamePlugin.Companion.plugin, action, delayAfterConditionMet)
                         } else {
                             action.run()
                         }
@@ -112,7 +111,7 @@ object Utils {
             }
         }
 
-        runnable.runTaskTimer(plugin, 0L, checkInterval)
+        runnable.runTaskTimer(MinigamePlugin.Companion.plugin, 0L, checkInterval)
 
         listOfRunnablesToAddTo?.add(runnable)
 
@@ -200,7 +199,7 @@ object Utils {
                 else
                     elapsedTicks
 
-            remainingTicks =  max(0,remainingTicks - elapsedTicksInCycle)
+            remainingTicks = max(0, remainingTicks - elapsedTicksInCycle)
         }
     }
 
@@ -250,16 +249,4 @@ object Utils {
         if (successChance(probability)) action()
     }
 
-    fun <T> Collection<Pair<T, Int>>.getWeightedRandom(): T {
-        val totalWeight = this.sumOf { it.second }
-        var randomValue = Random.nextInt(totalWeight)
-        for ((item, weight) in this) {
-            randomValue -= weight
-            if (randomValue < 0) {
-                return item
-            }
-        }
-        throw IllegalStateException("Should never reach here if weights are positive")
-    }
 }
-
