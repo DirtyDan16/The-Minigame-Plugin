@@ -34,6 +34,7 @@ import org.bukkit.event.Listener
 import org.bukkit.event.entity.EntityCombustEvent
 import org.bukkit.plugin.Plugin
 import org.bukkit.plugin.java.JavaPlugin
+import java.lang.reflect.Method
 
 class MazeHunt(val plugin: Plugin) : MinigameSkeleton() , Listener {
     /** this set keeps track of all the indices of the bits that have been generated */
@@ -60,7 +61,6 @@ class MazeHunt(val plugin: Plugin) : MinigameSkeleton() , Listener {
     }
 
     private fun startGameLoop() {
-        //fixme: PausableBukkitRunnable is still buggy. I add to the list more and more instances of this for some reason everytime i resume()
         //region Start spawning mobs
         pausableRunnables += Utils.PausableBukkitRunnable(plugin as JavaPlugin, periodTicks = Mobs.SPAWN_CYCLE_DELAY) {
             for (i in 1..amountOfMobsToSpawnPerInterval) {

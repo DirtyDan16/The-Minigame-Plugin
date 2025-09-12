@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package base.minigames.maze_hunt
 
 import base.minigames.maze_hunt.MHConst.MazeGen.BIT_RADIUS
@@ -11,6 +13,7 @@ import org.bukkit.Location
 import org.bukkit.Material
 import org.bukkit.World
 import org.bukkit.entity.EntityType
+import org.bukkit.inventory.ItemStack
 
 object MHConst {
 
@@ -76,16 +79,16 @@ object MHConst {
 
         /** Materials and their relative weights to be used when generating the floor of the maze*/
         val FLOOR_MATERIALS = listOf(
-            Pair(Material.COBBLESTONE,30),
-            Pair(Material.STONE,50),
-            Pair(Material.MOSSY_COBBLESTONE,15),
-            Pair(Material.MOSSY_STONE_BRICKS,10),
-            Pair(Material.ANDESITE,20),
-            Pair(Material.DEEPSLATE,20),
-            Pair(Material.COBBLED_DEEPSLATE,10),
-            Pair(Material.GOLD_ORE,1),
-            Pair(Material.IRON_ORE,2),
-            Pair(Material.COAL_ORE,3),
+            Material.COBBLESTONE to 30,
+            Material.STONE to 50,
+            Material.MOSSY_COBBLESTONE to 15,
+            Material.MOSSY_STONE_BRICKS to 10,
+            Material.ANDESITE to 20,
+            Material.DEEPSLATE to 20,
+            Material.COBBLED_DEEPSLATE to 10,
+            Material.GOLD_ORE to 1,
+            Material.IRON_ORE to 2,
+            Material.COAL_ORE to 3,
         )
     }
 
@@ -102,19 +105,94 @@ object MHConst {
 
             /** List of allowed mob types and their relative weights when spawning*/
             val ALLOWED_MOB_TYPES = listOf(
-                Pair(EntityType.ZOMBIE,15),
-                Pair(EntityType.HUSK,10),
-                Pair(EntityType.SKELETON,10),
-                Pair(EntityType.STRAY,5),
-                Pair(EntityType.CREEPER,5),
-                Pair(EntityType.SPIDER,5),
-                Pair(EntityType.ENDERMAN,2),
-                Pair(EntityType.WITCH,1),
-                Pair(EntityType.SILVERFISH,5),
-                Pair(EntityType.BREEZE,2),
-                Pair(EntityType.BLAZE,2),
-                Pair(EntityType.SLIME,10),
-                Pair(EntityType.MAGMA_CUBE,2)
+                EntityType.ZOMBIE to 15,
+                EntityType.HUSK to 10,
+                EntityType.SKELETON to 10,
+                EntityType.STRAY to 5,
+                EntityType.CREEPER to 5,
+                EntityType.SPIDER to 5,
+                EntityType.ENDERMAN to 2,
+                EntityType.WITCH to 1,
+                EntityType.SILVERFISH to 5,
+                EntityType.BREEZE to 2,
+                EntityType.BLAZE to 2,
+                EntityType.SLIME to 10,
+                EntityType.MAGMA_CUBE to 2
+            )
+        }
+
+        object LootCrates {
+            enum class LootCrateMaterial(block: Material) {
+                MELEE_WEAPON_LOOT_TABLE(Material.RED_WOOL),
+                RANGED_WEAPON_LOOT_TABLE(Material.PURPLE_WOOL),
+                ARMOR_LOOT_TABLE(Material.GREEN_WOOL),
+                FOOD_LOOT_TABLE(Material.YELLOW_WOOL),
+            }
+
+            private enum class DurabilityRange(val range: IntRange) {
+                LEATHER_ARMOR(5..20),
+                IRON_ARMOR(4..8),
+                DIAMOND_ARMOR(0..4),
+                WOOD_WEAPONS(15..30),
+                STONE_WEAPONS(10..20),
+                IRON_WEAPONS(5..15),
+                DIAMOND_WEAPONS(5..10),
+                BOWS(10..25),
+                FISHING_ROD(5..10);
+                fun durability(): Short = range.random().toShort()
+            }
+
+            val MELEE_WEAPON_LOOT_TABLE = listOf(
+                ItemStack(Material.WOODEN_SWORD).apply { durability = DurabilityRange.WOOD_WEAPONS.durability() } to 10,
+                ItemStack(Material.WOODEN_AXE).apply { durability = DurabilityRange.WOOD_WEAPONS.durability() } to 8,
+                ItemStack(Material.STONE_SWORD).apply { durability = DurabilityRange.STONE_WEAPONS.durability() } to 7,
+                ItemStack(Material.STONE_AXE).apply { durability = DurabilityRange.STONE_WEAPONS.durability() } to 5,
+                ItemStack(Material.IRON_SWORD).apply { durability = DurabilityRange.IRON_WEAPONS.durability() } to 4,
+                ItemStack(Material.IRON_AXE).apply { durability = DurabilityRange.IRON_WEAPONS.durability() } to 3,
+                ItemStack(Material.DIAMOND_SWORD).apply { durability = DurabilityRange.DIAMOND_WEAPONS.durability() } to 1,
+            )
+
+            val RANGED_WEAPON_LOOT_TABLE = listOf(
+                ItemStack(Material.BOW).apply { durability = DurabilityRange.BOWS.durability() } to 2,
+                ItemStack(Material.CROSSBOW).apply { durability = DurabilityRange.BOWS.durability() } to 2,
+                ItemStack(Material.FISHING_ROD).apply { durability = DurabilityRange.FISHING_ROD.durability() } to 1,
+                ItemStack(Material.ARROW,4) to 5,
+                ItemStack(Material.ARROW,12) to 1,
+                ItemStack(Material.TIPPED_ARROW,4) to 2,
+                ItemStack(Material.WIND_CHARGE,4) to 2,
+                ItemStack(Material.SPLASH_POTION) to 2,
+            )
+
+            val ARMOR_LOOT_TABLE = listOf(
+                // Leather Armor (Common)
+                ItemStack(Material.LEATHER_HELMET).apply { durability = DurabilityRange.LEATHER_ARMOR.durability() } to 10,
+                ItemStack(Material.LEATHER_CHESTPLATE).apply { durability = DurabilityRange.LEATHER_ARMOR.durability() } to 10,
+                ItemStack(Material.LEATHER_LEGGINGS).apply { durability = DurabilityRange.LEATHER_ARMOR.durability() } to 10,
+                ItemStack(Material.LEATHER_BOOTS).apply { durability = DurabilityRange.LEATHER_ARMOR.durability() } to 10,
+
+                // Iron Armor (Uncommon)
+                ItemStack(Material.IRON_HELMET).apply { durability = DurabilityRange.IRON_ARMOR.durability() } to 6,
+                ItemStack(Material.IRON_CHESTPLATE).apply { durability = DurabilityRange.IRON_ARMOR.durability() } to 6,
+                ItemStack(Material.IRON_LEGGINGS).apply { durability = DurabilityRange.IRON_ARMOR.durability() } to 6,
+                ItemStack(Material.IRON_BOOTS).apply { durability = DurabilityRange.IRON_ARMOR.durability() } to 6,
+
+                // Diamond Armor (Rare)
+                ItemStack(Material.DIAMOND_HELMET).apply { durability = DurabilityRange.DIAMOND_ARMOR.durability() } to 1,
+                ItemStack(Material.DIAMOND_CHESTPLATE).apply { durability = DurabilityRange.DIAMOND_ARMOR.durability() } to 1,
+                ItemStack(Material.DIAMOND_LEGGINGS).apply { durability = DurabilityRange.DIAMOND_ARMOR.durability() } to 1,
+                ItemStack(Material.DIAMOND_BOOTS).apply { durability = DurabilityRange.DIAMOND_ARMOR.durability() } to 1
+            )
+
+            val FOOD_LOOT_TABLE = listOf(
+                ItemStack(Material.COOKIE,8) to 5,
+                ItemStack(Material.CARROT,4) to 5,
+                ItemStack(Material.POTATOES,4) to 5,
+                ItemStack(Material.APPLE,4) to 5,
+                ItemStack(Material.BREAD,3) to 3,
+                ItemStack(Material.COOKED_PORKCHOP,2) to 2,
+                ItemStack(Material.COOKED_CHICKEN,2) to 2,
+                ItemStack(Material.COOKED_BEEF,2) to 2,
+                ItemStack(Material.GOLDEN_APPLE,1) to 1
             )
         }
     }
