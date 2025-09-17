@@ -9,8 +9,10 @@ import base.minigames.hole_in_the_wall.HoleInTheWall
 import base.minigames.hole_in_the_wall.HoleInTheWallCommands
 import base.minigames.MinigameSkeleton
 import base.commands.MiscCommands
+import base.minigames.maze_hunt.MHConst.Locations.WORLD
 import base.minigames.maze_hunt.MazeHunt
 import base.minigames.maze_hunt.MazeHuntCommands
+import org.bukkit.GameRule
 import org.bukkit.World
 import org.bukkit.plugin.java.JavaPlugin
 import java.io.File
@@ -33,6 +35,11 @@ class MinigamePlugin : JavaPlugin() {
 
 
         world = server.getWorld("world")!! // Initialize the world object
+
+        //region Server Gamerule Settings
+            world.setGameRule(GameRule.DO_FIRE_TICK,false)
+        //endregion
+
 
 
         // Register the event listeners

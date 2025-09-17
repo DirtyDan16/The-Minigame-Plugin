@@ -5,11 +5,11 @@ package base.minigames
 import base.MinigamePlugin.Companion.plugin
 import base.annotations.CalledByCommand
 import base.annotations.ShouldBeReset
-import base.resources.Colors.TitleColors.AQUA
+import base.resources.Colors
+import base.resources.Colors.TitleColors.LIME_GREEN
 import base.utils.Utils
 import base.utils.Utils.nukeGameArea
 import net.kyori.adventure.text.Component
-import net.kyori.adventure.text.format.NamedTextColor
 import net.kyori.adventure.text.format.TextColor
 import net.kyori.adventure.title.Title
 import org.bukkit.Bukkit
@@ -81,12 +81,7 @@ protected constructor() {
     @CalledByCommand
     open fun start(sender: Player) {}
     protected inline fun startSkeleton(sender: Player) {
-        if (isGameRunning) {
-            Bukkit.getServer().broadcast(Component.text("Minigame is already running!"))
-            return
-        } else {
-            Bukkit.getServer().broadcast(Component.text("Minigame started!").color(NamedTextColor.GREEN))
-        }
+        stopIfGameAlreadyRunning()
 
         this@MinigameSkeleton.sender = sender
         players += Bukkit.getServer().onlinePlayers
@@ -113,17 +108,60 @@ protected constructor() {
         players.forEach { it.scoreboard = scoreboard }
         //endregion
 
-        // Keep track of the timer for the length of the game, and display it in the scoreboard
+        // Keep track of the timer for the length of the game and display it in the scoreboard
         pausableRunnables += Utils.PausableBukkitRunnable(plugin as JavaPlugin, remainingTicks = 20L, periodTicks = 20L) {
             gameTimeElapsed++
             teamForTimeElapsed.suffix(Component.text(gameTimeElapsed))
         }.apply { this.start() }
+
+
+        announceMessage( "Minigame $minigameName started!","Good Luck",LIME_GREEN)
+
 
         //----- List Of Actions To Be Done When The Game Starts -----//
         prepareArea()
         prepareGameSetting()
 
         //----------------------------------------------------------------//
+    }
+
+    /**
+     * Broadcasts a message and displays a title to either all players or just the game sender.
+     *
+     * @param content The main text content to be displayed in both the broadcast and title
+     * @param subContent The subtitle text to be displayed in the title
+     * @param color The hex color string to be used for both the message and title text
+     * @param toGameSender If true, sends it only to the game sender; if false, sends it to all players (default: false)
+     *
+     * The title is displayed with the following timing:
+     * - Fade in: 500 milliseconds
+     * - Stay time: 3000 milliseconds (3 seconds)
+     * - Fade out: 500 milliseconds
+     */
+    protected fun announceMessage(
+        content: String,
+        subContent: String,
+        color: String,
+        toGameSender: Boolean = false
+    ) {
+        val message = Component.text(
+            content, TextColor.fromHexString(color)
+        )
+        val title = Title.title(
+            message,
+            Component.text(subContent, TextColor.fromHexString(color)),
+            Title.Times.times(Duration.ofMillis(500), Duration.ofMillis(3000), Duration.ofMillis(500))
+        )
+
+        if (toGameSender) {
+            Bukkit.getServer().broadcast(message)
+            sender?.showTitle(title)
+        } else {
+            players.forEach {
+                it.sendMessage(message)
+                it.showTitle(title)
+            }
+        }
     }
 
     /**
@@ -143,13 +181,8 @@ protected constructor() {
     @CalledByCommand
     open fun pauseGame() {pauseGameSkeleton()}
     protected inline fun pauseGameSkeleton() {
-        if (!isGameRunning) {
-            Bukkit.getServer().broadcast(Component.text("Minigame is not running!"))
-            return
-        } else if (isGamePaused) {
-            Bukkit.getServer().broadcast(Component.text("Minigame is already paused!"))
-            return
-        }
+        stopIfGameIsNotRunning()
+        stopIfGameIsPaused()
 
         isGamePaused = true
 
@@ -159,7 +192,7 @@ protected constructor() {
             runnable.pause()
         }
 
-        Bukkit.getServer().broadcast(Component.text("Minigame paused!"))
+        announceMessage("Minigame paused!","To resume do: /[minigame] resume",Colors.TitleColors.CYAN,true)
     }
 
     /**
@@ -167,35 +200,28 @@ protected constructor() {
      */
     @CalledByCommand
     open fun resumeGame() {resumeGameSkeleton()}
+
     protected inline fun resumeGameSkeleton() {
-        if (!isGameRunning) {
-            Bukkit.getServer().broadcast(Component.text("Minigame is not running!"))
-            return
-        } else if (!isGamePaused) {
-            Bukkit.getServer().broadcast(Component.text("Minigame is not paused!"))
-            return
-        }
+        stopIfGameIsNotRunning()
+        stopIfGameIsNotPaused()
+
         isGamePaused = false
 
         for (runnable in pausableRunnables) {
             runnable.start()
         }
 
-        Bukkit.getServer().broadcast(Component.text("Minigame resumed!"))
+        announceMessage("Minigame resumed!","All frozen Actions have been reactivated",Colors.TitleColors.CYAN)
     }
-
     /**
      * Ends the game. Should be overridden and followed with code that cleans up the arena, the gamerules... Should also be called when the game is interrupted.
      * Should also call [endGameSkeleton] at the start of it
      */
     @CalledByCommand
     open fun endGame() { endGameSkeleton() }
+
     protected inline fun endGameSkeleton(){
-        if (!isGameRunning) {
-            Bukkit.getServer().broadcast(Component.text("Minigame is not running!"))
-            return
-        }
-        Bukkit.getServer().broadcast(Component.text("Minigame ended!").color(NamedTextColor.GREEN))
+        stopIfGameIsNotRunning()
 
         pauseGame()
         // copy the list so that we don't get ConcurrentModificationException via adding new runnables to the list while iterating over it
@@ -204,17 +230,10 @@ protected constructor() {
 
         players.forEach {
             it.scoreboard.clearSlot(DisplaySlot.SIDEBAR)
-
-            // say length of game
-            it.sendMessage(Component.text("Game over! Lasted ${gameTimeElapsed}s", TextColor.fromHexString(AQUA)))
-            it.showTitle(
-                Title.title(
-                    Component.text("Game Over!", TextColor.fromHexString(AQUA)),
-                    Component.text("Duration: ${gameTimeElapsed}s", TextColor.fromHexString(AQUA)),
-                    Title.Times.times(Duration.ofMillis(500), Duration.ofMillis(3000), Duration.ofMillis(500))
-                )
-            )
         }
+
+        // say length of game
+        announceMessage("Game over!","Duration: ${gameTimeElapsed}s", Colors.TitleColors.CYAN)
 
         gameTimeElapsed = 0
 
@@ -232,7 +251,6 @@ protected constructor() {
     fun isPlayerInGame(player: Player?): Boolean {
         return isGameRunning && players.contains(player)
     }
-
     /**
      * Nukes an area. Should be overridden and followed with code that clears the physical area. Typically, it should be called in [endGameSkeleton].
      * @param center the center of the nuke
@@ -241,6 +259,8 @@ protected constructor() {
     open fun nukeArea(center: Location, radius: Int) {
         // Delete the surrounding area.
         nukeGameArea(center, radius)
+
+        announceMessage("Area nuked!","hope everyone's safe...", Colors.TitleColors.RED)
     }
 
     /**
@@ -269,4 +289,40 @@ protected constructor() {
             player.health = 20.0 // Set the player's health to full
         }
     }
+
+    //region Game State Guards
+    val commandNotExecutedMessage = "Command has not been executed"
+    protected inline fun stopIfGameAlreadyRunning() {
+        if (isGameRunning) {
+            announceMessage(commandNotExecutedMessage, "Reason: Minigame is already running!",Colors.TitleColors.ORANGE,true)
+
+            return
+        }
+    }
+
+
+    protected inline fun stopIfGameIsNotPaused() {
+        if (!isGamePaused) {
+            announceMessage(commandNotExecutedMessage, "Reason: Minigame is not paused!",Colors.TitleColors.ORANGE,true)
+
+            return
+        }
+    }
+
+    protected inline fun stopIfGameIsPaused() {
+        if (isGamePaused) {
+            announceMessage(commandNotExecutedMessage, "Reason: Minigame already paused!",Colors.TitleColors.ORANGE,true)
+
+            return
+        }
+    }
+
+    protected inline fun stopIfGameIsNotRunning() {
+        if (!isGameRunning) {
+            announceMessage(commandNotExecutedMessage, "Reason: Minigame is not running!",Colors.TitleColors.ORANGE,true)
+
+            return
+        }
+    }
+    //endregion
 }

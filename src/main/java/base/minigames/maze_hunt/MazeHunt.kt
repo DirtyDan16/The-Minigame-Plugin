@@ -163,7 +163,7 @@ class MazeHunt(val plugin: Plugin) : MinigameSkeleton() , Listener {
         deleteStartingPlatform()// delete the starting platform for cases where it is still there
 
         WORLD.difficulty = Difficulty.PEACEFUL
-        WORLD.setGameRule(GameRule.DO_FIRE_TICK,true)
+        WORLD.setGameRule(GameRule.DO_FIRE_TICK,false)
 
         //RESET GLOBAL VARIABLES
         generatedBitsIndexes.clear()
