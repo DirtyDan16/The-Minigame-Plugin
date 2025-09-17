@@ -22,6 +22,9 @@ import kotlin.math.max
 
 @Suppress("DEPRECATION")
 class DiscoMayhem (val plugin: Plugin) : MinigameSkeleton() {
+    override val minigameName: String = "DiscoMayhem"
+
+
     //--Game Modifiers that change as the game progresses to scale difficulty-//
     private var upperBound__startingIntervalForChangingFloor = 0
     private var lowerBound__startingIntervalForChangingFloor = 0

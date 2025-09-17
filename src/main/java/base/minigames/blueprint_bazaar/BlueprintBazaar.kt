@@ -33,24 +33,23 @@ import java.io.IOException
     "SameParameterValue", "DEPRECATION"
 )
 class BlueprintBazaar(plugin: Plugin) : MinigameSkeleton() {
+    override val minigameName: String = "BlueprintBazaar"
+
+
     //region vars
     val plugin: MinigamePlugin
-
-
     /** The builds.*/
     private lateinit var allSchematics: Array<File>
     /** The list of available builds. When a build is chosen, it is removed from this list*/
     private val availableSchematics: MutableSet<File?> = mutableSetOf()
-    private var arena: File? = null
 
+    private var arena: File? = null
     private var curBuild: BuildBlueprint? = null
         set(value) {
             if (curBuild?.timeElapsedRunnable?.isCancelled == false) curBuild?.timeElapsedRunnable?.cancel()
             field = value
         }
 
-    val scoreboard = Bukkit.getScoreboardManager().newScoreboard
-    val timeElapsedForBuild: Objective = scoreboard.registerNewObjective("Blueprint Bazaar","dummy","Blueprint Bazaar")
 
     //endregion
 
@@ -108,7 +107,7 @@ class BlueprintBazaar(plugin: Plugin) : MinigameSkeleton() {
         nukeArea(Locations.GAME_START_LOCATION, Locations.GAME_AREA_RADIUS)
         val arenaRegion: CuboidRegion = BuildLoader.loadSchematicByFile(arena!!, Locations.GAME_START_LOCATION) as CuboidRegion
 
-        // put in furnaces Coal blocks, and in chests axes to strip logs
+        // put in furnaces, Coal blocks, and in chests axes to strip logs
         for (vector in arenaRegion) {
             val block = WORLD.getBlockAt(vector)
             val state = block.state

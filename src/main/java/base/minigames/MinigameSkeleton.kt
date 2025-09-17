@@ -1,15 +1,27 @@
+@file:Suppress("DEPRECATION")
+
 package base.minigames
 
+import base.MinigamePlugin.Companion.plugin
 import base.annotations.CalledByCommand
-import base.utils.ExitStatus
+import base.annotations.ShouldBeReset
+import base.resources.Colors.TitleColors.AQUA
 import base.utils.Utils
 import base.utils.Utils.nukeGameArea
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
+import net.kyori.adventure.text.format.TextColor
+import net.kyori.adventure.title.Title
 import org.bukkit.Bukkit
+import org.bukkit.ChatColor
 import org.bukkit.Location
 import org.bukkit.entity.Player
+import org.bukkit.plugin.java.JavaPlugin
 import org.bukkit.scheduler.BukkitRunnable
+import org.bukkit.scoreboard.DisplaySlot
+import org.bukkit.scoreboard.Objective
+import org.bukkit.scoreboard.Team
+import java.time.Duration
 
 @Suppress("NOTHING_TO_INLINE")
 abstract class MinigameSkeleton
@@ -22,13 +34,21 @@ protected constructor() {
     var sender: Player? = null
     var players: MutableList<Player> = mutableListOf()
 
+    abstract val minigameName: String
+
+    @ShouldBeReset
+    var gameTimeElapsed = 0
+
+    val scoreboard = Bukkit.getScoreboardManager().newScoreboard
+    val scoreboardObjective: Objective = scoreboard.registerNewObjective("The Minigame Plugin","dummy","The Minigame Plugin")
+
+
     /**
      *
      * This list tracks all scheduled tasks that are made via the help of BukkitRunnables. Used to cancel the scheduling when desired.
      * This list is automatically called and canceled upon in the endGame() method.
      * A good use for using this is whenever the game is paused, and you would want to stop all the tasks.
      */
-//    @Deprecated("Use [pausableRunnables] instead for tasks that need to be paused and resumed.", ReplaceWith("pausableRunnables"))
     val runnables: MutableList<BukkitRunnable> = mutableListOf()
 
     /**
@@ -72,6 +92,32 @@ protected constructor() {
         players += Bukkit.getServer().onlinePlayers
         isGameRunning = true
         isGamePaused = false
+
+
+        //Construct the scoreboard info for the minigame.
+        scoreboardObjective.displaySlot = DisplaySlot.SIDEBAR
+
+        //region ScoreBoard init bullshit :)
+        val teamForTimeElapsed: Team = scoreboard.getTeam("timeElapsed") ?: scoreboard.registerNewTeam("timeElapsed").apply {
+            addEntry("")
+            prefix(Component.text("Time Elapsed: "))
+            suffix(Component.text(gameTimeElapsed))
+        }
+
+
+        // Add the team's line to the scoreboard
+        scoreboardObjective.getScore("${ChatColor.YELLOW}Name: $minigameName").score = 15
+        scoreboardObjective.getScore("").score = 14
+
+        // display the minigame's scoreboard to the players.
+        players.forEach { it.scoreboard = scoreboard }
+        //endregion
+
+        // Keep track of the timer for the length of the game, and display it in the scoreboard
+        pausableRunnables += Utils.PausableBukkitRunnable(plugin as JavaPlugin, remainingTicks = 20L, periodTicks = 20L) {
+            gameTimeElapsed++
+            teamForTimeElapsed.suffix(Component.text(gameTimeElapsed))
+        }.apply { this.start() }
 
         //----- List Of Actions To Be Done When The Game Starts -----//
         prepareArea()
@@ -144,10 +190,10 @@ protected constructor() {
      */
     @CalledByCommand
     open fun endGame() { endGameSkeleton() }
-    protected inline fun endGameSkeleton() : ExitStatus {
+    protected inline fun endGameSkeleton(){
         if (!isGameRunning) {
             Bukkit.getServer().broadcast(Component.text("Minigame is not running!"))
-            return ExitStatus.EARLY_EXIT
+            return
         }
         Bukkit.getServer().broadcast(Component.text("Minigame ended!").color(NamedTextColor.GREEN))
 
@@ -156,12 +202,26 @@ protected constructor() {
         runnables.toList().forEach { it.cancel()}
         runnables.clear()
 
+        players.forEach {
+            it.scoreboard.clearSlot(DisplaySlot.SIDEBAR)
+
+            // say length of game
+            it.sendMessage(Component.text("Game over! Lasted ${gameTimeElapsed}s", TextColor.fromHexString(AQUA)))
+            it.showTitle(
+                Title.title(
+                    Component.text("Game Over!", TextColor.fromHexString(AQUA)),
+                    Component.text("Duration: ${gameTimeElapsed}s", TextColor.fromHexString(AQUA)),
+                    Title.Times.times(Duration.ofMillis(500), Duration.ofMillis(3000), Duration.ofMillis(500))
+                )
+            )
+        }
+
+        gameTimeElapsed = 0
+
         isGameRunning = false
         isGamePaused = false
         sender = null
         players.clear()
-
-        return ExitStatus.COMPLETED
     }
 
     /**

@@ -40,6 +40,9 @@ import org.bukkit.plugin.Plugin
 import org.bukkit.plugin.java.JavaPlugin
 
 class MazeHunt(val plugin: Plugin) : MinigameSkeleton() , Listener {
+    override val minigameName: String = this::class.simpleName ?: "Unknown"
+
+
     /** this set keeps track of all the indices of the bits that have been generated */
     @ShouldBeReset
     val generatedBitsIndexes: MutableSet<BitPoint> = mutableSetOf()
