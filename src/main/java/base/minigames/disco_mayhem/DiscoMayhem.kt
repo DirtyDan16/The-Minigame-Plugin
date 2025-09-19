@@ -38,7 +38,7 @@ class DiscoMayhem (val plugin: Plugin) : MinigameSkeleton() {
      */
     @Throws(InterruptedException::class)
     override fun start(sender: Player) {
-        super.startSkeleton(sender)
+        super.start(sender)
 
         initModifiers() // Initialize the modifiers for the game
 
@@ -80,7 +80,7 @@ class DiscoMayhem (val plugin: Plugin) : MinigameSkeleton() {
      */
     //fixme: some parts of the game are not resumed- the game is not resumed, but the floor is not changed nor old floors aren't removed.
     override fun resumeGame() {
-        super.resumeGameSkeleton()
+        super.resumeGame()
 
         activateGameEvents() // Resume the game events
         // Add more actions here
@@ -90,7 +90,7 @@ class DiscoMayhem (val plugin: Plugin) : MinigameSkeleton() {
      * Ends the minigame. The game is ended and the player is notified. The area is cleared.
      */
     override fun endGame() {
-        super.endGameSkeleton()
+        super.endGame()
 
         nukeArea(DiscoMayhemConst.GAME_START_LOCATION, DiscoMayhemConst.NUKE_AREA_RADIUS)
 

@@ -107,11 +107,6 @@ class HoleInTheWall (val plugin: Plugin) : MinigameSkeleton() {
 
     @Throws(InterruptedException::class)
     fun start(player: Player, mapName: String, wantedWallSpawnerMode: String? = null) {
-        if (isGameRunning) {
-            Bukkit.getServer().broadcast(Component.text("Minigame is already running!"))
-            return
-        }
-
         // if the player has specified a wanted game mode *in the /start command*, we will use it, otherwise, we will check if the player has specified a wall spawning mode via using the /set command.
         if (wantedWallSpawnerMode != null) {
             changeWallSpawningMode(wantedWallSpawnerMode)
@@ -124,7 +119,7 @@ class HoleInTheWall (val plugin: Plugin) : MinigameSkeleton() {
         stateOfWallSpawner = WallSpawnerState.IDLE // Set the initial state of the wall spawner to IDLE
 
         this.mapName = mapName
-        startSkeleton(player)
+        super.start(player)
 
         startRepeatingGameLoop()
     }
@@ -220,7 +215,7 @@ class HoleInTheWall (val plugin: Plugin) : MinigameSkeleton() {
     }
 
     override fun endGame() {
-        endGameSkeleton()
+        super.endGame()
 
         // -------------------------- INITIALIZATION --------------------------
 
@@ -260,7 +255,7 @@ class HoleInTheWall (val plugin: Plugin) : MinigameSkeleton() {
     }
 
     override fun pauseGame() {
-        pauseGameSkeleton()
+        super.pauseGame()
 
         // Cancel the periodic task that updates the game state and handles all game events - such as wall movement, wall spawning, and wall deletion.
         gameEvents?.cancel()
@@ -273,7 +268,7 @@ class HoleInTheWall (val plugin: Plugin) : MinigameSkeleton() {
     }
 
     override fun resumeGame() {
-        resumeGameSkeleton()
+        super.resumeGame()
         // resume the periodic task that updates the game state and handles all game events - such as wall movement, wall spawning, and wall deletion.
         startRepeatingGameLoop()
 
@@ -318,7 +313,7 @@ class HoleInTheWall (val plugin: Plugin) : MinigameSkeleton() {
                 timeLeft-= 1/20
                 timeElapsed+= 1/20
                 if (timeLeft <= 0) {
-                    endGameSkeleton()
+                    endGame()
                 }
 
                 //region ---Check if the wall speed should be increased
@@ -806,13 +801,13 @@ class HoleInTheWall (val plugin: Plugin) : MinigameSkeleton() {
             processMapComponents()
         } catch (e: IOException) {
             logger().error("HITW: I/O failure while preparing area", e)
-            endGameSkeleton()
+            endGame()
         } catch (e: IllegalStateException) {
             logger().error("HITW: Invalid state during map preparation", e)
-            endGameSkeleton()
+            endGame()
         } catch (e: Exception) {
             logger().error("HITW: Unexpected error during game setup", e)
-            endGameSkeleton()
+            endGame()
         }
 
         // Load the map schematic (the deco arena) and store the region of the map

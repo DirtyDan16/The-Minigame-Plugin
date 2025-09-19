@@ -63,7 +63,7 @@ class BlueprintBazaar(plugin: Plugin) : MinigameSkeleton() {
     override fun start(sender: Player) {
         initSchematics()
 
-        super.startSkeleton(sender)
+        super.start(sender)
 
         // EXPERIMENTAL
 //        run {
@@ -85,7 +85,7 @@ class BlueprintBazaar(plugin: Plugin) : MinigameSkeleton() {
 
     @CalledByCommand
     override fun endGame() {
-        super.endGameSkeleton()
+        super.endGame()
 
         // set the settings of the world to how they were prior to the start of the minigame.
         trackerOfWorldSettingsBeforeStartingGame.apply {
@@ -196,7 +196,7 @@ class BlueprintBazaar(plugin: Plugin) : MinigameSkeleton() {
 
         if (chosenBuild == null) {
             Bukkit.getServer().broadcast(Component.text("No more builds available!").color(NamedTextColor.AQUA))
-            endGameSkeleton()
+            endGame()
             return
         }
 

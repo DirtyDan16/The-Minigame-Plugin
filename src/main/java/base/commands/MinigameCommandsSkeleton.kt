@@ -1,8 +1,10 @@
 package base.commands
 
+import base.resources.Colors
 import com.google.errorprone.annotations.CheckReturnValue
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
+import net.kyori.adventure.text.format.TextColor
 import org.bukkit.command.Command
 import org.bukkit.command.CommandSender
 import org.bukkit.command.TabExecutor
@@ -31,25 +33,6 @@ abstract class MinigameCommandsSkeleton : TabExecutor {
     }
 
     /**
-     * Requests a list of possible completions for a command argument.
-     * @param sender Source of the command.  For players tab-completing a
-     * command inside of a command block, this will be the player, not
-     * the command block.
-     * @param command Command which was executed
-     * @param label Alias of the command which was used
-     * @param args The arguments passed to the command
-     * @return A List of possible completions for the final argument, or null
-     */
-    override fun onTabComplete(
-        sender: CommandSender,
-        command: Command,
-        label: String,
-        args: Array<String>
-    ): List<String> {
-        return handleTabComplete(sender, command, label, args)
-    }
-
-    /**
      * Sends an error message to the player and returns false
      * @param sender The player to send the message to
      * @param msg The message to send
@@ -57,7 +40,7 @@ abstract class MinigameCommandsSkeleton : TabExecutor {
      */
     @CheckReturnValue
     protected fun error(sender: Player, msg: String): Boolean {
-        sender.sendMessage(Component.text(msg).color(NamedTextColor.RED))
+        sender.sendMessage(Component.text(msg, TextColor.fromHexString(Colors.TitleColors.ORANGE)))
         return false
     }
 
@@ -76,23 +59,7 @@ abstract class MinigameCommandsSkeleton : TabExecutor {
         args: Array<String>
     ): Boolean
 
-    /**
-     * Handles the tab completion
-     * @param sender Source of the command
-     * @param command Command which was executed
-     * @param label Alias of the command which was used
-     * @param args The arguments passed to the command
-     * @return A List of possible completions for the final argument, or null
-     */
-    protected abstract fun handleTabComplete(
-        sender: CommandSender,
-        command: Command,
-        label: String,
-        args: Array<String>
-    ): List<String>
-
-
-    // This is a template for sub-commands, copy and paste it into a new minigamecommand file
+    // This is a template for sub-commands, copy and paste it into a new minigame command file
 //
 //    enum class SubCommands {
 //        START,

@@ -58,7 +58,7 @@ class MazeHunt(val plugin: Plugin) : MinigameSkeleton() , Listener {
     @CalledByCommand
     override fun start(sender: Player) {
         try {
-            super.startSkeleton(sender)
+            super.start(sender)
 
             pausableRunnables += Utils.PausableBukkitRunnable(plugin as JavaPlugin, remainingTicks = MHConst.STARTING_PLATFORM_LIFESPAN) {
                 startGameLoop()
@@ -157,7 +157,7 @@ class MazeHunt(val plugin: Plugin) : MinigameSkeleton() , Listener {
 
     @CalledByCommand
     override fun endGame() {
-        endGameSkeleton()
+        super.endGame()
 
         nukeArea()
         deleteStartingPlatform()// delete the starting platform for cases where it is still there

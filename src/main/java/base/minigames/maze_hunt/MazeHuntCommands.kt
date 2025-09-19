@@ -38,11 +38,26 @@ class MazeHuntCommands(val mazeHunt: MazeHunt) : MinigameCommandsSkeleton() {
         args: Array<String>
     ): Boolean {
         when (SubCommands.fromString(args[0])) {
-            SubCommands.START -> mazeHunt.start(sender)
-            SubCommands.START_HARD_MODE -> mazeHunt.startFastMode(sender)
-            SubCommands.PAUSE -> mazeHunt.pauseGame()
-            SubCommands.RESUME -> mazeHunt.resumeGame()
-            SubCommands.END -> mazeHunt.endGame()
+            SubCommands.START -> {
+                if (mazeHunt.stopIfGameIsRunning()) return false
+                mazeHunt.start(sender)
+            }
+            SubCommands.START_HARD_MODE -> {
+                if (mazeHunt.stopIfGameIsRunning()) return false
+                mazeHunt.startFastMode(sender)
+            }
+            SubCommands.PAUSE -> {
+                if (mazeHunt.stopIfGameIsPaused()) return false
+                mazeHunt.pauseGame()
+            }
+            SubCommands.RESUME -> {
+                if (mazeHunt.stopIfGameIsNotPaused()) return false
+                mazeHunt.resumeGame()
+            }
+            SubCommands.END -> {
+                if (mazeHunt.stopIfGameIsNotRunning()) return false
+                mazeHunt.endGame()
+            }
             SubCommands.NUKE_ARENA -> mazeHunt.nukeArea()
             else -> return error(sender, "Unknown command.")
         }
@@ -50,7 +65,7 @@ class MazeHuntCommands(val mazeHunt: MazeHunt) : MinigameCommandsSkeleton() {
         return true
     }
 
-    override fun handleTabComplete(
+    override fun onTabComplete(
         sender: CommandSender,
         command: Command,
         label: String,

@@ -7,13 +7,14 @@ import org.bukkit.World
 
 object HITWConst {
     const val isInDevelopment: Boolean = false // If the plugin is in development mode, some features may be disabled or behave differently. this is so that the plugin can be tested easily without constantly tempering with the code.
-
-
     const val PLATFORMS_FOLDER: String = "platforms"
+
+
     const val WALLPACK_FOLDER: String = "wallpack"
     const val MAP_FOLDER: String = "map"
     const val GAME_FOLDER: String = "holeinthewall"
 
+    val availableMaps: List<String> = listOf("Map1", "Map2", "Map3")
 
     //region wall constants that aren't tied to a specific wall spawner mode
 
@@ -53,7 +54,7 @@ object HITWConst {
         val WEST_WALL_SPAWN: Location = PIVOT.clone().add(-DISTANCE_OF_WALL_FROM_CENTER_OF_PLATFORM, 1.0, 0.0)
         val EAST_WALL_SPAWN: Location = PIVOT.clone().add(DISTANCE_OF_WALL_FROM_CENTER_OF_PLATFORM + 1.0, 1.0, -1.0)
     }
-    
+
         object WallDifficulty {
             const val EASY: Int = 0
             const val MEDIUM: Int = 1

@@ -79,10 +79,7 @@ protected constructor() {
      */
     @Throws(InterruptedException::class)
     @CalledByCommand
-    open fun start(sender: Player) {}
-    protected inline fun startSkeleton(sender: Player) {
-        stopIfGameAlreadyRunning()
-
+    open fun start(sender: Player) {
         this@MinigameSkeleton.sender = sender
         players += Bukkit.getServer().onlinePlayers
         isGameRunning = true
@@ -126,45 +123,6 @@ protected constructor() {
     }
 
     /**
-     * Broadcasts a message and displays a title to either all players or just the game sender.
-     *
-     * @param content The main text content to be displayed in both the broadcast and title
-     * @param subContent The subtitle text to be displayed in the title
-     * @param color The hex color string to be used for both the message and title text
-     * @param toGameSender If true, sends it only to the game sender; if false, sends it to all players (default: false)
-     *
-     * The title is displayed with the following timing:
-     * - Fade in: 500 milliseconds
-     * - Stay time: 3000 milliseconds (3 seconds)
-     * - Fade out: 500 milliseconds
-     */
-    protected fun announceMessage(
-        content: String,
-        subContent: String,
-        color: String,
-        toGameSender: Boolean = false
-    ) {
-        val message = Component.text(
-            content, TextColor.fromHexString(color)
-        )
-        val title = Title.title(
-            message,
-            Component.text(subContent, TextColor.fromHexString(color)),
-            Title.Times.times(Duration.ofMillis(500), Duration.ofMillis(3000), Duration.ofMillis(500))
-        )
-
-        if (toGameSender) {
-            Bukkit.getServer().broadcast(message)
-            sender?.showTitle(title)
-        } else {
-            players.forEach {
-                it.sendMessage(message)
-                it.showTitle(title)
-            }
-        }
-    }
-
-    /**
      * Starts the minigame in fast mode. This is essentially the same as [start], but it is the hard mode of the minigame.
      * The increased difficulty should be handled in the minigame itself.
      * Should call [start] as well.
@@ -173,17 +131,15 @@ protected constructor() {
      */
     @Throws(InterruptedException::class)
     @CalledByCommand
-    open fun startFastMode(player: Player) {startFastMode(player)}
+    open fun startFastMode(player: Player) {
+        start(player)
+    }
 
     /**
      * Pauses the game. Paused games can be resumed, and they keep certain logic and game logic. Should be overridden and followed with code that pauses the game, like stopping timers, freezing entities...
      */
     @CalledByCommand
-    open fun pauseGame() {pauseGameSkeleton()}
-    protected inline fun pauseGameSkeleton() {
-        stopIfGameIsNotRunning()
-        stopIfGameIsPaused()
-
+    open fun pauseGame() {
         isGamePaused = true
 
         pausableRunnables.removeIf { it.shouldBeRemoved }
@@ -199,12 +155,7 @@ protected constructor() {
      * Resumes the game. Resumed games should be able to continue from where they were paused. should be overridden and followed with code that resumes the game, like starting timers, unfreezing entities...
      */
     @CalledByCommand
-    open fun resumeGame() {resumeGameSkeleton()}
-
-    protected inline fun resumeGameSkeleton() {
-        stopIfGameIsNotRunning()
-        stopIfGameIsNotPaused()
-
+    open fun resumeGame() {
         isGamePaused = false
 
         for (runnable in pausableRunnables) {
@@ -213,16 +164,13 @@ protected constructor() {
 
         announceMessage("Minigame resumed!","All frozen Actions have been reactivated",Colors.TitleColors.CYAN)
     }
+
     /**
      * Ends the game. Should be overridden and followed with code that cleans up the arena, the gamerules... Should also be called when the game is interrupted.
-     * Should also call [endGameSkeleton] at the start of it
+     * Should also call [endGame] at the start of it
      */
     @CalledByCommand
-    open fun endGame() { endGameSkeleton() }
-
-    protected inline fun endGameSkeleton(){
-        stopIfGameIsNotRunning()
-
+    open fun endGame() {
         pauseGame()
         // copy the list so that we don't get ConcurrentModificationException via adding new runnables to the list while iterating over it
         runnables.toList().forEach { it.cancel()}
@@ -242,7 +190,6 @@ protected constructor() {
         sender = null
         players.clear()
     }
-
     /**
      * Checks if a player is in the minigame. This will be used for event handling, such as player death.
      * @param player The player to check
@@ -251,8 +198,9 @@ protected constructor() {
     fun isPlayerInGame(player: Player?): Boolean {
         return isGameRunning && players.contains(player)
     }
+
     /**
-     * Nukes an area. Should be overridden and followed with code that clears the physical area. Typically, it should be called in [endGameSkeleton].
+     * Nukes an area. Should be overridden and followed with code that clears the physical area. Typically, it should be called in [endGame].
      * @param center the center of the nuke
      * @param radius the radius of the nuke
      */
@@ -262,7 +210,6 @@ protected constructor() {
 
         announceMessage("Area nuked!","hope everyone's safe...", Colors.TitleColors.RED)
     }
-
     /**
      * Prepares the area. Should be followed with code that prepares the physical area. Typically, it should be called in [start].
      */
@@ -290,39 +237,120 @@ protected constructor() {
         }
     }
 
+    /**
+     * Broadcasts a message and displays a title to either all players or just the game sender.
+     *
+     * @param content The main text content to be displayed in both the broadcast and title
+     * @param subContent The subtitle text to be displayed in the title
+     * @param color The hex color string to be used for both the message and title text
+     * @param toGameSender If true, sends it only to the game sender; if false, sends it to all players (default: false)
+     *
+     * The title is displayed with the following timing:
+     * - Fade in: 500 milliseconds
+     * - Stay time: 3000 milliseconds (3 seconds)
+     * - Fade out: 500 milliseconds
+     */
+    protected fun announceMessage(
+        content: String,
+        subContent: String,
+        color: String,
+        toGameSender: Boolean = false
+    ) {
+        val message = Component.text(
+            content, TextColor.fromHexString(color)
+        )
+        val title = Title.title(
+            message,
+            Component.text(subContent, TextColor.fromHexString(color)),
+            Title.Times.times(Duration.ofMillis(500), Duration.ofMillis(3000), Duration.ofMillis(500))
+        )
+
+        when {
+            // if the player list is empty, it suggests that the minigame just hasn't started yet. with that in mind, we'll announce a message to each player that is available
+            players.isEmpty() -> {
+                Bukkit.getServer().broadcast(message)
+                Bukkit.getServer().onlinePlayers.forEach { it.showTitle(title) }
+            }
+            toGameSender -> {
+                sender?.sendMessage(message)
+                sender?.showTitle(title)
+            }
+            toGameSender.not() -> {
+                players.forEach {
+                    it.sendMessage(message)
+                    it.showTitle(title)
+                }
+            }
+        }
+    }
+
     //region Game State Guards
     val commandNotExecutedMessage = "Command has not been executed"
-    protected inline fun stopIfGameAlreadyRunning() {
+    /**
+     *  Guard clause for executing the method that the command called.
+     *  Used for when wanting to call [start].
+     *
+     *  If the clause is stopping the exception, the game will notify that the command has not been expected.
+     *
+     *  @return true if the guard has stopped the command from calling the [start] method, otherwise, false.
+     *  */
+    fun stopIfGameIsRunning() : Boolean {
         if (isGameRunning) {
-            announceMessage(commandNotExecutedMessage, "Reason: Minigame is already running!",Colors.TitleColors.ORANGE,true)
-
-            return
+            announceMessage("Minigame is already running!", commandNotExecutedMessage,Colors.TitleColors.ORANGE,true)
+            return true
         }
+        return false
     }
 
+    /**
+     *  Guard clause for executing the method that the command called.
+     *  Used for when wanting to call [resumeGame].
+     *
+     *  If the clause is stopping the exception, the game will notify that the command has not been expected.
+     *
+     *  @return true if the guard has stopped the command from calling the [resumeGame] method, otherwise, false.
+     *  */
+    fun stopIfGameIsNotPaused() : Boolean {
+        if (!isGameRunning || !isGamePaused ) {
+            announceMessage("Minigame is not paused!", commandNotExecutedMessage,Colors.TitleColors.ORANGE,true)
+            return true
 
-    protected inline fun stopIfGameIsNotPaused() {
-        if (!isGamePaused) {
-            announceMessage(commandNotExecutedMessage, "Reason: Minigame is not paused!",Colors.TitleColors.ORANGE,true)
-
-            return
         }
+        return false
     }
 
-    protected inline fun stopIfGameIsPaused() {
-        if (isGamePaused) {
-            announceMessage(commandNotExecutedMessage, "Reason: Minigame already paused!",Colors.TitleColors.ORANGE,true)
+    /**
+     *  Guard clause for executing the method that the command called.
+     *  Used for when wanting to call [pauseGame].
+     *
+     *  if the clause is stopping the exception, the game will notify that the command has not been expected.
+     *
+     *  @return true if the guard has stopped the command from calling the [pauseGame] method, otherwise, false.
+     *  */
+    fun stopIfGameIsPaused() : Boolean {
+        if (!isGameRunning || isGamePaused) {
+            announceMessage("Minigame already paused!", commandNotExecutedMessage,Colors.TitleColors.ORANGE,true)
+            return true
 
-            return
         }
+        return false
     }
 
-    protected inline fun stopIfGameIsNotRunning() {
+    /**
+     *  Guard clause for executing the method that the command called.
+     *  Used for when wanting to call [endGame].
+     *
+     *  If the clause is stopping the exception, the game will notify that the command has not been expected.
+     *
+     *  @return true if the guard has stopped the command from calling the [endGame] method, otherwise, false.
+     *  */
+    fun stopIfGameIsNotRunning() : Boolean {
         if (!isGameRunning) {
-            announceMessage(commandNotExecutedMessage, "Reason: Minigame is not running!",Colors.TitleColors.ORANGE,true)
+            announceMessage("Minigame is not running!", commandNotExecutedMessage,Colors.TitleColors.ORANGE,true)
+            return true
 
-            return
         }
+        return false
     }
     //endregion
 }

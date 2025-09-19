@@ -2,47 +2,74 @@
 package base.minigames.disco_mayhem
 
 import base.commands.MinigameCommandsSkeleton
-import net.kyori.adventure.text.Component
-import net.kyori.adventure.text.format.NamedTextColor
-import org.bukkit.Bukkit
+import base.minigames.maze_hunt.MazeHuntCommands
 import org.bukkit.command.Command
 import org.bukkit.command.CommandSender
 import org.bukkit.entity.Player
-import java.util.*
 
 class DiscoMayhemCommands(private val discoMayhem: DiscoMayhem) : MinigameCommandsSkeleton() {
-    override fun handleCommand(sender: Player, command: Command, label: String, args: Array<String>): Boolean {
-        when (args[0].lowercase(Locale.getDefault())) {
-            "start" -> try {
-                discoMayhem.start(sender)
-            } catch (e: InterruptedException) {
-                throw RuntimeException(e)
-            }
+    /**
+     * All sub-commands for this minigame
+     */
+    enum class SubCommands {
+        START,
+        START_HARD_MODE,
+        PAUSE,
+        RESUME,
+        END,
+        NUKE_ARENA;
 
-            "start_hard_mode" -> try {
-                discoMayhem.startFastMode(sender)
-            } catch (e: InterruptedException) {
-                throw RuntimeException(e)
+        companion object {
+            /**
+             * Converts a string to a SubCommand enum value. Case-insensitive.
+             * @param str The string to convert
+             * @return The SubCommand enum value, or null if the string does not match any enum value
+             */
+            fun fromString(str: String): SubCommands? {
+                return entries.find { it.name.equals(str, ignoreCase = true) }
             }
-
-            "stop" -> discoMayhem.pauseGame()
-            "resume" -> discoMayhem.resumeGame()
-            "end" -> discoMayhem.endGame()
-            "nuke_area" -> discoMayhem.nukeArea(DiscoMayhemConst.GAME_START_LOCATION,DiscoMayhemConst.NUKE_AREA_RADIUS)
-            else -> Bukkit.getServer().broadcast(Component.text("Unknown command.").color(NamedTextColor.RED))
         }
+    }
+
+
+    override fun handleCommand(sender: Player, command: Command, label: String, args: Array<String>): Boolean {
+     when (SubCommands.fromString(args[0])) {
+            SubCommands.START -> {
+                if (discoMayhem.stopIfGameIsRunning()) return false
+                discoMayhem.start(sender)
+            }
+            SubCommands.START_HARD_MODE -> {
+                if (discoMayhem.stopIfGameIsRunning()) return false
+                discoMayhem.startFastMode(sender)
+            }
+            SubCommands.PAUSE -> {
+                if (discoMayhem.stopIfGameIsPaused()) return false
+                discoMayhem.pauseGame()
+            }
+            SubCommands.RESUME -> {
+                if (discoMayhem.stopIfGameIsNotPaused()) return false
+                discoMayhem.resumeGame()
+            }
+            SubCommands.END -> {
+                if (discoMayhem.stopIfGameIsNotRunning()) return false
+                discoMayhem.endGame()
+            }
+            SubCommands.NUKE_ARENA -> discoMayhem.nukeArea(DiscoMayhemConst.GAME_START_LOCATION,DiscoMayhemConst.NUKE_AREA_RADIUS)
+            else -> return error(sender, "Unknown command.")
+        }
+
         return true
     }
 
-    override fun handleTabComplete(
+    override fun onTabComplete(
         sender: CommandSender,
         command: Command,
         label: String,
         args: Array<String>
-    ): MutableList<String> {
-        if (args.size == 1) {
-            return mutableListOf("start", "stop", "start_hard_mode", "resume", "end", "nuke_area")
+    ): List<String> {
+        return when (args.size) {
+            1 -> MazeHuntCommands.SubCommands.entries.map { it.name.lowercase()}
+            else -> {listOf()}
         }
-        return mutableListOf()
     }
 }
