@@ -49,6 +49,8 @@ object MHConst {
         )
 
         val MAZE_REGION = CuboidRegion(BOTTOM_CORNER, TOP_CORNER)
+
+        val MIN_LEGAL_Y_LEVEL = MAZE_ORIGIN.clone().y - 15
     }
 
     const val STARTING_PLATFORM_RADIUS = 5

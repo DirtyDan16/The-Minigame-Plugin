@@ -5,6 +5,8 @@ package base.minigames
 import base.MinigamePlugin.Companion.plugin
 import base.annotations.CalledByCommand
 import base.annotations.ShouldBeReset
+import base.minigames.blueprint_bazaar.BPBConst
+import base.minigames.maze_hunt.MHConst
 import base.resources.Colors
 import base.resources.Colors.TitleColors.LIME_GREEN
 import base.utils.Utils
@@ -110,7 +112,6 @@ protected constructor() {
             gameTimeElapsed++
             teamForTimeElapsed.suffix(Component.text(gameTimeElapsed))
         }.apply { this.start() }
-
 
         announceMessage( "Minigame $minigameName started!","Good Luck",LIME_GREEN)
 
@@ -256,6 +257,8 @@ protected constructor() {
         color: String,
         toGameSender: Boolean = false
     ) {
+        val isContentNotEmpty = content.isEmpty().not()
+
         val message = Component.text(
             content, TextColor.fromHexString(color)
         )
@@ -268,16 +271,16 @@ protected constructor() {
         when {
             // if the player list is empty, it suggests that the minigame just hasn't started yet. with that in mind, we'll announce a message to each player that is available
             players.isEmpty() -> {
-                Bukkit.getServer().broadcast(message)
+                if(isContentNotEmpty) Bukkit.getServer().broadcast(message)
                 Bukkit.getServer().onlinePlayers.forEach { it.showTitle(title) }
             }
             toGameSender -> {
-                sender?.sendMessage(message)
+                if(isContentNotEmpty) sender?.sendMessage(message)
                 sender?.showTitle(title)
             }
             toGameSender.not() -> {
                 players.forEach {
-                    it.sendMessage(message)
+                    if(isContentNotEmpty) it.sendMessage(message)
                     it.showTitle(title)
                 }
             }

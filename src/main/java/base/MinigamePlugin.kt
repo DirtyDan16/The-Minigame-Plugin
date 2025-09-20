@@ -12,6 +12,9 @@ import base.commands.MiscCommands
 import base.minigames.maze_hunt.MHConst.Locations.WORLD
 import base.minigames.maze_hunt.MazeHunt
 import base.minigames.maze_hunt.MazeHuntCommands
+import org.bukkit.Bukkit
+import org.bukkit.Difficulty
+import org.bukkit.GameMode
 import org.bukkit.GameRule
 import org.bukkit.World
 import org.bukkit.plugin.java.JavaPlugin
@@ -37,7 +40,12 @@ class MinigamePlugin : JavaPlugin() {
         world = server.getWorld("world")!! // Initialize the world object
 
         //region Server Gamerule Settings
-            world.setGameRule(GameRule.DO_FIRE_TICK,false)
+        world.setGameRule(GameRule.DO_FIRE_TICK,false)
+        world.setGameRule(GameRule.MOB_GRIEFING,false)
+        world.difficulty = Difficulty.PEACEFUL
+        Bukkit.getServer().onlinePlayers.forEach {
+            it.gameMode = GameMode.ADVENTURE
+        }
         //endregion
 
 

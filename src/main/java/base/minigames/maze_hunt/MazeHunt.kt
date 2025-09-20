@@ -1,5 +1,6 @@
 package base.minigames.maze_hunt
 
+import base.MinigamePlugin
 import base.annotations.CalledByCommand
 import base.annotations.ShouldBeReset
 import base.minigames.MinigameSkeleton
@@ -22,22 +23,31 @@ import org.jetbrains.kotlinx.multik.ndarray.data.D2Array
 import org.jetbrains.kotlinx.multik.ndarray.data.get
 import org.jetbrains.kotlinx.multik.ndarray.data.set
 import base.minigames.maze_hunt.MHConst.BitPoint
+import base.resources.Colors
 import base.utils.Utils
 import base.utils.extensions_for_classes.getWeightedRandom
 import base.utils.Utils.initFloor
 import base.utils.Utils.successChance
 import com.destroystokyo.paper.event.block.BlockDestroyEvent
+import com.sk89q.worldedit.WorldEdit
 import org.bukkit.Difficulty
+import org.bukkit.GameMode
 import org.bukkit.GameRule
 import org.bukkit.GameRule.DO_DAYLIGHT_CYCLE
 import org.bukkit.event.EventHandler
+import org.bukkit.event.EventPriority
 import org.bukkit.event.Listener
 import org.bukkit.event.block.BlockBreakEvent
 import org.bukkit.event.entity.EntityCombustEvent
+import org.bukkit.event.entity.EntityDeathEvent
+import org.bukkit.event.player.PlayerCommandPreprocessEvent
+import org.bukkit.event.player.PlayerInteractEvent
 import org.bukkit.inventory.ItemStack
 import org.bukkit.metadata.FixedMetadataValue
 import org.bukkit.plugin.Plugin
 import org.bukkit.plugin.java.JavaPlugin
+import org.bukkit.scheduler.BukkitRunnable
+import kotlin.collections.plusAssign
 
 class MazeHunt(val plugin: Plugin) : MinigameSkeleton() , Listener {
     override val minigameName: String = this::class.simpleName ?: "Unknown"
@@ -45,15 +55,15 @@ class MazeHunt(val plugin: Plugin) : MinigameSkeleton() , Listener {
 
     /** this set keeps track of all the indices of the bits that have been generated */
     @ShouldBeReset
-    val generatedBitsIndexes: MutableSet<BitPoint> = mutableSetOf()
+    private val generatedBitsIndexes: MutableSet<BitPoint> = mutableSetOf()
 
     /** Number of mobs to spawn every mob spawning cycle. Gets increased as time goes on. */
     @ShouldBeReset
-    var amountOfMobsToSpawnPerInterval: Int = Mobs.INITIAL_AMOUNTS_OF_MOBS_TO_SPAWN_IN_A_CYCLE
+    private var amountOfMobsToSpawnPerInterval: Int = Mobs.INITIAL_AMOUNTS_OF_MOBS_TO_SPAWN_IN_A_CYCLE
 
     /** Number of Loot Crates to spawn every crate spawning cycle. Gets increased as time goes on. */
     @ShouldBeReset
-    var amountOfCratesToSpawnPerInterval: Int = MHConst.Spawns.LootCrates.INITIAL_AMOUNTS_OF_CRATES_TO_SPAWN_IN_A_CYCLE
+    private var amountOfCratesToSpawnPerInterval: Int = MHConst.Spawns.LootCrates.INITIAL_AMOUNTS_OF_CRATES_TO_SPAWN_IN_A_CYCLE
 
     @CalledByCommand
     override fun start(sender: Player) {
@@ -64,6 +74,15 @@ class MazeHunt(val plugin: Plugin) : MinigameSkeleton() , Listener {
                 startGameLoop()
             }.apply { this.start() }
 
+            // keep track of if players have fallen of the arena based on their Y level and kill them because they can cheat fall damage via slow-falling potions
+            runnables += object : BukkitRunnable() {
+                override fun run() {
+                    players.forEach {
+                        if (it.location.y < Locations.MIN_LEGAL_Y_LEVEL && it.gameMode !in listOf(GameMode.CREATIVE, GameMode.SPECTATOR))
+                            it.health = 0.0
+                    }
+                }
+            }.apply { runTaskTimer(MinigamePlugin.Companion.plugin, 0L, 10L) }
         } catch (e: InterruptedException) {
             pauseGame()
             throw e
@@ -86,7 +105,7 @@ class MazeHunt(val plugin: Plugin) : MinigameSkeleton() , Listener {
                 WORLD.spawnEntity(chosenLocationToSpawnAt, chosenMobToSpawn)
             }
 
-            for (player in players) { player.sendMessage("New mob wave!") }
+            announceMessage("","New mob wave", Colors.TitleColors.AQUA)
 
         }.apply { this.start() }
 
@@ -155,6 +174,12 @@ class MazeHunt(val plugin: Plugin) : MinigameSkeleton() , Listener {
         event.isDropItems = false
     }
 
+    @EventHandler
+    private fun onMobDeath(event: EntityDeathEvent) {
+        event.drops.clear()
+        event.droppedExp = 0
+    }
+
     @CalledByCommand
     override fun endGame() {
         super.endGame()
@@ -164,6 +189,7 @@ class MazeHunt(val plugin: Plugin) : MinigameSkeleton() , Listener {
 
         WORLD.difficulty = Difficulty.PEACEFUL
         WORLD.setGameRule(GameRule.DO_FIRE_TICK,false)
+        WORLD.setGameRule(GameRule.MOB_GRIEFING,false)
 
         //RESET GLOBAL VARIABLES
         generatedBitsIndexes.clear()
@@ -172,6 +198,7 @@ class MazeHunt(val plugin: Plugin) : MinigameSkeleton() , Listener {
 
         players.forEach { player ->
             player.inventory.clear()
+            player.gameMode = org.bukkit.GameMode.ADVENTURE
         }
     }
 
@@ -203,6 +230,7 @@ class MazeHunt(val plugin: Plugin) : MinigameSkeleton() , Listener {
         WORLD.time = 1000
         WORLD.setGameRule(DO_DAYLIGHT_CYCLE, false)
         WORLD.setGameRule(GameRule.DO_FIRE_TICK,false)
+        WORLD.setGameRule(GameRule.MOB_GRIEFING,false)
         WORLD.difficulty = Mobs.WORLD_DIFFICULTY
 
         for (player in players) {
@@ -213,15 +241,15 @@ class MazeHunt(val plugin: Plugin) : MinigameSkeleton() , Listener {
 
     /** Disable mobs getting burned by the sun while Maze Hunt is running*/
     @EventHandler
-    fun onEntityCombust(event: EntityCombustEvent) {
+    private fun onEntityCombust(event: EntityCombustEvent) {
         if (!isGameRunning) return
 
         event.isCancelled = true
     }
 
 
-    val _TRUE = 1.toByte()
-    val _FALSE = 0.toByte()
+    private val _TRUE = 1.toByte()
+    private val _FALSE = 0.toByte()
     override fun prepareArea() {
         nukeArea()
 
@@ -394,7 +422,7 @@ class MazeHunt(val plugin: Plugin) : MinigameSkeleton() , Listener {
      * @param radius The radius of the bit in blocks. The size of the bit will be (radius * 2 + 1) x (radius * 2 + 1)
      * Made from a predefined block type
      */
-    fun physicallyCreateBit(bitIndexX: Int, bitIndexZ: Int, radius: Int) {
+    private fun physicallyCreateBit(bitIndexX: Int, bitIndexZ: Int, @Suppress("SameParameterValue") radius: Int) {1
         val center = getBitLocation(bitIndexX, bitIndexZ)
 
         for (x in -radius..radius) {
