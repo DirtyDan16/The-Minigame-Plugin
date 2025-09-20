@@ -24,24 +24,20 @@ import org.jetbrains.kotlinx.multik.ndarray.data.get
 import org.jetbrains.kotlinx.multik.ndarray.data.set
 import base.minigames.maze_hunt.MHConst.BitPoint
 import base.resources.Colors
-import base.utils.Utils
+import base.utils.PausableBukkitRunnable
 import base.utils.extensions_for_classes.getWeightedRandom
 import base.utils.Utils.initFloor
 import base.utils.Utils.successChance
-import com.destroystokyo.paper.event.block.BlockDestroyEvent
-import com.sk89q.worldedit.WorldEdit
+import base.utils.activateChain
 import org.bukkit.Difficulty
 import org.bukkit.GameMode
 import org.bukkit.GameRule
 import org.bukkit.GameRule.DO_DAYLIGHT_CYCLE
 import org.bukkit.event.EventHandler
-import org.bukkit.event.EventPriority
 import org.bukkit.event.Listener
 import org.bukkit.event.block.BlockBreakEvent
 import org.bukkit.event.entity.EntityCombustEvent
 import org.bukkit.event.entity.EntityDeathEvent
-import org.bukkit.event.player.PlayerCommandPreprocessEvent
-import org.bukkit.event.player.PlayerInteractEvent
 import org.bukkit.inventory.ItemStack
 import org.bukkit.metadata.FixedMetadataValue
 import org.bukkit.plugin.Plugin
@@ -70,7 +66,7 @@ class MazeHunt(val plugin: Plugin) : MinigameSkeleton() , Listener {
         try {
             super.start(sender)
 
-            pausableRunnables += Utils.PausableBukkitRunnable(plugin as JavaPlugin, remainingTicks = MHConst.STARTING_PLATFORM_LIFESPAN) {
+            pausableRunnables += PausableBukkitRunnable(plugin as JavaPlugin, remainingTicks = MHConst.STARTING_PLATFORM_LIFESPAN) {
                 startGameLoop()
             }.apply { this.start() }
 
@@ -91,7 +87,7 @@ class MazeHunt(val plugin: Plugin) : MinigameSkeleton() , Listener {
 
     private fun startGameLoop() {
         //region Start spawning mobs
-        pausableRunnables += Utils.PausableBukkitRunnable(plugin as JavaPlugin, periodTicks = Mobs.SPAWN_CYCLE_DELAY) {
+        pausableRunnables += PausableBukkitRunnable(plugin as JavaPlugin, periodTicks = Mobs.SPAWN_CYCLE_DELAY) {
             repeat(amountOfMobsToSpawnPerInterval) {
                 if (generatedBitsIndexes.isEmpty())
                     return@repeat
@@ -105,19 +101,21 @@ class MazeHunt(val plugin: Plugin) : MinigameSkeleton() , Listener {
                 WORLD.spawnEntity(chosenLocationToSpawnAt, chosenMobToSpawn)
             }
 
-            announceMessage("","New mob wave", Colors.TitleColors.AQUA)
+            announceMessage("", "New mob wave", Colors.TitleColors.AQUA)
 
         }.apply { this.start() }
 
         // Gradually increase the number of mobs spawned per interval
-        pausableRunnables += Utils.PausableBukkitRunnable(plugin, periodTicks = Mobs.NUM_OF_SPAWNS_INCREASER_TIMER_RANGE.random()) {
+        pausableRunnables += PausableBukkitRunnable(plugin, periodTicks = Mobs.NUM_OF_SPAWNS_INCREASER_TIMER) {
             amountOfMobsToSpawnPerInterval += 1
         }.apply { this.start() }
 
         //endregion
 
+        countDownToNewMazeGeneration(MazeGen.REGENERATE_MAZE_INITIAL_COOLDOWN)
+
         //region Start Spawning Loot Crates
-        pausableRunnables += Utils.PausableBukkitRunnable(plugin, periodTicks = Mobs.SPAWN_CYCLE_DELAY) {
+        pausableRunnables += PausableBukkitRunnable(plugin, periodTicks = Mobs.SPAWN_CYCLE_DELAY) {
             repeat(amountOfCratesToSpawnPerInterval) {
                 if (generatedBitsIndexes.isEmpty())
                     return@repeat
@@ -143,10 +141,37 @@ class MazeHunt(val plugin: Plugin) : MinigameSkeleton() , Listener {
         }.apply { this.start() }
 
         // Gradually increase the number of crates spawned per interval
-        pausableRunnables += Utils.PausableBukkitRunnable(plugin, periodTicks = MHConst.Spawns.LootCrates.NUM_OF_SPAWNS_INCREASER_TIMER_RANGE.random()) {
+        pausableRunnables += PausableBukkitRunnable(plugin, periodTicks = MHConst.Spawns.LootCrates.NUM_OF_SPAWNS_INCREASER_TIMER_RANGE.random()) {
             amountOfCratesToSpawnPerInterval += 1
         }.apply { this.start() }
         //endregion
+    }
+
+    private fun countDownToNewMazeGeneration(waitTime: Long) {
+        val chainElements = listOf(
+            PausableBukkitRunnable(plugin as JavaPlugin, remainingTicks = waitTime - 10 * 20L) {
+                announceMessage(
+                    "10s until Maze layout change!",
+                    "be careful",
+                    Colors.TitleColors.ORANGE,
+                    duration = 1000L
+                )
+            },
+            PausableBukkitRunnable(plugin, remainingTicks = 5 * 20L) {
+                announceMessage(
+                    "5s",
+                    color = Colors.TitleColors.ORANGE,
+                    duration = 1000L
+                )
+            },
+            PausableBukkitRunnable(plugin, remainingTicks = 5 * 20L) {
+                prepareArea()
+                players.forEach { it.teleport(Locations.PLAYERS_START_LOCATION) }
+                countDownToNewMazeGeneration(waitTime + MazeGen.INCREASE_IN_DURATION_FOR_MAZE_GENERATION)
+            }
+        )
+
+        chainElements.activateChain(isGameAliveAtm = {isGameRunning})
     }
 
     @EventHandler
@@ -198,7 +223,7 @@ class MazeHunt(val plugin: Plugin) : MinigameSkeleton() , Listener {
 
         players.forEach { player ->
             player.inventory.clear()
-            player.gameMode = org.bukkit.GameMode.ADVENTURE
+            player.gameMode = GameMode.ADVENTURE
         }
     }
 
@@ -235,7 +260,7 @@ class MazeHunt(val plugin: Plugin) : MinigameSkeleton() , Listener {
 
         for (player in players) {
             player.teleport(Locations.PLAYERS_START_LOCATION)
-            player.gameMode = org.bukkit.GameMode.SURVIVAL
+            player.gameMode = GameMode.SURVIVAL
         }
     }
 
@@ -253,6 +278,7 @@ class MazeHunt(val plugin: Plugin) : MinigameSkeleton() , Listener {
     override fun prepareArea() {
         nukeArea()
 
+
         // Create the starting platform for the players to stand on. It'll be deleted momentarily.
         initFloor(
             MHConst.STARTING_PLATFORM_RADIUS,
@@ -263,7 +289,7 @@ class MazeHunt(val plugin: Plugin) : MinigameSkeleton() , Listener {
         )
 
 
-        pausableRunnables += Utils.PausableBukkitRunnable(plugin as JavaPlugin, MHConst.STARTING_PLATFORM_LIFESPAN) {
+        pausableRunnables += PausableBukkitRunnable(plugin as JavaPlugin, MHConst.STARTING_PLATFORM_LIFESPAN) {
             deleteStartingPlatform()
         }.apply { this.start() }
 
@@ -276,6 +302,8 @@ class MazeHunt(val plugin: Plugin) : MinigameSkeleton() , Listener {
             WORLD.getBlockAt(it.maximumPoint).type = Material.REDSTONE_BLOCK
         }
 
+        //reset the global tracker of physical bits generated, since this method is called multiple times, each time creating a new maze
+        generatedBitsIndexes.clear()
 
         /** 2D array to keep track of generated bits*/
         val mazeMatrix: D2Array<Byte> = mk.d2array(MAZE_DIMENSION_X, MAZE_DIMENSION_Z, { _FALSE })

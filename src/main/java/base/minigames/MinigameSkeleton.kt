@@ -5,11 +5,9 @@ package base.minigames
 import base.MinigamePlugin.Companion.plugin
 import base.annotations.CalledByCommand
 import base.annotations.ShouldBeReset
-import base.minigames.blueprint_bazaar.BPBConst
-import base.minigames.maze_hunt.MHConst
 import base.resources.Colors
 import base.resources.Colors.TitleColors.LIME_GREEN
-import base.utils.Utils
+import base.utils.PausableBukkitRunnable
 import base.utils.Utils.nukeGameArea
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.TextColor
@@ -54,11 +52,11 @@ protected constructor() {
     val runnables: MutableList<BukkitRunnable> = mutableListOf()
 
     /**
-     * This list tracks all scheduled tasks that are made via the help of [Utils.PausableBukkitRunnable]. Used to pause and resume the scheduling when desired.
+     * This list tracks all scheduled tasks that are made via the help of [base.utils.PausableBukkitRunnable]. Used to pause and resume the scheduling when desired.
      * This list is automatically called and canceled upon in the endGame() method.
      * When the game is paused, all the runnables in this list are paused, and when the game is resumed, all the runnables in this list are resumed.
      */
-    val pausableRunnables: MutableList<Utils.PausableBukkitRunnable> = mutableListOf()
+    val pausableRunnables: MutableList<PausableBukkitRunnable> = mutableListOf()
 
     enum class WorldSettingsToTrack {
         TIME_OF_DAY,
@@ -108,12 +106,12 @@ protected constructor() {
         //endregion
 
         // Keep track of the timer for the length of the game and display it in the scoreboard
-        pausableRunnables += Utils.PausableBukkitRunnable(plugin as JavaPlugin, remainingTicks = 20L, periodTicks = 20L) {
+        pausableRunnables += PausableBukkitRunnable(plugin as JavaPlugin, remainingTicks = 20L, periodTicks = 20L) {
             gameTimeElapsed++
             teamForTimeElapsed.suffix(Component.text(gameTimeElapsed))
         }.apply { this.start() }
 
-        announceMessage( "Minigame $minigameName started!","Good Luck",LIME_GREEN)
+        announceMessage("Minigame $minigameName started!", "Good Luck", LIME_GREEN)
 
 
         //----- List Of Actions To Be Done When The Game Starts -----//
@@ -143,13 +141,18 @@ protected constructor() {
     open fun pauseGame() {
         isGamePaused = true
 
-        pausableRunnables.removeIf { it.shouldBeRemoved }
+        pausableRunnables.removeIf { it.shouldNotBeUsed }
 
         for (runnable in pausableRunnables) {
             runnable.pause()
         }
 
-        announceMessage("Minigame paused!","To resume do: /[minigame] resume",Colors.TitleColors.CYAN,true)
+        announceMessage(
+            "Minigame paused!",
+            "To resume do: /[minigame] resume",
+            Colors.TitleColors.CYAN,
+            toGameSender = true
+        )
     }
 
     /**
@@ -163,7 +166,7 @@ protected constructor() {
             runnable.start()
         }
 
-        announceMessage("Minigame resumed!","All frozen Actions have been reactivated",Colors.TitleColors.CYAN)
+        announceMessage("Minigame resumed!", "All frozen Actions have been reactivated", Colors.TitleColors.CYAN)
     }
 
     /**
@@ -182,7 +185,7 @@ protected constructor() {
         }
 
         // say length of game
-        announceMessage("Game over!","Duration: ${gameTimeElapsed}s", Colors.TitleColors.CYAN)
+        announceMessage("Game over!", "Duration: ${gameTimeElapsed}s", Colors.TitleColors.CYAN)
 
         gameTimeElapsed = 0
 
@@ -209,7 +212,7 @@ protected constructor() {
         // Delete the surrounding area.
         nukeGameArea(center, radius)
 
-        announceMessage("Area nuked!","hope everyone's safe...", Colors.TitleColors.RED)
+        announceMessage("Area nuked!", "hope everyone's safe...", Colors.TitleColors.RED)
     }
     /**
      * Prepares the area. Should be followed with code that prepares the physical area. Typically, it should be called in [start].
@@ -239,11 +242,12 @@ protected constructor() {
     }
 
     /**
-     * Broadcasts a message and displays a title to either all players or just the game sender.
+     * Broadcasts a message and displays a [Title] to either all players or just the game sender.
      *
      * @param content The main text content to be displayed in both the broadcast and title
      * @param subContent The subtitle text to be displayed in the title
      * @param color The hex color string to be used for both the message and title text
+     * @param duration The time the message last as a [Title] on the players' screen, not including the time it fades in and out. Defaults to 3s.
      * @param toGameSender If true, sends it only to the game sender; if false, sends it to all players (default: false)
      *
      * The title is displayed with the following timing:
@@ -252,9 +256,10 @@ protected constructor() {
      * - Fade out: 500 milliseconds
      */
     protected fun announceMessage(
-        content: String,
-        subContent: String,
+        content: String = "",
+        subContent: String = "",
         color: String,
+        duration: Long = 3000,
         toGameSender: Boolean = false
     ) {
         val isContentNotEmpty = content.isEmpty().not()
@@ -265,7 +270,7 @@ protected constructor() {
         val title = Title.title(
             message,
             Component.text(subContent, TextColor.fromHexString(color)),
-            Title.Times.times(Duration.ofMillis(500), Duration.ofMillis(3000), Duration.ofMillis(500))
+            Title.Times.times(Duration.ofMillis(500), Duration.ofMillis(duration), Duration.ofMillis(500))
         )
 
         when {
@@ -299,7 +304,12 @@ protected constructor() {
      *  */
     fun stopIfGameIsRunning() : Boolean {
         if (isGameRunning) {
-            announceMessage("Minigame is already running!", commandNotExecutedMessage,Colors.TitleColors.ORANGE,true)
+            announceMessage(
+                "Minigame is already running!",
+                commandNotExecutedMessage,
+                Colors.TitleColors.ORANGE,
+                toGameSender = true
+            )
             return true
         }
         return false
@@ -315,7 +325,12 @@ protected constructor() {
      *  */
     fun stopIfGameIsNotPaused() : Boolean {
         if (!isGameRunning || !isGamePaused ) {
-            announceMessage("Minigame is not paused!", commandNotExecutedMessage,Colors.TitleColors.ORANGE,true)
+            announceMessage(
+                "Minigame is not paused!",
+                commandNotExecutedMessage,
+                Colors.TitleColors.ORANGE,
+                toGameSender = true
+            )
             return true
 
         }
@@ -332,7 +347,12 @@ protected constructor() {
      *  */
     fun stopIfGameIsPaused() : Boolean {
         if (!isGameRunning || isGamePaused) {
-            announceMessage("Minigame already paused!", commandNotExecutedMessage,Colors.TitleColors.ORANGE,true)
+            announceMessage(
+                "Minigame already paused!",
+                commandNotExecutedMessage,
+                Colors.TitleColors.ORANGE,
+                toGameSender = true
+            )
             return true
 
         }
@@ -349,7 +369,12 @@ protected constructor() {
      *  */
     fun stopIfGameIsNotRunning() : Boolean {
         if (!isGameRunning) {
-            announceMessage("Minigame is not running!", commandNotExecutedMessage,Colors.TitleColors.ORANGE,true)
+            announceMessage(
+                "Minigame is not running!",
+                commandNotExecutedMessage,
+                Colors.TitleColors.ORANGE,
+                toGameSender = true
+            )
             return true
 
         }

@@ -82,6 +82,13 @@ object MHConst {
         /** Probability (0.0 to 1.0) of changing the direction that the Chain of Bits goes towards*/
         const val PROBABILITY_OF_CHANGING_DIRECTION = 0.3
 
+        /**
+         * The starting duration of a given maze layout, before switching the maze and cleaning the arena to a different one
+         */
+        const val REGENERATE_MAZE_INITIAL_COOLDOWN = 20L*10
+
+        const val INCREASE_IN_DURATION_FOR_MAZE_GENERATION = 10
+
         /** Materials and their relative weights to be used when generating the floor of the maze*/
         val FLOOR_MATERIALS = listOf(
             Material.COBBLESTONE to 30,
@@ -106,7 +113,7 @@ object MHConst {
             const val SPAWN_CYCLE_DELAY = 20L*10
 
             val NUM_OF_SPAWNS_INCREASER_TIMER_RANGE = 20L*10..20L*20
-
+            const val NUM_OF_SPAWNS_INCREASER_TIMER = 20L*15
 
             /** List of allowed mob types and their relative weights when spawning*/
             val ALLOWED_MOB_TYPES = listOf(
@@ -146,7 +153,6 @@ object MHConst {
                 FOOD_LOOT_TABLE(Material.YELLOW_WOOL, foodLootTable, 1..5),
                 POTION_LOOT_TABLE(Material.PURPLE_WOOL,potionLootTable,1..2)
             }
-
 
             /**
              * Represents different durability ranges for items in the game.
@@ -291,7 +297,10 @@ object MHConst {
                 ItemStack(Material.GOLDEN_APPLE,1) to 1
             )
         }
+
     }
 
     data class BitPoint(var x: Int, var z: Int)
 }
+
+

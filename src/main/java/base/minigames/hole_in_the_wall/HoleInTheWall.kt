@@ -8,7 +8,7 @@ import base.minigames.hole_in_the_wall.HITWConst.Timers
 import base.minigames.hole_in_the_wall.HITWConst.WallSpawnerMode
 import base.minigames.hole_in_the_wall.HITWConst.WallSpawnerState
 import base.minigames.MinigameSkeleton
-import base.utils.Utils.activateTaskAfterConditionIsMet
+import base.utils.activateTaskAfterConditionIsMet
 import base.utils.extensions_for_classes.getNextWeighted
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
