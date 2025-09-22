@@ -29,6 +29,9 @@ import base.utils.extensions_for_classes.getWeightedRandom
 import base.utils.Utils.initFloor
 import base.utils.Utils.successChance
 import base.utils.activateChain
+import base.utils.delayTheFollowing
+import net.kyori.adventure.text.Component.*
+import net.kyori.adventure.text.format.TextColor
 import org.bukkit.Difficulty
 import org.bukkit.GameMode
 import org.bukkit.GameRule
@@ -43,6 +46,7 @@ import org.bukkit.metadata.FixedMetadataValue
 import org.bukkit.plugin.Plugin
 import org.bukkit.plugin.java.JavaPlugin
 import org.bukkit.scheduler.BukkitRunnable
+import org.bukkit.scoreboard.Team
 import kotlin.collections.plusAssign
 
 class MazeHunt(val plugin: Plugin) : MinigameSkeleton() , Listener {
@@ -60,6 +64,9 @@ class MazeHunt(val plugin: Plugin) : MinigameSkeleton() , Listener {
     /** Number of Loot Crates to spawn every crate spawning cycle. Gets increased as time goes on. */
     @ShouldBeReset
     private var amountOfCratesToSpawnPerInterval: Int = MHConst.Spawns.LootCrates.INITIAL_AMOUNTS_OF_CRATES_TO_SPAWN_IN_A_CYCLE
+
+    @ShouldBeReset
+    var curTimeLeftTillNewMaze = MazeGen.REGENERATE_MAZE_INITIAL_COOLDOWN
 
     @CalledByCommand
     override fun start(sender: Player) {
@@ -86,33 +93,23 @@ class MazeHunt(val plugin: Plugin) : MinigameSkeleton() , Listener {
     }
 
     private fun startGameLoop() {
-        //region Start spawning mobs
-        pausableRunnables += PausableBukkitRunnable(plugin as JavaPlugin, periodTicks = Mobs.SPAWN_CYCLE_DELAY) {
-            repeat(amountOfMobsToSpawnPerInterval) {
-                if (generatedBitsIndexes.isEmpty())
-                    return@repeat
+        //region new maze generation timer logic
+        countDownToNewMazeGeneration(curTimeLeftTillNewMaze)
 
-                val chosenMobToSpawn = Mobs.ALLOWED_MOB_TYPES.getWeightedRandom()
+        val teamForTimeRemainingTillSwap: Team = scoreboard.getTeam("timeRemainingTillNewMaze") ?: scoreboard.registerNewTeam("timeRemainingTillNewMaze").apply {
+            addEntry("Time Remaining Till New Maze: ")
+            suffix(text(curTimeLeftTillNewMaze/20))
+        }
 
-                val chosenLocationToSpawnAt: Location = generatedBitsIndexes.random().let {
-                    getBitLocation(it.x, it.z)
-                }.apply { y += 1 }
+        scoreboardObjective.getScore("Time Remaining Till New Maze: ").score = 13
 
-                WORLD.spawnEntity(chosenLocationToSpawnAt, chosenMobToSpawn)
-            }
-
-            announceMessage("", "New mob wave", Colors.TitleColors.AQUA)
-
-        }.apply { this.start() }
-
-        // Gradually increase the number of mobs spawned per interval
-        pausableRunnables += PausableBukkitRunnable(plugin, periodTicks = Mobs.NUM_OF_SPAWNS_INCREASER_TIMER) {
-            amountOfMobsToSpawnPerInterval += 1
+        // Keep track of the timer for the length of the game and display it in the scoreboard
+        pausableRunnables += PausableBukkitRunnable(plugin as JavaPlugin, remainingTicks = 20L, periodTicks = 20L) {
+            curTimeLeftTillNewMaze -= 20L
+            teamForTimeRemainingTillSwap.suffix(text(curTimeLeftTillNewMaze/20))
         }.apply { this.start() }
 
         //endregion
-
-        countDownToNewMazeGeneration(MazeGen.REGENERATE_MAZE_INITIAL_COOLDOWN)
 
         //region Start Spawning Loot Crates
         pausableRunnables += PausableBukkitRunnable(plugin, periodTicks = Mobs.SPAWN_CYCLE_DELAY) {
@@ -141,15 +138,45 @@ class MazeHunt(val plugin: Plugin) : MinigameSkeleton() , Listener {
         }.apply { this.start() }
 
         // Gradually increase the number of crates spawned per interval
-        pausableRunnables += PausableBukkitRunnable(plugin, periodTicks = MHConst.Spawns.LootCrates.NUM_OF_SPAWNS_INCREASER_TIMER_RANGE.random()) {
+        pausableRunnables += PausableBukkitRunnable(plugin, periodTicks = MHConst.Spawns.LootCrates.NUM_OF_SPAWNS_INCREASER_TIMER_RANGE.random()
+        ) {
             amountOfCratesToSpawnPerInterval += 1
         }.apply { this.start() }
+
+        //endregion
+
+        //region Start spawning mobs
+        pausableRunnables += PausableBukkitRunnable(plugin, periodTicks = Mobs.SPAWN_CYCLE_DELAY) {
+            repeat(amountOfMobsToSpawnPerInterval) {
+                if (generatedBitsIndexes.isEmpty())
+                    return@repeat
+
+                val chosenMobToSpawn = Mobs.ALLOWED_MOB_TYPES.getWeightedRandom()
+
+                val chosenLocationToSpawnAt: Location = generatedBitsIndexes.random().let {
+                    getBitLocation(it.x, it.z)
+                }.apply { y += 1 }
+
+                WORLD.spawnEntity(chosenLocationToSpawnAt, chosenMobToSpawn)
+            }
+
+            players.forEach {
+                it.sendActionBar(text("New mob wave",TextColor.fromHexString(Colors.TitleColors.AQUA)))
+            }
+
+        }.apply { this.start() }
+
+        // Gradually increase the number of mobs spawned per interval
+        pausableRunnables += PausableBukkitRunnable(plugin, periodTicks = Mobs.NUM_OF_SPAWNS_INCREASER_TIMER) {
+            amountOfMobsToSpawnPerInterval += 1
+        }.apply { this.start() }
+
         //endregion
     }
 
-    private fun countDownToNewMazeGeneration(waitTime: Long) {
+    private fun countDownToNewMazeGeneration(startedWaitTime: Long) {
         val chainElements = listOf(
-            PausableBukkitRunnable(plugin as JavaPlugin, remainingTicks = waitTime - 10 * 20L) {
+            PausableBukkitRunnable(plugin as JavaPlugin, remainingTicks = startedWaitTime - 10 * 20L) {
                 announceMessage(
                     "10s until Maze layout change!",
                     "be careful",
@@ -167,11 +194,13 @@ class MazeHunt(val plugin: Plugin) : MinigameSkeleton() , Listener {
             PausableBukkitRunnable(plugin, remainingTicks = 5 * 20L) {
                 prepareArea()
                 players.forEach { it.teleport(Locations.PLAYERS_START_LOCATION) }
-                countDownToNewMazeGeneration(waitTime + MazeGen.INCREASE_IN_DURATION_FOR_MAZE_GENERATION)
+
+                curTimeLeftTillNewMaze = startedWaitTime + MazeGen.INCREASE_IN_DURATION_FOR_MAZE_GENERATION
+                countDownToNewMazeGeneration(curTimeLeftTillNewMaze)
             }
         )
 
-        chainElements.activateChain(isGameAliveAtm = {isGameRunning})
+        chainElements.activateChain(stopCondition = {!isGameRunning})
     }
 
     @EventHandler
@@ -220,6 +249,7 @@ class MazeHunt(val plugin: Plugin) : MinigameSkeleton() , Listener {
         generatedBitsIndexes.clear()
         amountOfMobsToSpawnPerInterval = Mobs.INITIAL_AMOUNTS_OF_MOBS_TO_SPAWN_IN_A_CYCLE
         amountOfCratesToSpawnPerInterval= MHConst.Spawns.LootCrates.INITIAL_AMOUNTS_OF_CRATES_TO_SPAWN_IN_A_CYCLE
+        curTimeLeftTillNewMaze = MazeGen.REGENERATE_MAZE_INITIAL_COOLDOWN
 
         players.forEach { player ->
             player.inventory.clear()
@@ -278,7 +308,6 @@ class MazeHunt(val plugin: Plugin) : MinigameSkeleton() , Listener {
     override fun prepareArea() {
         nukeArea()
 
-
         // Create the starting platform for the players to stand on. It'll be deleted momentarily.
         initFloor(
             MHConst.STARTING_PLATFORM_RADIUS,
@@ -294,44 +323,36 @@ class MazeHunt(val plugin: Plugin) : MinigameSkeleton() , Listener {
         }.apply { this.start() }
 
 
-        //region Code that creates the maze area
+        //Code that creates the maze area
 
-        // generate the corners of the maze area
-        Locations.MAZE_REGION.let {
-            WORLD.getBlockAt(it.minimumPoint).type = Material.REDSTONE_BLOCK
-            WORLD.getBlockAt(it.maximumPoint).type = Material.REDSTONE_BLOCK
+        20L delayTheFollowing {
+            //reset the global tracker of physical bits generated, since this method is called multiple times, each time creating a new maze
+            generatedBitsIndexes.clear()
+            /** 2D array to keep track of generated bits*/
+            val mazeMatrix: D2Array<Byte> = mk.d2array<Byte>(MAZE_DIMENSION_X, MAZE_DIMENSION_Z, { _FALSE })
+            // Start generating from the center of the maze
+            mazeMatrix[MAZE_DIMENSION_X / 2, MAZE_DIMENSION_Z / 2] = _TRUE
+            physicallyCreateBit(MAZE_DIMENSION_X / 2, MAZE_DIMENSION_Z / 2, MazeGen.BIT_RADIUS)
+            // -1 because we already placed the first bit in the center
+            var numberOfBitsLeftToGenerate = MazeGen.AMOUNT_OF_BITS - 1
+            // add the center bit to the set of generated bits
+            generatedBitsIndexes += BitPoint(MAZE_DIMENSION_X / 2, MAZE_DIMENSION_Z / 2)
+            // Limit the number of bit-snakes to prevent infinite loops
+            var maxAmountOfTries = MazeGen.MAX_ATTEMPTS_TO_GENERATE
+            while (numberOfBitsLeftToGenerate > 0 && maxAmountOfTries > 0) {
+                maxAmountOfTries -= 1
+
+                // Select a random spot already generated from the bits that have been generated. It stores the coordinates of the bit. Start a new chain of bits from there
+                val newBitCreatorStartingSpot: BitPoint = generatedBitsIndexes.random()
+
+                numberOfBitsLeftToGenerate = startNewChainOfBits(
+                    newBitCreatorStartingSpot,
+                    mazeMatrix,
+                    generatedBitsIndexes,
+                    numberOfBitsLeftToGenerate
+                )
+            }
         }
-
-        //reset the global tracker of physical bits generated, since this method is called multiple times, each time creating a new maze
-        generatedBitsIndexes.clear()
-
-        /** 2D array to keep track of generated bits*/
-        val mazeMatrix: D2Array<Byte> = mk.d2array(MAZE_DIMENSION_X, MAZE_DIMENSION_Z, { _FALSE })
-
-
-        // Start generating from the center of the maze
-        mazeMatrix[MAZE_DIMENSION_X / 2, MAZE_DIMENSION_Z / 2] = _TRUE
-        physicallyCreateBit(MAZE_DIMENSION_X/2,MAZE_DIMENSION_Z/2, MazeGen.BIT_RADIUS)
-
-        // -1 because we already placed the first bit in the center
-        var numberOfBitsLeftToGenerate = MazeGen.AMOUNT_OF_BITS - 1
-        // add the center bit to the set of generated bits
-        generatedBitsIndexes += BitPoint(MAZE_DIMENSION_X / 2, MAZE_DIMENSION_Z / 2)
-
-
-        // Limit the number of bit-snakes to prevent infinite loops
-        var maxAmountOfTries = MazeGen.MAX_ATTEMPTS_TO_GENERATE
-
-        while (numberOfBitsLeftToGenerate > 0 && maxAmountOfTries > 0) {
-            maxAmountOfTries -= 1
-
-            // Select a random spot already generated from the bits that have been generated. It stores the coordinates of the bit. Start a new chain of bits from there
-            val newBitCreatorStartingSpot: BitPoint = generatedBitsIndexes.random()
-
-            numberOfBitsLeftToGenerate = startNewChainOfBits(newBitCreatorStartingSpot, mazeMatrix,generatedBitsIndexes, numberOfBitsLeftToGenerate)
-        }
-
-        //endregion
     }
 
     /**

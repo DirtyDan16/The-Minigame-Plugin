@@ -10,6 +10,7 @@ import base.resources.Colors.TitleColors.LIME_GREEN
 import base.utils.PausableBukkitRunnable
 import base.utils.Utils.nukeGameArea
 import net.kyori.adventure.text.Component
+import net.kyori.adventure.text.Component.*
 import net.kyori.adventure.text.format.TextColor
 import net.kyori.adventure.title.Title
 import org.bukkit.Bukkit
@@ -92,8 +93,8 @@ protected constructor() {
         //region ScoreBoard init bullshit :)
         val teamForTimeElapsed: Team = scoreboard.getTeam("timeElapsed") ?: scoreboard.registerNewTeam("timeElapsed").apply {
             addEntry("")
-            prefix(Component.text("Time Elapsed: "))
-            suffix(Component.text(gameTimeElapsed))
+            prefix(text("Time Elapsed: "))
+            suffix(text(gameTimeElapsed))
         }
 
 
@@ -108,7 +109,7 @@ protected constructor() {
         // Keep track of the timer for the length of the game and display it in the scoreboard
         pausableRunnables += PausableBukkitRunnable(plugin as JavaPlugin, remainingTicks = 20L, periodTicks = 20L) {
             gameTimeElapsed++
-            teamForTimeElapsed.suffix(Component.text(gameTimeElapsed))
+            teamForTimeElapsed.suffix(text(gameTimeElapsed))
         }.apply { this.start() }
 
         announceMessage("Minigame $minigameName started!", "Good Luck", LIME_GREEN)
@@ -264,12 +265,12 @@ protected constructor() {
     ) {
         val isContentNotEmpty = content.isEmpty().not()
 
-        val message = Component.text(
+        val message = text(
             content, TextColor.fromHexString(color)
         )
         val title = Title.title(
             message,
-            Component.text(subContent, TextColor.fromHexString(color)),
+            text(subContent, TextColor.fromHexString(color)),
             Title.Times.times(Duration.ofMillis(500), Duration.ofMillis(duration), Duration.ofMillis(500))
         )
 

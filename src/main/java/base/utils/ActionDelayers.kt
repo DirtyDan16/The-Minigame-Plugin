@@ -1,12 +1,24 @@
 package base.utils
 
 import base.MinigamePlugin
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import org.bukkit.Bukkit
+import org.bukkit.plugin.Plugin
 import org.bukkit.plugin.java.JavaPlugin
 import org.bukkit.scheduler.BukkitRunnable
 import org.bukkit.scheduler.BukkitTask
+import kotlin.coroutines.CoroutineContext
+import kotlin.math.absoluteValue
 import kotlin.math.max
 
+
+infix fun Long.delayTheFollowing(runnable: ()-> Unit) {
+    Bukkit.getScheduler().runTaskLater(MinigamePlugin.plugin,runnable,this)
+}
 /**
  * A [BukkitRunnable] that can be paused and resumed. When paused, it keeps track of the remaining time until the next execution. When resumed, it continues from where it left off.
  *
@@ -97,13 +109,14 @@ class PausableBukkitRunnable(
     }
 }
 
+// Me when i make this then figure that coroutines exist ......
 fun Collection<PausableBukkitRunnable>.activateChain(
     listOfRunnablesToStoreAt: MutableCollection<PausableBukkitRunnable>? = null,
-    isGameAliveAtm: () -> Boolean
+    stopCondition: () -> Boolean
 ) {
     val iterator = this.iterator()
     fun runNext() {
-        if (!isGameAliveAtm() || !iterator.hasNext()) return
+        if (stopCondition() || !iterator.hasNext()) return
 
         val runnable: PausableBukkitRunnable = iterator.next()
 
@@ -116,6 +129,8 @@ fun Collection<PausableBukkitRunnable>.activateChain(
             condition = {
                 runnable.shouldNotBeUsed == true
             } ,
+            conditionToCancel = stopCondition,
+            actionToDoIfCanceled = { runnable.pause() },
             action = {
                 runNext()
             }
@@ -184,6 +199,39 @@ fun activateTaskAfterConditionIsMet(
     listOfRunnablesToAddTo?.add(runnable)
 
     return runnable
+}
+
+
+fun CoroutineScope.doTaskWithIncreasingDelay(
+    initialDelayMillis: Long,
+    delayIncrementMillis: Long,
+    iterations: Int,
+    action: suspend () -> Unit
+): Job {
+    return launch {
+        var delayTime = initialDelayMillis
+        repeat(iterations) {
+            action()
+            delay(delayTime)
+            delayTime += delayIncrementMillis
+        }
+    }
+}
+
+fun CoroutineScope.doTaskWithIncreasingDelay(
+    initialDelayMillis: Long,
+    delayIncrementMillis: Long,
+    conditionToStop: () -> Boolean,
+    action: suspend () -> Unit
+): Job {
+    return launch {
+        var delayTime = initialDelayMillis
+        while (conditionToStop().not()) {
+            action()
+            delay(delayTime)
+            delayTime += delayIncrementMillis
+        }
+    }
 }
 
 

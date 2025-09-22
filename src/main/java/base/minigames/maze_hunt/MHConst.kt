@@ -85,9 +85,9 @@ object MHConst {
         /**
          * The starting duration of a given maze layout, before switching the maze and cleaning the arena to a different one
          */
-        const val REGENERATE_MAZE_INITIAL_COOLDOWN = 20L*10
+        const val REGENERATE_MAZE_INITIAL_COOLDOWN = 20L*20
 
-        const val INCREASE_IN_DURATION_FOR_MAZE_GENERATION = 10
+        const val INCREASE_IN_DURATION_FOR_MAZE_GENERATION = 20L*10
 
         /** Materials and their relative weights to be used when generating the floor of the maze*/
         val FLOOR_MATERIALS = listOf(
