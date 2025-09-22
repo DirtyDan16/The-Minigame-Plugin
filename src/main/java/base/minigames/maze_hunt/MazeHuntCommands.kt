@@ -10,7 +10,7 @@ class MazeHuntCommands(val mazeHunt: MazeHunt) : MinigameCommandsSkeleton() {
     /**
      * All sub-commands for this minigame
      */
-    enum class SubCommands {
+    private enum class SubCommands {
         START,
         START_HARD_MODE,
         PAUSE,

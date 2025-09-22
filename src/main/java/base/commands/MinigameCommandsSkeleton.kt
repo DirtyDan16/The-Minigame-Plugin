@@ -61,7 +61,7 @@ abstract class MinigameCommandsSkeleton : TabExecutor {
 
     // This is a template for sub-commands, copy and paste it into a new minigame command file
 //
-//    enum class SubCommands {
+//    private enum class SubCommands {
 //        START,
 //        START_HARD_MODE,
 //        PAUSE,

@@ -11,7 +11,7 @@ class DiscoMayhemCommands(private val discoMayhem: DiscoMayhem) : MinigameComman
     /**
      * All sub-commands for this minigame
      */
-    enum class SubCommands {
+    private enum class SubCommands {
         START,
         START_HARD_MODE,
         PAUSE,
@@ -68,7 +68,7 @@ class DiscoMayhemCommands(private val discoMayhem: DiscoMayhem) : MinigameComman
         args: Array<String>
     ): List<String> {
         return when (args.size) {
-            1 -> MazeHuntCommands.SubCommands.entries.map { it.name.lowercase()}
+            1 -> SubCommands.entries.map { it.name.lowercase()}
             else -> {listOf()}
         }
     }

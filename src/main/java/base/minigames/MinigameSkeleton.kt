@@ -213,7 +213,7 @@ protected constructor() {
         // Delete the surrounding area.
         nukeGameArea(center, radius)
 
-        announceMessage("Area nuked!", "hope everyone's safe...", Colors.TitleColors.RED)
+//        announceMessage("Area nuked!", "hope everyone's safe...", Colors.TitleColors.RED)
     }
     /**
      * Prepares the area. Should be followed with code that prepares the physical area. Typically, it should be called in [start].

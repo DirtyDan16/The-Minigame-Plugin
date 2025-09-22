@@ -8,7 +8,7 @@ import org.bukkit.entity.Player
 import java.util.*
 
 class HoleInTheWallCommands(private val holeInTheWall: HoleInTheWall) : MinigameCommandsSkeleton() {
-    enum class SubCommands {
+    private enum class SubCommands {
         START,
         START_HARD_MODE,
         PAUSE,

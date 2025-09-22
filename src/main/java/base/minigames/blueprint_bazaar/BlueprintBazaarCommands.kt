@@ -10,7 +10,7 @@ class BlueprintBazaarCommands(private val blueprintbazaar: BlueprintBazaar) : Mi
         /**
      * All sub-commands for this minigame
      */
-    enum class SubCommands {
+    private enum class SubCommands {
         START,
         START_HARD_MODE,
         PAUSE,
@@ -78,7 +78,7 @@ class BlueprintBazaarCommands(private val blueprintbazaar: BlueprintBazaar) : Mi
         args: Array<String>
     ): List<String> {
         return when (args.size) {
-            1 -> MazeHuntCommands.SubCommands.entries.map { it.name.lowercase()}
+            1 -> SubCommands.entries.map { it.name.lowercase()}
             else -> {listOf()}
         }
     }
