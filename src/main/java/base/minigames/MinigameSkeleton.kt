@@ -7,9 +7,8 @@ import base.annotations.CalledByCommand
 import base.annotations.ShouldBeReset
 import base.resources.Colors
 import base.resources.Colors.TitleColors.LIME_GREEN
-import base.utils.PausableBukkitRunnable
-import base.utils.Utils.nukeGameArea
-import net.kyori.adventure.text.Component
+import base.utils.additions.PausableBukkitRunnable
+import base.utils.additions.Utils.nukeGameArea
 import net.kyori.adventure.text.Component.*
 import net.kyori.adventure.text.format.TextColor
 import net.kyori.adventure.title.Title
@@ -53,7 +52,7 @@ protected constructor() {
     val runnables: MutableList<BukkitRunnable> = mutableListOf()
 
     /**
-     * This list tracks all scheduled tasks that are made via the help of [base.utils.PausableBukkitRunnable]. Used to pause and resume the scheduling when desired.
+     * This list tracks all scheduled tasks that are made via the help of [PausableBukkitRunnable]. Used to pause and resume the scheduling when desired.
      * This list is automatically called and canceled upon in the endGame() method.
      * When the game is paused, all the runnables in this list are paused, and when the game is resumed, all the runnables in this list are resumed.
      */

@@ -1,6 +1,6 @@
 package base.utils.extensions_for_classes
 
-import base.utils.Direction
+import base.utils.additions.Direction
 import com.sk89q.worldedit.math.BlockVector3
 import org.bukkit.Material
 import org.bukkit.World
@@ -87,18 +87,6 @@ fun Direction.toYaw(): Float {
         Direction.NORTH -> 180f
         Direction.EAST  -> -90f
     }
-}
-
-fun <T> Collection<Pair<T, Int>>.getWeightedRandom(): T {
-    val totalWeight = this.sumOf { it.second }
-    var randomValue = Random.Default.nextInt(totalWeight)
-    for ((item, weight) in this) {
-        randomValue -= weight
-        if (randomValue < 0) {
-            return item
-        }
-    }
-    throw IllegalStateException("Should never reach here if weights are positive")
 }
 
 inline fun <reified T: Number> T.randomlyFlipSign(): T {

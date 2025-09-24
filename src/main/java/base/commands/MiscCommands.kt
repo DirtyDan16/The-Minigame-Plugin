@@ -1,7 +1,7 @@
 package base.commands
 
 import base.MinigamePlugin
-import base.utils.Utils.nukeGameArea
+import base.utils.additions.Utils.nukeGameArea
 import org.bukkit.command.Command
 import org.bukkit.command.CommandExecutor
 import org.bukkit.command.CommandSender

@@ -2,13 +2,13 @@ package base.minigames.hole_in_the_wall
 
 import com.sk89q.worldedit.regions.Region
 import base.other.BuildLoader
-import base.utils.Direction
+import base.utils.additions.Direction
 import base.MinigamePlugin
 import base.minigames.hole_in_the_wall.HITWConst.Timers
 import base.minigames.hole_in_the_wall.HITWConst.WallSpawnerMode
 import base.minigames.hole_in_the_wall.HITWConst.WallSpawnerState
 import base.minigames.MinigameSkeleton
-import base.utils.activateTaskAfterConditionIsMet
+import base.utils.additions.activateTaskAfterConditionIsMet
 import base.utils.extensions_for_classes.getNextWeighted
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor

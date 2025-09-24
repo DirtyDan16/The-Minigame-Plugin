@@ -6,13 +6,18 @@ import base.minigames.maze_hunt.MHConst.MazeGen.BIT_RADIUS
 import base.minigames.maze_hunt.MHConst.MazeGen.BIT_SIZE
 import base.minigames.maze_hunt.MHConst.MazeGen.MAZE_DIMENSION_X
 import base.minigames.maze_hunt.MHConst.MazeGen.MAZE_DIMENSION_Z
+import base.utils.extensions_for_classes.duraRange
+import base.utils.extensions_for_classes.modifyDuraBy
+import base.utils.extensions_for_classes.remainingDurability
 import com.sk89q.worldedit.math.BlockVector3
 import com.sk89q.worldedit.regions.CuboidRegion
+import org.bukkit.Bukkit
 import org.bukkit.Difficulty
 import org.bukkit.Location
 import org.bukkit.Material
 import org.bukkit.World
 import org.bukkit.entity.EntityType
+import org.bukkit.entity.EntityType.*
 import org.bukkit.inventory.ItemStack
 import org.bukkit.inventory.meta.Damageable
 import org.bukkit.inventory.meta.PotionMeta
@@ -21,7 +26,7 @@ import org.bukkit.potion.PotionType
 object MHConst {
 
     object Locations {
-        val WORLD: World = org.bukkit.Bukkit.getWorld("world") ?: throw IllegalStateException("World 'world' not found")
+        val WORLD: World = Bukkit.getWorld("world") ?: throw IllegalStateException("World 'world' not found")
 
         /** The pivot point is the point which other locations are relative to. This point is also as the (0;0) for the maze platform.*/
         val PIVOT = Location(WORLD, 0.0, 150.0, 0.0)
@@ -85,7 +90,8 @@ object MHConst {
         /**
          * The starting duration of a given maze layout, before switching the maze and cleaning the arena to a different one
          */
-        const val REGENERATE_MAZE_INITIAL_COOLDOWN = 20L*20
+        const val REGENERATE_MAZE_INITIAL_COOLDOWN = 20L*30
+        const val REGENERATE_MAZE_INITIAL_COOLDOWN_FOR_HARD_MODE = 20L*50
 
         const val INCREASE_IN_DURATION_FOR_MAZE_GENERATION = 20L*10
 
@@ -108,7 +114,8 @@ object MHConst {
         object Mobs {
             val WORLD_DIFFICULTY = Difficulty.NORMAL
 
-            const val INITIAL_AMOUNTS_OF_MOBS_TO_SPAWN_IN_A_CYCLE = 1
+            const val INITIAL_AMOUNTS_OF_MOBS_TO_SPAWN_IN_A_CYCLE = 2
+            const val INITIAL_AMOUNTS_OF_MOBS_TO_SPAWN_IN_A_CYCLE_FOR_HARD_MODE = 10
 
             const val SPAWN_CYCLE_DELAY = 20L*10
 
@@ -117,24 +124,25 @@ object MHConst {
 
             /** List of allowed mob types and their relative weights when spawning*/
             val ALLOWED_MOB_TYPES = listOf(
-                EntityType.ZOMBIE to 15,
-                EntityType.HUSK to 10,
-                EntityType.SKELETON to 10,
-                EntityType.STRAY to 5,
-                EntityType.CREEPER to 5,
-                EntityType.SPIDER to 5,
-                EntityType.ENDERMAN to 2,
-                EntityType.WITCH to 1,
-                EntityType.SILVERFISH to 5,
-                EntityType.BREEZE to 2,
-                EntityType.BLAZE to 2,
-                EntityType.SLIME to 10,
-                EntityType.MAGMA_CUBE to 2
+                ZOMBIE to 15,
+                HUSK to 10,
+                SKELETON to 10,
+                STRAY to 5,
+                CREEPER to 5,
+                SPIDER to 5,
+                ENDERMAN to 2,
+                WITCH to 1,
+                SILVERFISH to 5,
+                BREEZE to 2,
+                BLAZE to 2,
+                SLIME to 10,
+                MAGMA_CUBE to 2
             )
         }
 
         object LootCrates {
-            const val INITIAL_AMOUNTS_OF_CRATES_TO_SPAWN_IN_A_CYCLE = 1
+            const val INITIAL_AMOUNTS_OF_CRATES_TO_SPAWN_IN_A_CYCLE = 2
+            const val INITIAL_AMOUNTS_OF_CRATES_TO_SPAWN_IN_A_CYCLE_FOR_HARD_MODE = 10
 
             val NUM_OF_SPAWNS_INCREASER_TIMER_RANGE = 20L*10..20L*20
 
@@ -152,6 +160,19 @@ object MHConst {
                 ARMOR_LOOT_TABLE(Material.GREEN_WOOL, armorLootTable, 1..2),
                 FOOD_LOOT_TABLE(Material.YELLOW_WOOL, foodLootTable, 1..5),
                 POTION_LOOT_TABLE(Material.PURPLE_WOOL,potionLootTable,1..2)
+            }
+
+            // Extension function to set durability randomly based on duraRange and the number of copies this item has
+            fun Pair<ItemStack,Int>.applyRandomDurability() : ItemStack {
+                val duraRange: IntRange = first.duraRange!!
+
+                val copyOfItem = first.clone().apply { remainingDurability = 0 }
+
+                repeat(second) {
+                    copyOfItem modifyDuraBy duraRange.random()
+                }
+
+                return copyOfItem
             }
 
             /**
@@ -172,12 +193,6 @@ object MHConst {
                 FISHING_ROD(5..10);
             }
 
-            private fun ItemStack.setDurability(dura: Int) {
-                val meta = this.itemMeta as Damageable
-                meta.damage = type.maxDurability - dura
-                this.itemMeta = meta
-            }
-
             /**
              * Melee weapon loot table containing different tiers of weapons with their weights.
              * Higher weights indicate more common items.
@@ -188,13 +203,13 @@ object MHConst {
              * - Diamond sword (Weight: 1)
              */
             val meleeWeaponLootTable  = listOf(
-                ItemStack(Material.WOODEN_SWORD).apply { setDurability(DurabilityRange.WOOD_WEAPONS.duraRange.random()) } to 10,
-                ItemStack(Material.WOODEN_AXE).apply { setDurability(DurabilityRange.WOOD_WEAPONS.duraRange.random())} to 8,
-                ItemStack(Material.STONE_SWORD).apply { setDurability(DurabilityRange.STONE_WEAPONS.duraRange.random())} to 7,
-                ItemStack(Material.STONE_AXE).apply { setDurability(DurabilityRange.STONE_WEAPONS.duraRange.random())} to 5,
-                ItemStack(Material.IRON_SWORD).apply { setDurability(DurabilityRange.IRON_WEAPONS.duraRange.random())} to 4,
-                ItemStack(Material.IRON_AXE).apply { setDurability(DurabilityRange.IRON_WEAPONS.duraRange.random())} to 3,
-                ItemStack(Material.DIAMOND_SWORD).apply { setDurability(DurabilityRange.DIAMOND_WEAPONS.duraRange.random())} to 1,
+                ItemStack(Material.WOODEN_SWORD).apply { duraRange = DurabilityRange.WOOD_WEAPONS.duraRange } to 8,
+                ItemStack(Material.WOODEN_AXE).apply { duraRange = DurabilityRange.WOOD_WEAPONS.duraRange} to 8,
+                ItemStack(Material.STONE_SWORD).apply { duraRange = DurabilityRange.STONE_WEAPONS.duraRange} to 7,
+                ItemStack(Material.STONE_AXE).apply { duraRange = DurabilityRange.STONE_WEAPONS.duraRange} to 5,
+                ItemStack(Material.IRON_SWORD).apply { duraRange = DurabilityRange.IRON_WEAPONS.duraRange} to 4,
+                ItemStack(Material.IRON_AXE).apply { duraRange = DurabilityRange.IRON_WEAPONS.duraRange} to 3,
+                ItemStack(Material.DIAMOND_SWORD).apply { duraRange = DurabilityRange.DIAMOND_WEAPONS.duraRange} to 1,
             )
 
             /**
@@ -207,9 +222,9 @@ object MHConst {
              * - Splash Potion (Weight: 2)
              */
             val rangedWeaponLootTable = listOf(
-                ItemStack(Material.BOW).apply {  setDurability(DurabilityRange.BOWS.duraRange.random())} to 2,
-                ItemStack(Material.CROSSBOW).apply {  setDurability(DurabilityRange.BOWS.duraRange.random())} to 2,
-                ItemStack(Material.FISHING_ROD).apply {  setDurability(DurabilityRange.FISHING_ROD.duraRange.random())} to 1,
+                ItemStack(Material.BOW).apply {  duraRange = DurabilityRange.BOWS.duraRange} to 2,
+                ItemStack(Material.CROSSBOW).apply {  duraRange = DurabilityRange.BOWS.duraRange} to 2,
+                ItemStack(Material.FISHING_ROD).apply {  duraRange = DurabilityRange.FISHING_ROD.duraRange} to 1,
                 ItemStack(Material.SNOWBALL,16) to 5,
                 ItemStack(Material.ARROW,4) to 5,
                 ItemStack(Material.ARROW,12) to 1,
@@ -259,22 +274,22 @@ object MHConst {
              */
             val armorLootTable = listOf(
                 // Leather Armor (Common)
-                ItemStack(Material.LEATHER_HELMET).apply { setDurability(DurabilityRange.LEATHER_ARMOR.duraRange.random())} to 10,
-                ItemStack(Material.LEATHER_CHESTPLATE).apply { setDurability(DurabilityRange.LEATHER_ARMOR.duraRange.random())} to 10,
-                ItemStack(Material.LEATHER_LEGGINGS).apply { setDurability(DurabilityRange.LEATHER_ARMOR.duraRange.random())} to 10,
-                ItemStack(Material.LEATHER_BOOTS).apply { setDurability(DurabilityRange.LEATHER_ARMOR.duraRange.random())} to 10,
+                ItemStack(Material.LEATHER_HELMET).apply { duraRange = DurabilityRange.LEATHER_ARMOR.duraRange} to 10,
+                ItemStack(Material.LEATHER_CHESTPLATE).apply { duraRange = DurabilityRange.LEATHER_ARMOR.duraRange} to 10,
+                ItemStack(Material.LEATHER_LEGGINGS).apply { duraRange = DurabilityRange.LEATHER_ARMOR.duraRange} to 10,
+                ItemStack(Material.LEATHER_BOOTS).apply { duraRange = DurabilityRange.LEATHER_ARMOR.duraRange} to 10,
 
                 // Iron Armor (Uncommon)
-                ItemStack(Material.IRON_HELMET).apply { setDurability(DurabilityRange.IRON_ARMOR.duraRange.random())} to 6,
-                ItemStack(Material.IRON_CHESTPLATE).apply { setDurability(DurabilityRange.IRON_ARMOR.duraRange.random())} to 6,
-                ItemStack(Material.IRON_LEGGINGS).apply { setDurability(DurabilityRange.IRON_ARMOR.duraRange.random())} to 6,
-                ItemStack(Material.IRON_BOOTS).apply { setDurability(DurabilityRange.IRON_ARMOR.duraRange.random())} to 6,
+                ItemStack(Material.IRON_HELMET).apply { duraRange = DurabilityRange.IRON_ARMOR.duraRange} to 6,
+                ItemStack(Material.IRON_CHESTPLATE).apply { duraRange = DurabilityRange.IRON_ARMOR.duraRange} to 6,
+                ItemStack(Material.IRON_LEGGINGS).apply { duraRange = DurabilityRange.IRON_ARMOR.duraRange} to 6,
+                ItemStack(Material.IRON_BOOTS).apply { duraRange = DurabilityRange.IRON_ARMOR.duraRange} to 6,
 
                 // Diamond Armor (Rare)
-                ItemStack(Material.DIAMOND_HELMET).apply { setDurability(DurabilityRange.DIAMOND_ARMOR.duraRange.random())} to 1,
-                ItemStack(Material.DIAMOND_CHESTPLATE).apply { setDurability(DurabilityRange.DIAMOND_ARMOR.duraRange.random())} to 1,
-                ItemStack(Material.DIAMOND_LEGGINGS).apply { setDurability(DurabilityRange.DIAMOND_ARMOR.duraRange.random())} to 1,
-                ItemStack(Material.DIAMOND_BOOTS).apply { setDurability(DurabilityRange.DIAMOND_ARMOR.duraRange.random())} to 1
+                ItemStack(Material.DIAMOND_HELMET).apply { duraRange = DurabilityRange.DIAMOND_ARMOR.duraRange} to 1,
+                ItemStack(Material.DIAMOND_CHESTPLATE).apply { duraRange = DurabilityRange.DIAMOND_ARMOR.duraRange} to 1,
+                ItemStack(Material.DIAMOND_LEGGINGS).apply { duraRange = DurabilityRange.DIAMOND_ARMOR.duraRange} to 1,
+                ItemStack(Material.DIAMOND_BOOTS).apply { duraRange = DurabilityRange.DIAMOND_ARMOR.duraRange} to 1
             )
 
             /**

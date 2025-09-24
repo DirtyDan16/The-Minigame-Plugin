@@ -14,7 +14,7 @@ import base.minigames.maze_hunt.MHConst.Spawns.Mobs
 import base.minigames.maze_hunt.MHConst.MazeGen.BIT_SIZE
 import base.minigames.maze_hunt.MHConst.MazeGen.MAZE_DIMENSION_X
 import base.minigames.maze_hunt.MHConst.MazeGen.MAZE_DIMENSION_Z
-import base.utils.Direction
+import base.utils.additions.Direction
 import base.utils.extensions_for_classes.getBlockAt
 import org.bukkit.Material
 import org.jetbrains.kotlinx.multik.api.d2array
@@ -23,25 +23,40 @@ import org.jetbrains.kotlinx.multik.ndarray.data.D2Array
 import org.jetbrains.kotlinx.multik.ndarray.data.get
 import org.jetbrains.kotlinx.multik.ndarray.data.set
 import base.minigames.maze_hunt.MHConst.BitPoint
+import base.minigames.maze_hunt.MHConst.MazeGen.REGENERATE_MAZE_INITIAL_COOLDOWN_FOR_HARD_MODE
+import base.minigames.maze_hunt.MHConst.Spawns.LootCrates.INITIAL_AMOUNTS_OF_CRATES_TO_SPAWN_IN_A_CYCLE_FOR_HARD_MODE
+import base.minigames.maze_hunt.MHConst.Spawns.LootCrates.LootCrateType.*
+import base.minigames.maze_hunt.MHConst.Spawns.LootCrates.applyRandomDurability
+import base.minigames.maze_hunt.MHConst.Spawns.Mobs.INITIAL_AMOUNTS_OF_MOBS_TO_SPAWN_IN_A_CYCLE_FOR_HARD_MODE
+import base.utils.extensions_for_classes.duraRange
+import base.utils.extensions_for_classes.modifyDuraBy
 import base.resources.Colors
-import base.utils.PausableBukkitRunnable
+import base.utils.additions.PausableBukkitRunnable
 import base.utils.extensions_for_classes.getWeightedRandom
-import base.utils.Utils.initFloor
-import base.utils.Utils.successChance
-import base.utils.activateChain
-import base.utils.delayTheFollowing
+import base.utils.additions.Utils.initFloor
+import base.utils.additions.Utils.successChance
+import base.utils.additions.activateChain
+import base.utils.additions.delayTheFollowing
+import base.utils.extensions_for_classes.fullyContains
+import base.utils.extensions_for_classes.getItemStackByMaterial
+import base.utils.extensions_for_classes.hasDurability
+import base.utils.extensions_for_classes.remainingDurability
+import base.utils.extensions_for_classes.returnQuantityOfEach
 import net.kyori.adventure.text.Component.*
 import net.kyori.adventure.text.format.TextColor
 import org.bukkit.Difficulty
 import org.bukkit.GameMode
 import org.bukkit.GameRule
 import org.bukkit.GameRule.DO_DAYLIGHT_CYCLE
+import org.bukkit.entity.Damageable
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import org.bukkit.event.block.BlockBreakEvent
 import org.bukkit.event.entity.EntityCombustEvent
 import org.bukkit.event.entity.EntityDeathEvent
+import org.bukkit.inventory.EquipmentSlot
 import org.bukkit.inventory.ItemStack
+import org.bukkit.inventory.PlayerInventory
 import org.bukkit.metadata.FixedMetadataValue
 import org.bukkit.plugin.Plugin
 import org.bukkit.plugin.java.JavaPlugin
@@ -92,6 +107,14 @@ class MazeHunt(val plugin: Plugin) : MinigameSkeleton() , Listener {
         }
     }
 
+    override fun startFastMode(player: Player) {
+        amountOfMobsToSpawnPerInterval = INITIAL_AMOUNTS_OF_MOBS_TO_SPAWN_IN_A_CYCLE_FOR_HARD_MODE
+        amountOfCratesToSpawnPerInterval = INITIAL_AMOUNTS_OF_CRATES_TO_SPAWN_IN_A_CYCLE_FOR_HARD_MODE
+        curTimeLeftTillNewMaze = REGENERATE_MAZE_INITIAL_COOLDOWN_FOR_HARD_MODE
+
+        super.startFastMode(player)
+    }
+
     private fun startGameLoop() {
         //region new maze generation timer logic
         countDownToNewMazeGeneration(curTimeLeftTillNewMaze)
@@ -117,7 +140,7 @@ class MazeHunt(val plugin: Plugin) : MinigameSkeleton() , Listener {
                 if (generatedBitsIndexes.isEmpty())
                     return@repeat
 
-                val chosenCrateType = MHConst.Spawns.LootCrates.LootCrateType.entries.random()
+                val chosenCrateType = entries.random()
 
                 val chosenLocationToSpawnAt: Location = generatedBitsIndexes.random().let {
                     getBitLocation(it.x, it.z)
@@ -213,13 +236,55 @@ class MazeHunt(val plugin: Plugin) : MinigameSkeleton() , Listener {
         val typeName = metaList.first { it.owningPlugin == plugin }.asString()
 
         // convert string back to enum
-        val crateType = MHConst.Spawns.LootCrates.LootCrateType.valueOf(typeName)
+        val crateType = valueOf(typeName)
 
         // Now you have the enum instance and can access its pool.
 
         // Poll n number of rolls from the pool
         val itemsInside: List<ItemStack> = List(crateType.rolls.random()) { crateType.lootTable.getWeightedRandom() }
-        itemsInside.forEach { event.player.inventory.addItem(it) }
+
+        val quantityOfEachItem = itemsInside.returnQuantityOfEach()
+
+        // Combine all the same items into 1 item -
+        // Let's say I have 3 ItemStack, each containing 4 apples -> return 1 ItemStack of 12 apples
+        // Let's also say I have 2 ItemStacks of an Iron Helmet -> return 1 itemstack of the helmet where its durability is the combined durability of both helmets.
+        val condensedItems: List<ItemStack> = quantityOfEachItem.map { collectionOfSameItemStack ->
+            val itemStack = collectionOfSameItemStack.key
+            val amountOfAllCopies = collectionOfSameItemStack.value * itemStack.amount
+
+            if (itemStack.hasDurability()) {
+                collectionOfSameItemStack.toPair().applyRandomDurability()
+            } else {
+                itemStack.clone().apply { amount = amountOfAllCopies }
+            }
+        }
+
+
+        // add to the player the loot from the loot crate
+        for (itemToAdd in condensedItems) {
+            val inventory = event.player.inventory
+
+
+            //Look for existing equipment and combine the existing equipment's dura with the added equipment's dura
+
+            //if the item doesn't already exist in the player's inventory, just add the itemstack in
+            if (!inventory.fullyContains(itemToAdd.type)) {
+                inventory.addItem(itemToAdd)
+            // otherwise, let's combine the added item to the existing one - combine the amounts or the durability
+            } else {
+                val itemStackAlreadyIn: ItemStack = inventory.getItemStackByMaterial(itemToAdd.type)!!
+
+                //check if the item has dura or not
+                if (itemStackAlreadyIn.hasDurability())  {
+                    itemStackAlreadyIn modifyDuraBy itemToAdd.remainingDurability!!
+                } else {
+                    itemStackAlreadyIn.apply {
+                        this.amount += itemToAdd.amount
+                    }
+                }
+            }
+
+        }
 
         // We'll delete the metadata to not accidentally think later on that there's still loot to obtain from a place where there isn't a loot crate
         event.block.removeMetadata("isALootCrate",plugin)

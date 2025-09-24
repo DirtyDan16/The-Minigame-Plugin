@@ -3,7 +3,7 @@ package base.minigames.disco_mayhem
 
 import base.minigames.MinigameSkeleton
 import base.utils.extensions_for_classes.getBlockAt
-import base.utils.Utils.initFloor
+import base.utils.additions.Utils.initFloor
 import com.sk89q.worldedit.math.BlockVector3
 import com.sk89q.worldedit.regions.CuboidRegion
 import net.kyori.adventure.text.Component

@@ -1,6 +1,6 @@
 @file:Suppress("DEPRECATION")
 
-package base.utils
+package base.utils.additions
 
 import org.bukkit.Bukkit
 import org.bukkit.Location

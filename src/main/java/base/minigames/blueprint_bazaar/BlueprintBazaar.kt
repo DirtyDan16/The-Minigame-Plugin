@@ -10,8 +10,8 @@ import base.minigames.blueprint_bazaar.BPBConst.WORLD
 import base.other.BuildLoader
 import base.other.BuildLoader.loadSchematicByFileAndCoordinates
 import base.other.BuildLoader.loadSchematicByFileAndDirection
-import base.utils.Direction
-import base.utils.Utils.initFloor
+import base.utils.additions.Direction
+import base.utils.additions.Utils.initFloor
 import base.utils.extensions_for_classes.*
 import com.sk89q.worldedit.math.BlockVector3
 import com.sk89q.worldedit.regions.CuboidRegion
@@ -25,7 +25,6 @@ import org.bukkit.entity.Player
 import org.bukkit.inventory.ItemStack
 import org.bukkit.plugin.Plugin
 import org.bukkit.scheduler.BukkitRunnable
-import org.bukkit.scoreboard.Objective
 import java.io.File
 import java.io.IOException
 

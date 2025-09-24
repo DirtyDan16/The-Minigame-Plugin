@@ -13,7 +13,7 @@ import org.bukkit.block.data.Powerable
 import java.io.File
 import org.bukkit.Bukkit
 
-import base.utils.Direction
+import base.utils.additions.Direction
 import base.MinigamePlugin
 import base.MinigamePlugin.Companion.plugin
 import net.kyori.adventure.text.Component
