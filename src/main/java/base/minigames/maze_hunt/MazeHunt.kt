@@ -23,12 +23,13 @@ import org.jetbrains.kotlinx.multik.ndarray.data.D2Array
 import org.jetbrains.kotlinx.multik.ndarray.data.get
 import org.jetbrains.kotlinx.multik.ndarray.data.set
 import base.minigames.maze_hunt.MHConst.BitPoint
+import base.minigames.maze_hunt.MHConst.Locations.Y_LEVEL_FOR_CRATE_OFFSET
 import base.minigames.maze_hunt.MHConst.MazeGen.REGENERATE_MAZE_INITIAL_COOLDOWN_FOR_HARD_MODE
 import base.minigames.maze_hunt.MHConst.Spawns.LootCrates.INITIAL_AMOUNTS_OF_CRATES_TO_SPAWN_IN_A_CYCLE_FOR_HARD_MODE
 import base.minigames.maze_hunt.MHConst.Spawns.LootCrates.LootCrateType.*
 import base.minigames.maze_hunt.MHConst.Spawns.LootCrates.applyRandomDurability
 import base.minigames.maze_hunt.MHConst.Spawns.Mobs.INITIAL_AMOUNTS_OF_MOBS_TO_SPAWN_IN_A_CYCLE_FOR_HARD_MODE
-import base.utils.extensions_for_classes.duraRange
+import base.minigames.maze_hunt.MHConst.Spawns.Mobs.MOBS_BEING_PASSIVE_DURATION
 import base.utils.extensions_for_classes.modifyDuraBy
 import base.resources.Colors
 import base.utils.additions.PausableBukkitRunnable
@@ -37,6 +38,7 @@ import base.utils.additions.Utils.initFloor
 import base.utils.additions.Utils.successChance
 import base.utils.additions.activateChain
 import base.utils.additions.delayTheFollowing
+import base.utils.extensions_for_classes.breakGradually
 import base.utils.extensions_for_classes.fullyContains
 import base.utils.extensions_for_classes.getItemStackByMaterial
 import base.utils.extensions_for_classes.hasDurability
@@ -48,29 +50,34 @@ import org.bukkit.Difficulty
 import org.bukkit.GameMode
 import org.bukkit.GameRule
 import org.bukkit.GameRule.DO_DAYLIGHT_CYCLE
-import org.bukkit.entity.Damageable
+import org.bukkit.entity.Creeper
+import org.bukkit.entity.LivingEntity
+import org.bukkit.entity.MagmaCube
+import org.bukkit.entity.Mob
+import org.bukkit.entity.Slime
+import org.bukkit.entity.TNTPrimed
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import org.bukkit.event.block.BlockBreakEvent
+import org.bukkit.event.block.BlockPlaceEvent
 import org.bukkit.event.entity.EntityCombustEvent
+import org.bukkit.event.entity.EntityDamageByEntityEvent
 import org.bukkit.event.entity.EntityDeathEvent
-import org.bukkit.inventory.EquipmentSlot
 import org.bukkit.inventory.ItemStack
-import org.bukkit.inventory.PlayerInventory
 import org.bukkit.metadata.FixedMetadataValue
 import org.bukkit.plugin.Plugin
 import org.bukkit.plugin.java.JavaPlugin
 import org.bukkit.scheduler.BukkitRunnable
 import org.bukkit.scoreboard.Team
 import kotlin.collections.plusAssign
+import kotlin.jvm.java
 
 class MazeHunt(val plugin: Plugin) : MinigameSkeleton() , Listener {
     override val minigameName: String = this::class.simpleName ?: "Unknown"
-
-
     /** this set keeps track of all the indices of the bits that have been generated */
     @ShouldBeReset
     private val generatedBitsIndexes: MutableSet<BitPoint> = mutableSetOf()
+
 
     /** Number of mobs to spawn every mob spawning cycle. Gets increased as time goes on. */
     @ShouldBeReset
@@ -146,7 +153,7 @@ class MazeHunt(val plugin: Plugin) : MinigameSkeleton() , Listener {
                     getBitLocation(it.x, it.z)
                 }.apply {
                     x += (-MazeGen.BIT_RADIUS..MazeGen.BIT_RADIUS).random()
-                    y += 2
+                    y += Y_LEVEL_FOR_CRATE_OFFSET
                     z += (-MazeGen.BIT_RADIUS..MazeGen.BIT_RADIUS).random()
                 }
 
@@ -157,11 +164,15 @@ class MazeHunt(val plugin: Plugin) : MinigameSkeleton() , Listener {
                 // We store metadata of the crate type so that only blocks with this metadata will drop loot when broken, and not just every block that has been broken.
                 // The onLootCrateBreak will listen to the block break and check the metadata of the block.
                 blockAt.setMetadata("isALootCrate", FixedMetadataValue(plugin, chosenCrateType.name))
+
+
+                // ~ the lifespan of the loot crate ~
+                blockAt.breakGradually(MHConst.Spawns.LootCrates.LIFESPAN)
             }
         }.apply { this.start() }
 
         // Gradually increase the number of crates spawned per interval
-        pausableRunnables += PausableBukkitRunnable(plugin, periodTicks = MHConst.Spawns.LootCrates.NUM_OF_SPAWNS_INCREASER_TIMER_RANGE.random()
+        pausableRunnables += PausableBukkitRunnable(plugin, periodTicks = MHConst.Spawns.LootCrates.NUM_OF_SPAWNS_INCREASER_TIMER
         ) {
             amountOfCratesToSpawnPerInterval += 1
         }.apply { this.start() }
@@ -180,7 +191,23 @@ class MazeHunt(val plugin: Plugin) : MinigameSkeleton() , Listener {
                     getBitLocation(it.x, it.z)
                 }.apply { y += 1 }
 
-                WORLD.spawnEntity(chosenLocationToSpawnAt, chosenMobToSpawn)
+                val mob: Mob = (WORLD.spawnEntity(chosenLocationToSpawnAt, chosenMobToSpawn) as Mob).apply { isAware = false }
+
+                if (mob is Creeper) mob.setAI(false)
+
+                MOBS_BEING_PASSIVE_DURATION delayTheFollowing {
+                    mob.isAware = true
+
+                    if (mob is Creeper) mob.setAI(true)
+                }
+
+                //special case for mobs that are aggressive on contact
+                if (mob is Slime || mob is MagmaCube) {
+                    mobsToDisableContactDamage += mob
+                    MOBS_BEING_PASSIVE_DURATION delayTheFollowing {
+                        mobsToDisableContactDamage -= mob
+                    }
+                }
             }
 
             players.forEach {
@@ -189,12 +216,27 @@ class MazeHunt(val plugin: Plugin) : MinigameSkeleton() , Listener {
 
         }.apply { this.start() }
 
+
         // Gradually increase the number of mobs spawned per interval
         pausableRunnables += PausableBukkitRunnable(plugin, periodTicks = Mobs.NUM_OF_SPAWNS_INCREASER_TIMER) {
             amountOfMobsToSpawnPerInterval += 1
         }.apply { this.start() }
 
         //endregion
+    }
+
+    /**
+     * List used for newly created mobs that trigger on contact with a player.
+     * Each mob in this list will not trigger their action while on there.
+     * Should include: Slimes, Magma Cubes
+     */
+    private val mobsToDisableContactDamage: MutableList<Mob> = mutableListOf()
+
+    @EventHandler
+    fun ignoreContactDamageOfSlimes(event: EntityDamageByEntityEvent) {
+        if (event.damager in mobsToDisableContactDamage) {
+            event.isCancelled = true
+        }
     }
 
     private fun countDownToNewMazeGeneration(startedWaitTime: Long) {
@@ -216,7 +258,30 @@ class MazeHunt(val plugin: Plugin) : MinigameSkeleton() , Listener {
             },
             PausableBukkitRunnable(plugin, remainingTicks = 5 * 20L) {
                 prepareArea()
-                players.forEach { it.teleport(Locations.PLAYERS_START_LOCATION) }
+                players.forEach {
+                    it.teleport(Locations.PLAYERS_START_LOCATION)
+
+                    // we clear potion effects since this is an easy way to nerf the busted potions that last forever and help so much (such as slow falling)
+                    it.clearActivePotionEffects()
+                }
+
+                announceMessage(
+                    "Maze SWAP!",
+                    "All potion effects have been cleared",
+                    Colors.TitleColors.AQUA,
+                )
+
+
+                WORLD.entities
+                    .filter { it is LivingEntity && it !is Player }
+                    .forEach { it.remove() }
+
+                // kill any mobs that don't die from fall damage - such as blazes and slime
+//                40L delayTheFollowing {
+//                    WORLD.entities
+//                        .filter { it is LivingEntity && it !is Player }
+//                        .forEach { it.remove() }
+//                }
 
                 curTimeLeftTillNewMaze = startedWaitTime + MazeGen.INCREASE_IN_DURATION_FOR_MAZE_GENERATION
                 countDownToNewMazeGeneration(curTimeLeftTillNewMaze)
@@ -224,6 +289,34 @@ class MazeHunt(val plugin: Plugin) : MinigameSkeleton() , Listener {
         )
 
         chainElements.activateChain(stopCondition = {!isGameRunning})
+    }
+
+    @EventHandler
+    private fun onBlockPlace(event: BlockPlaceEvent) {
+        val block = event.block
+
+        // Do special action for tnt specifically and ignite the block instead of breaking it
+        if (block.type == Material.TNT) {
+            block.type = Material.AIR
+
+            val tnt = WORLD.spawn(
+                block.location.add(0.5, 0.0, 0.5),
+                TNTPrimed::class.java
+            )
+            tnt.fuseTicks = 4 * 20
+
+            return
+        }
+
+        val decayLifespan: Long = when (block.type) {
+            Material.BRICKS -> MHConst.Spawns.LootCrates.BRICK_LIFESPAN
+            Material.COBWEB -> MHConst.Spawns.LootCrates.COBWEB_LIFESPAN
+            else -> {0L}
+        }
+
+        if (decayLifespan == 0L) return
+
+        block.breakGradually(decayLifespan)
     }
 
     @EventHandler
@@ -356,6 +449,7 @@ class MazeHunt(val plugin: Plugin) : MinigameSkeleton() , Listener {
         for (player in players) {
             player.teleport(Locations.PLAYERS_START_LOCATION)
             player.gameMode = GameMode.SURVIVAL
+            player.clearActivePotionEffects()
         }
     }
 

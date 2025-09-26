@@ -2,6 +2,8 @@
 
 package base.utils.additions
 
+import base.MinigamePlugin.Companion.world
+import base.utils.extensions_for_classes.getBlockAt
 import org.bukkit.Bukkit
 import org.bukkit.Location
 import org.bukkit.Material
@@ -80,8 +82,6 @@ object Utils {
                 selectedLocation.block.type = material
             }
         }
-
-        Bukkit.broadcastMessage("floor initialized")
     }
 
     /**

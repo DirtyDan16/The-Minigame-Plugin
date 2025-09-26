@@ -47,9 +47,11 @@ object MHConst {
             MAZE_ORIGIN.z - BIT_RADIUS
         )
 
+        const val Y_LEVEL_FOR_CRATE_OFFSET = 3
+
         val TOP_CORNER: BlockVector3 = BlockVector3.at(
             MAZE_ORIGIN.x + MAZE_DIMENSION_X * BIT_SIZE + BIT_RADIUS,
-            MAZE_ORIGIN.y + 2,
+            MAZE_ORIGIN.y + Y_LEVEL_FOR_CRATE_OFFSET,
             MAZE_ORIGIN.z + MAZE_DIMENSION_Z * BIT_SIZE + BIT_RADIUS
         )
 
@@ -119,23 +121,24 @@ object MHConst {
 
             const val SPAWN_CYCLE_DELAY = 20L*10
 
-            val NUM_OF_SPAWNS_INCREASER_TIMER_RANGE = 20L*10..20L*20
             const val NUM_OF_SPAWNS_INCREASER_TIMER = 20L*15
+
+            const val MOBS_BEING_PASSIVE_DURATION = 30L
 
             /** List of allowed mob types and their relative weights when spawning*/
             val ALLOWED_MOB_TYPES = listOf(
                 ZOMBIE to 15,
                 HUSK to 10,
-                SKELETON to 10,
-                STRAY to 5,
+                SKELETON to 7,
+                STRAY to 3,
                 CREEPER to 5,
                 SPIDER to 5,
                 ENDERMAN to 2,
                 WITCH to 1,
                 SILVERFISH to 5,
-                BREEZE to 2,
-                BLAZE to 2,
-                SLIME to 10,
+                BREEZE to 1,
+                BLAZE to 1,
+                SLIME to 5,
                 MAGMA_CUBE to 2
             )
         }
@@ -144,7 +147,9 @@ object MHConst {
             const val INITIAL_AMOUNTS_OF_CRATES_TO_SPAWN_IN_A_CYCLE = 2
             const val INITIAL_AMOUNTS_OF_CRATES_TO_SPAWN_IN_A_CYCLE_FOR_HARD_MODE = 10
 
-            val NUM_OF_SPAWNS_INCREASER_TIMER_RANGE = 20L*10..20L*20
+            const val NUM_OF_SPAWNS_INCREASER_TIMER = 20L*10
+
+            const val LIFESPAN = 30 * 20L
 
             /**
              * Defines the different loot crate types.
@@ -158,8 +163,9 @@ object MHConst {
                 MELEE_WEAPON_LOOT_TABLE(Material.RED_WOOL,meleeWeaponLootTable,1..2),
                 RANGED_WEAPON_LOOT_TABLE(Material.ORANGE_WOOL, rangedWeaponLootTable, 1..3),
                 ARMOR_LOOT_TABLE(Material.GREEN_WOOL, armorLootTable, 1..2),
-                FOOD_LOOT_TABLE(Material.YELLOW_WOOL, foodLootTable, 1..5),
-                POTION_LOOT_TABLE(Material.PURPLE_WOOL,potionLootTable,1..2)
+                FOOD_LOOT_TABLE(Material.YELLOW_WOOL, foodLootTable, 2..3),
+                POTION_LOOT_TABLE(Material.PURPLE_WOOL,potionLootTable,1..2),
+                ESCAPE_LOOT_TABLE(Material.WHITE_WOOL,escapeLootTable,1..1)
             }
 
             // Extension function to set durability randomly based on duraRange and the number of copies this item has
@@ -189,8 +195,9 @@ object MHConst {
                 STONE_WEAPONS(10..15),
                 IRON_WEAPONS(8..15),
                 DIAMOND_WEAPONS(5..10),
-                BOWS(10..18),
-                FISHING_ROD(5..10);
+                BOWS(8..13),
+                FISHING_ROD(5..10),
+                SHIELD(6..12);
             }
 
             /**
@@ -273,6 +280,8 @@ object MHConst {
              * Each piece includes a helmet, chestplate, leggings, and boots
              */
             val armorLootTable = listOf(
+                ItemStack(Material.SHIELD).apply { duraRange = DurabilityRange.SHIELD.duraRange} to 3,
+
                 // Leather Armor (Common)
                 ItemStack(Material.LEATHER_HELMET).apply { duraRange = DurabilityRange.LEATHER_ARMOR.duraRange} to 10,
                 ItemStack(Material.LEATHER_CHESTPLATE).apply { duraRange = DurabilityRange.LEATHER_ARMOR.duraRange} to 10,
@@ -292,10 +301,28 @@ object MHConst {
                 ItemStack(Material.DIAMOND_BOOTS).apply { duraRange = DurabilityRange.DIAMOND_ARMOR.duraRange} to 1
             )
 
+
+            const val BRICK_LIFESPAN = 6 * 20L
+            const val COBWEB_LIFESPAN = 4 * 20L
+
+            val escapeLootTable = listOf(
+                ItemStack(Material.BRICKS,5) to 10,
+                ItemStack(Material.BRICKS,10) to 4,
+
+                ItemStack(Material.COBWEB,2) to 3,
+                ItemStack(Material.COBWEB,5) to 1,
+
+                ItemStack(Material.TNT,2) to 4,
+
+                ItemStack(Material.ENDER_PEARL) to 2,
+                ItemStack(Material.TOTEM_OF_UNDYING) to 2
+            )
+
+
             /**
              * Food loot table containing different types of food items with their weights.
              * Contains:
-             * - Basic foods (Cookie x8, Carrot x4, Potato x4, Apple x4: Weight 5)
+             * - Basic foods (Cookie x8, Carrot x4, Potato x12, Apple x4: Weight 5)
              * - Medium tier foods (Bread x3: Weight 3)
              * - Cooked meats (Porkchop x2, Chicken x2, Beef x2: Weight 2)
              * - Special food (Golden Apple x1: Weight 1)
@@ -303,7 +330,7 @@ object MHConst {
             val foodLootTable = listOf(
                 ItemStack(Material.COOKIE,8) to 5,
                 ItemStack(Material.CARROT,4) to 5,
-                ItemStack(Material.POTATO,4) to 5,
+                ItemStack(Material.POTATO,12) to 5,
                 ItemStack(Material.APPLE,4) to 5,
                 ItemStack(Material.BREAD,3) to 3,
                 ItemStack(Material.COOKED_PORKCHOP,2) to 2,

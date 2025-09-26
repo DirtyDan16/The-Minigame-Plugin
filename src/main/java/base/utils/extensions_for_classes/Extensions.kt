@@ -1,10 +1,16 @@
 package base.utils.extensions_for_classes
 
+import base.MinigamePlugin
 import base.utils.additions.Direction
 import com.sk89q.worldedit.math.BlockVector3
+import kotlinx.coroutines.SupervisorJob
+import org.bukkit.Bukkit
+import org.bukkit.Bukkit.*
 import org.bukkit.Material
+import org.bukkit.Particle
 import org.bukkit.World
 import org.bukkit.block.Block
+import org.bukkit.entity.ArmorStand
 import org.bukkit.entity.Item
 import org.bukkit.entity.Player
 import org.bukkit.inventory.ItemStack
@@ -100,4 +106,37 @@ inline fun <reified T: Number> T.randomlyFlipSign(): T {
         is Short -> -this as T
         else -> this
     }
+}
+
+fun Block.breakGradually(decayDuration: Long) {
+    var curCrackStage = 0
+    val maxCrackStage = 9 // crack animation has 0–9
+
+    val waitTimePerStage = (decayDuration.toDouble() / maxCrackStage).toLong().coerceAtLeast(1)
+
+    // this is used for registering the crack states for the block in the sendBlockDamage()
+    val source = world.spawn(location, ArmorStand::class.java) { stand ->
+        stand.isInvisible = true
+        stand.isMarker = true
+        stand.isInvulnerable = true
+        stand.isSilent = true
+        stand.setAI(false)
+    }
+
+    getScheduler().runTaskTimer(MinigamePlugin.Companion.plugin, Runnable {
+        // Block already gone, stop animation
+        if (type.isAir) { return@Runnable }
+
+        if (curCrackStage < maxCrackStage) {
+            val progress = (curCrackStage + 1).toFloat() / maxCrackStage
+
+            for (player: Player in world.players) {
+                player.sendBlockDamage(location, progress, source)
+            }
+            curCrackStage++
+        } else {
+            this.type = Material.AIR
+            source.remove()
+        }
+    },0L, waitTimePerStage)
 }
