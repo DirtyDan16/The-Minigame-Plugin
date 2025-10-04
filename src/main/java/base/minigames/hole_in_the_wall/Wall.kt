@@ -3,7 +3,7 @@ package base.minigames.hole_in_the_wall
 import com.sk89q.worldedit.math.BlockVector3
 import com.sk89q.worldedit.regions.CuboidRegion
 import com.sk89q.worldedit.session.ClipboardHolder
-import base.other.BuildLoader
+import base.utils.other.BuildLoader
 import org.bukkit.Location
 import org.bukkit.Material
 import org.bukkit.block.Block

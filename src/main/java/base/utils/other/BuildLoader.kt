@@ -1,4 +1,4 @@
-package base.other
+package base.utils.other
 
 import com.sk89q.worldedit.WorldEdit
 import com.sk89q.worldedit.WorldEditException

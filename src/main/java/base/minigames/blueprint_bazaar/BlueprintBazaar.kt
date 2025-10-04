@@ -7,9 +7,9 @@ import base.minigames.MinigameSkeleton.WorldSettingsToTrack.GAMEMODE
 import base.minigames.MinigameSkeleton.WorldSettingsToTrack.RANDOM_TICK_SPEED
 import base.minigames.blueprint_bazaar.BPBConst.Locations
 import base.minigames.blueprint_bazaar.BPBConst.WORLD
-import base.other.BuildLoader
-import base.other.BuildLoader.loadSchematicByFileAndCoordinates
-import base.other.BuildLoader.loadSchematicByFileAndDirection
+import base.utils.other.BuildLoader
+import base.utils.other.BuildLoader.loadSchematicByFileAndCoordinates
+import base.utils.other.BuildLoader.loadSchematicByFileAndDirection
 import base.utils.additions.Direction
 import base.utils.additions.Utils.initFloor
 import base.utils.extensions_for_classes.*

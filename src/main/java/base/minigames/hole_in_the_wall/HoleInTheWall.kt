@@ -1,7 +1,7 @@
 package base.minigames.hole_in_the_wall
 
 import com.sk89q.worldedit.regions.Region
-import base.other.BuildLoader
+import base.utils.other.BuildLoader
 import base.utils.additions.Direction
 import base.MinigamePlugin
 import base.minigames.hole_in_the_wall.HITWConst.Timers

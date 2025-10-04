@@ -142,6 +142,7 @@ class MazeHunt(val plugin: Plugin) : MinigameSkeleton() , Listener {
         //endregion
 
         //region Start Spawning Loot Crates
+        //fixme: loot crates that are from previous instance of game, when those crates' lifespans are over, they'll also set the block to air in the current instance
         pausableRunnables += PausableBukkitRunnable(plugin, periodTicks = Mobs.SPAWN_CYCLE_DELAY) {
             repeat(amountOfCratesToSpawnPerInterval) {
                 if (generatedBitsIndexes.isEmpty())
